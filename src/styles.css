@@ -724,3 +724,16 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .pc-verdict { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
 .pc-verdict > span { flex: none; font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 .pc-verdict input { flex: 1; font-weight: 550; }
+
+/* matrice di decisione */
+.ProseMirror .data-block table.matrix { margin: 0; table-layout: auto; }
+.matrix :is(th, td) { padding: 2px 4px; white-space: nowrap; }
+.matrix th { font-size: 12.5px; }
+.matrix input { width: 100%; }
+.matrix th input { font-weight: 600; width: calc(100% - 24px); }
+.matrix .matrix-num { text-align: right; font-variant-numeric: tabular-nums; }
+.matrix .matrix-weight { width: 64px; color: var(--muted); }
+.matrix .matrix-end { width: 26px; border: none; background: none; padding: 0; }
+.matrix tfoot td { font-weight: 600; background: var(--panel); padding: 4px 9px; }
+.matrix .matrix-total { text-align: right; font-variant-numeric: tabular-nums; }
+.matrix .matrix-total.best { background: var(--accent-soft); color: var(--accent); }

@@ -398,6 +398,15 @@ const en: Record<string, string> = {
   "Cosa si decide, alla fine": "What gets decided, in the end",
   "Pro e contro": "Pros and cons",
   "Due colonne e un verdetto": "Two columns and a verdict",
+  "Criterio": "Criterion",
+  "Quanto conta il criterio": "How much the criterion counts",
+  "Peso": "Weight",
+  "Togli il criterio": "Remove the criterion",
+  "Totale": "Total",
+  "+ Criterio": "+ Criterion",
+  "Totale = somma di peso × punteggio": "Total = sum of weight × score",
+  "Matrice di decisione": "Decision matrix",
+  "Opzioni, criteri pesati, totale": "Options, weighted criteria, total",
 };
 
 export default en;
