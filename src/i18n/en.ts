@@ -390,6 +390,14 @@ const en: Record<string, string> = {
   "Nuova tappa": "New milestone",
   "Timeline": "Timeline",
   "Tappe con le loro date": "Milestones with their dates",
+  "Togli": "Remove",
+  "Aggiungi, poi Invio": "Add, then Enter",
+  "Pro": "Pros",
+  "Contro": "Cons",
+  "Verdetto": "Verdict",
+  "Cosa si decide, alla fine": "What gets decided, in the end",
+  "Pro e contro": "Pros and cons",
+  "Due colonne e un verdetto": "Two columns and a verdict",
 };
 
 export default en;
