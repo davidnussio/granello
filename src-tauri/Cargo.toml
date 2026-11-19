@@ -1,0 +1,45 @@
+[package]
+name = "granello"
+version = "0.1.0"
+description = "Note di meeting arricchite dall'AI, trascrizione locale. Clone di Granola."
+authors = ["David Nussio"]
+edition = "2021"
+
+[lib]
+name = "granello_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-notification = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+futures-util = "0.3"
+rusqlite = { version = "0.32", features = ["bundled"] }
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+rrule = "0.13"
+uuid = { version = "1", features = ["v4"] }
+anyhow = "1"
+thiserror = "1"
+log = "0.4"
+cpal = "0.15"
+parking_lot = "0.12"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+whisper-rs = { version = "0.14", features = ["metal"] }
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+whisper-rs = { version = "0.14" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
