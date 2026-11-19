@@ -24,10 +24,11 @@ import { timeline } from "./plugins/timeline";
 import { prosCons } from "./plugins/prosCons";
 import { matrix } from "./plugins/matrix";
 import { rating } from "./plugins/rating";
+import { timer } from "./plugins/timer";
 
 export type { CommandItem, EditorPlugin, PluginContext, SuggestMenu, ToolbarItem } from "./types";
 export { base, formatting, headings, lists, tasks, blocks, links, snippets };
-export { highlight, mention, date, math, callout, toggle, columns, table, media, linkCard, toc, poll, kanban, timeline, prosCons, matrix, rating };
+export { highlight, mention, date, math, callout, toggle, columns, table, media, linkCard, toc, poll, kanban, timeline, prosCons, matrix, rating, timer };
 
 /** Plugin attivi di default. L'ordine determina l'ordine di comandi e pulsanti. */
 export const defaultPlugins: EditorPlugin[] = [
@@ -54,6 +55,7 @@ export const defaultPlugins: EditorPlugin[] = [
   prosCons,
   matrix,
   rating,
+  timer,
   mention,
   date,
 ];

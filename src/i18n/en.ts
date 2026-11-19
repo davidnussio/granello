@@ -410,6 +410,14 @@ const en: Record<string, string> = {
   "Valutazione": "Rating",
   "{n} su 5": "{n} out of 5",
   "Da 1 a 5 stelle": "From 1 to 5 stars",
+  "Tempo scaduto ({time})": "Time's up ({time})",
+  "Pausa": "Pause",
+  "Avvia": "Start",
+  "Durata: minuti, o minuti:secondi": "Duration: minutes, or minutes:seconds",
+  "Durata del timer": "Timer duration",
+  "Azzera": "Reset",
+  "Timer": "Timer",
+  "Conto alla rovescia di 5 minuti": "A 5-minute countdown",
 };
 
 export default en;
