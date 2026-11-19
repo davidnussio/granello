@@ -772,3 +772,11 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .chart-grid { stroke: var(--line); stroke-width: 1; }
 .chart-tick { fill: var(--muted); font-size: 11px; }
 .chart-empty { color: var(--muted); font-size: 13px; }
+
+/* diagramma */
+.diagram-output { display: flex; justify-content: center; overflow-x: auto; min-height: 40px; }
+.diagram-output svg { max-width: 100%; height: auto; }
+.diagram-note { color: var(--muted); font-size: 13px; }
+.diagram-note.error { color: var(--rec); }
+.diagram-source { display: block; width: 100%; margin-top: 8px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.5; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; outline: none; resize: vertical; }
+.diagram-source:focus { border-color: var(--accent); }

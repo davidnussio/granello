@@ -428,6 +428,13 @@ const en: Record<string, string> = {
   "Barre": "Bars",
   "Grafico": "Chart",
   "Disegna la tabella qui sopra": "Draws the table above",
+  "Diagramma vuoto": "Empty diagram",
+  "Diagramma non valido: {error}": "Invalid diagram: {error}",
+  "Codice Mermaid del diagramma": "The diagram's Mermaid code",
+  "Modifica il diagramma": "Edit the diagram",
+  "Sintassi Mermaid · ⌘Invio per chiudere": "Mermaid syntax · ⌘Enter to close",
+  "Diagramma": "Diagram",
+  "Flussi e sequenze scritti come testo": "Flows and sequences written as text",
 };
 
 export default en;
