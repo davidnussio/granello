@@ -100,7 +100,12 @@ pub fn transcript_text(segments: &[TranscriptSegment], me: &str) -> String {
     let mut out = String::new();
     let mut last_source = "";
     for s in segments {
-        let who = if s.source == "me" { me } else { "Altri" };
+        let who = match s.source.as_str() {
+            "me" => me,
+            // file caricato: una sola traccia con tutte le voci, non attribuibile
+            "file" => "Registrazione",
+            _ => "Altri",
+        };
         if s.source != last_source {
             out.push_str(&format!("\n[{}] {}: ", fmt_ts(s.start_ms), who));
             last_source = &s.source;

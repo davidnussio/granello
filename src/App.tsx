@@ -26,7 +26,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [rec, setRec] = useState<RecordingStatus>({ meetingId: null, recording: false, pendingChunks: 0 });
+  const [rec, setRec] = useState<RecordingStatus>({ meetingId: null, recording: false, importing: false, pendingChunks: 0 });
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [setup, setSetup] = useState<SetupStatus | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);

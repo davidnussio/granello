@@ -9,6 +9,7 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
 - **Note + registrazione**: editor Markdown (TipTap) con menu `/` dei comandi, barra di formattazione sulla selezione, link e checklist, salvataggio automatico, registrazione con livelli audio e cronometro, ripresa sullo stesso meeting.
 - **Trascrizione locale**: whisper.cpp con Metal su Apple Silicon. L'audio viene tagliato sulle pause (6-20 s), ricampionato a 16 kHz e trascritto in un thread dedicato. Filtra le allucinazioni tipiche ("Sottotitoli a cura di QTSS", "[Musica]"...). Il titolo e i partecipanti vengono passati come prompt iniziale per migliorare nomi e termini.
 - **Due sorgenti**: microfono ("Tu") e un dispositivo di loopback per l'audio della call ("Altri").
+- **Carica una registrazione**: invece di registrare dal vivo, *Carica audio* trascrive un file esistente (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, o la traccia audio di un video MP4/MOV) con la stessa pipeline, in coda alla trascrizione del meeting. Il file viene letto dov'è, mai copiato. Opus non è supportato.
 - **Note AI**: Claude (streaming) arricchisce le tue note seguendo il template scelto. Le note AI restano modificabili.
 - **Template**: Generale, 1:1, Standup, Colloquio, Meeting cliente + template personalizzati.
 - **Calendario**: URL iCal (Google, Outlook), eventi ricorrenti con RRULE, EXDATE e override, notifica prima dell'inizio, un click per aprire le note del meeting.
@@ -60,6 +61,7 @@ src-tauri/src
 ├── lib.rs         setup, stato, log, istanza singola, uscita pulita, watcher calendario + notifiche
 ├── commands.rs    comandi Tauri (meeting, registrazione, AI, template, impostazioni, modelli, calendario)
 ├── audio.rs       cattura cpal (thread audio) + Chunker sulle pause + thread di trascrizione
+├── decode.rs      decodifica dei file audio caricati (symphonia) in blocchi mono
 ├── transcribe.rs  whisper-rs, catalogo modelli, resampling, filtro allucinazioni
 ├── llm.rs         streaming dai modelli AI (Anthropic e compatibili OpenAI): retry, annullamento, prompt caching
 ├── prompts.rs     prompt di enhance/chat e template di sistema

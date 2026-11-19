@@ -99,7 +99,8 @@ pub fn normalize_tags(items: Vec<String>) -> Vec<String> {
 pub struct TranscriptSegment {
     pub id: i64,
     pub meeting_id: String,
-    /// "me" = microfono, "them" = audio di sistema / altri partecipanti
+    /// "me" = microfono, "them" = audio di sistema / altri partecipanti,
+    /// "file" = file audio caricato (tutte le voci insieme)
     pub source: String,
     pub start_ms: i64,
     pub end_ms: i64,
@@ -394,5 +395,7 @@ pub struct WhisperModelInfo {
 pub struct RecordingStatus {
     pub meeting_id: Option<String>,
     pub recording: bool,
+    /// true se la sessione in corso trascrive un file caricato invece dell'audio live.
+    pub importing: bool,
     pub pending_chunks: usize,
 }

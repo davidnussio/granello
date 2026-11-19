@@ -272,12 +272,17 @@ pub fn list_audio_devices() -> Vec<String> {
 
 #[tauri::command]
 pub fn start_recording(app: AppHandle, state: State<AppState>, meeting_id: String) -> CmdResult<()> {
+    start_session(&app, &state, meeting_id, None)
+}
+
+/// Avvia una sessione di trascrizione sul meeting: dal vivo, oppure da `file` se indicato.
+fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Option<PathBuf>) -> CmdResult<()> {
     let mut session = state.session.lock();
     if let Some(s) = session.as_ref() {
-        if s.meeting_id == meeting_id {
+        if s.meeting_id == meeting_id && !s.importing && file.is_none() {
             return Ok(());
         }
-        return Err(tr("È già in corso una registrazione su un altro meeting", "Another meeting is already being recorded").into());
+        return Err(session_busy(s).into());
     }
     let (settings, meeting, base_ms) = {
         let db = state.db.lock();
@@ -306,11 +311,60 @@ pub fn start_recording(app: AppHandle, state: State<AppState>, meeting_id: Strin
         prompt,
         base_ms,
     };
-    let s = Session::start(app.clone(), state.db.clone(), state.transcribers.clone(), cfg).map_err(err)?;
+    let (db, cache) = (state.db.clone(), state.transcribers.clone());
+    let s = match &file {
+        Some(path) => Session::start_import(app.clone(), db, cache, cfg, path),
+        None => Session::start(app.clone(), db, cache, cfg),
+    }
+    .map_err(err)?;
     state.db.lock().mark_started(&meeting_id).map_err(err)?;
     *session = Some(s);
     let _ = app.emit("recording-started", meeting_id);
     Ok(())
+}
+
+fn session_busy(s: &Session) -> &'static str {
+    if s.importing {
+        tr("È già in corso la trascrizione di un file audio", "An audio file is already being transcribed")
+    } else {
+        tr("È già in corso una registrazione su un altro meeting", "Another meeting is already being recorded")
+    }
+}
+
+/// Fa scegliere un file audio (o un video) e lo trascrive nel meeting, in coda alla
+/// trascrizione esistente. Ritorna false se la scelta del file viene annullata.
+/// Il percorso non passa dall'interfaccia: il file lo sceglie l'utente nella finestra di sistema.
+#[tauri::command]
+pub async fn import_audio(app: AppHandle, state: State<'_, AppState>, meeting_id: String) -> CmdResult<bool> {
+    use tauri::Manager;
+    use tauri_plugin_dialog::DialogExt;
+
+    if let Some(s) = state.session.lock().as_ref() {
+        return Err(session_busy(s).into());
+    }
+    let mut dialog = app
+        .dialog()
+        .file()
+        .set_title(tr("Scegli un file audio", "Choose an audio file"))
+        .add_filter(tr("Audio e video", "Audio and video"), crate::decode::EXTENSIONS);
+    if let Some(window) = app.get_webview_window("main") {
+        dialog = dialog.set_parent(&window);
+    }
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    dialog.pick_file(move |picked| {
+        let _ = tx.send(picked);
+    });
+    let Some(picked) = rx.await.map_err(err)? else { return Ok(false) };
+    let path = picked.into_path().map_err(err)?;
+    log::info!("trascrizione da file per {meeting_id}");
+    // caricare il modello e aprire il file può richiedere qualche secondo
+    tokio::task::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        start_session(&app, &state, meeting_id, Some(path))
+    })
+    .await
+    .map_err(err)??;
+    Ok(true)
 }
 
 #[tauri::command]
@@ -330,6 +384,7 @@ pub fn recording_status(state: State<AppState>) -> RecordingStatus {
     RecordingStatus {
         meeting_id: s.as_ref().map(|s| s.meeting_id.clone()),
         recording: s.is_some(),
+        importing: s.as_ref().is_some_and(|s| s.importing),
         pending_chunks: s.as_ref().map(|s| s.pending.load(Ordering::SeqCst)).unwrap_or(0),
     }
 }

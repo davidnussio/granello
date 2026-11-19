@@ -9,6 +9,7 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
 - **Notes + recording**: Markdown editor (TipTap) with a `/` command menu, a formatting toolbar on selection, links and checklists, autosave, recording with audio levels and a timer, resuming on the same meeting.
 - **Local transcription**: whisper.cpp with Metal on Apple Silicon. Audio is cut on pauses (6-20 s), resampled to 16 kHz and transcribed on a dedicated thread. Typical hallucinations ("Thanks for watching", "[Music]"...) are filtered out. The meeting title and attendees are passed as the initial prompt to improve names and terms.
 - **Two sources**: the microphone ("You") and a loopback device for the call audio ("Others").
+- **Upload a recording**: instead of recording live, *Upload audio* transcribes an existing file (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, or the audio track of an MP4/MOV video) with the same pipeline, appending to the meeting's transcript. The file is read in place, never copied. Opus is not supported.
 - **AI notes**: the model (streaming) enriches your notes following the template you chose. AI notes stay editable.
 - **Templates**: General, 1:1, Standup, Interview, Client meeting, plus your own.
 - **Calendar**: iCal URL (Google, Outlook), recurring events with RRULE, EXDATE and overrides, a notification before the start, one click to open the meeting's notes.
@@ -60,6 +61,7 @@ src-tauri/src
 ├── lib.rs         setup, state, logging, single instance, clean exit, calendar watcher + notifications
 ├── commands.rs    Tauri commands (meetings, recording, AI, templates, settings, models, calendar)
 ├── audio.rs       cpal capture (audio thread) + pause-based Chunker + transcription thread
+├── decode.rs      decoding of uploaded audio files (symphonia) into mono blocks
 ├── transcribe.rs  whisper-rs, model catalog, resampling, hallucination filter
 ├── llm.rs         streaming from AI models (Anthropic and OpenAI-compatible): retry, cancellation, prompt caching
 ├── prompts.rs     enhance/chat prompts and built-in templates

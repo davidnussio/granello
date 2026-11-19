@@ -6,6 +6,7 @@ mod audio;
 mod calendar;
 mod commands;
 mod db;
+mod decode;
 mod llm;
 mod models;
 mod prompts;
@@ -43,6 +44,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let models_dir = data_dir.join("models");
@@ -88,6 +90,7 @@ pub fn run() {
             commands::list_audio_devices,
             commands::start_recording,
             commands::stop_recording,
+            commands::import_audio,
             commands::recording_status,
             commands::enhance_notes,
             commands::cancel_stream,

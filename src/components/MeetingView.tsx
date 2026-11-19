@@ -80,9 +80,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const [finishing, setFinishing] = useState(false);
   const [enhVersion, setEnhVersion] = useState(0);
   const streamRef = useRef<string | null>(null);
+  const [importProgress, setImportProgress] = useState<{ doneMs: number; totalMs: number | null } | null>(null);
 
-  const isRecording = rec.meetingId === id;
-  const otherRecording = rec.recording && !isRecording;
+  // la sessione su questo meeting è una registrazione dal vivo oppure un file in trascrizione
+  const inSession = rec.meetingId === id;
+  const isRecording = inSession && !rec.importing;
+  const isImporting = inSession && rec.importing;
+  const otherRecording = rec.recording && !inSession;
 
   const load = useCallback(async () => {
     try {
@@ -110,9 +114,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
       on("audio-level", (l) => {
         if (l.meetingId === id) setLevel({ mic: l.mic, system: l.system });
       }),
+      on("import-progress", (p) => {
+        if (p.meetingId === id) setImportProgress({ doneMs: p.doneMs, totalMs: p.totalMs });
+      }),
       on("recording-finished", (mid) => {
         if (mid !== id) return;
         setFinishing(false);
+        setImportProgress(null);
         // il passo successivo naturale dopo la registrazione
         if (!hasEnhancedRef.current) {
           toast(t("Trascrizione completata"), { label: t("✦ Genera note AI"), run: () => enhanceRef.current() });
@@ -148,7 +156,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const toggleRecording = async () => {
     setBusyRec(true);
     try {
-      if (isRecording) {
+      if (inSession) {
         setFinishing(true);
         await api.stopRecording();
       } else {
@@ -157,6 +165,22 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
       }
     } catch (e) {
       setFinishing(false);
+      toast(errorText(e));
+    } finally {
+      setBusyRec(false);
+      onRecChanged();
+    }
+  };
+
+  const importAudio = async () => {
+    setBusyRec(true);
+    try {
+      // la scelta del file avviene nella finestra di sistema; false = annullata
+      if (await api.importAudio(id)) {
+        setImportProgress(null);
+        setSide((s) => (s === "none" ? "transcript" : s));
+      }
+    } catch (e) {
       toast(errorText(e));
     } finally {
       setBusyRec(false);
@@ -255,7 +279,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   if (!meeting) return <div className="page muted">{t("Caricamento…")}</div>;
 
   const hasContent = meeting.notesMd.trim().length > 0 || segments.length > 0;
-  const canEnhance = hasContent && !isRecording && streaming === null;
+  const canEnhance = hasContent && !inSession && streaming === null;
   const when = meeting.startedAt ?? meeting.createdAt;
   const missingFromEvent = (calEvent?.attendees ?? []).filter(
     (name) => !meeting.attendees.some((a) => a.toLowerCase() === name.toLowerCase()),
@@ -292,8 +316,14 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             <button
               className={"chip delete-meeting" + (confirmDelete ? " confirm" : "")}
               onClick={remove}
-              disabled={isRecording}
-              title={isRecording ? t("Ferma la registrazione prima di eliminare il meeting") : ""}
+              disabled={inSession}
+              title={
+                isImporting
+                  ? t("Annulla la trascrizione del file prima di eliminare il meeting")
+                  : isRecording
+                    ? t("Ferma la registrazione prima di eliminare il meeting")
+                    : ""
+              }
             >
               {confirmDelete ? t("Confermi?") : t("Elimina")}
             </button>
@@ -364,7 +394,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               disabled={!canEnhance}
               onClick={requestEnhance}
               title={
-                isRecording
+                isImporting
+                  ? t("Attendi la fine della trascrizione per generare le note")
+                  : isRecording
                   ? t("Ferma la registrazione per generare le note")
                   : meeting.enhancedMd
                     ? t("Rigenerando, le note AI attuali e le tue modifiche vengono sostituite")
@@ -409,14 +441,33 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
 
         <footer className="recbar">
           <button
-            className={"rec-btn" + (isRecording ? " on" : "")}
+            className={"rec-btn" + (inSession ? " on" : "")}
             onClick={toggleRecording}
             disabled={busyRec || otherRecording}
             title={otherRecording ? t("C'è già una registrazione in corso su un altro meeting") : ""}
           >
             <span className="rec-icon" />
-            {isRecording ? t("Stop") : segments.length ? t("Riprendi") : t("Registra")}
+            {isImporting ? t("Annulla") : isRecording ? t("Stop") : segments.length ? t("Riprendi") : t("Registra")}
           </button>
+          {!inSession && (
+            <button
+              className="btn small ghost"
+              onClick={importAudio}
+              disabled={busyRec || rec.recording || finishing}
+              title={t("Trascrive un file audio o video invece di registrare dal vivo")}
+            >
+              {t("Carica audio")}
+            </button>
+          )}
+          {isImporting && !finishing && (
+            <span className="muted small">
+              {importProgress?.totalMs
+                ? t("Trascrivo il file… {pct}%", {
+                    pct: Math.min(100, Math.round((importProgress.doneMs / importProgress.totalMs) * 100)),
+                  })
+                : t("Trascrivo il file… {time}", { time: mmss(importProgress?.doneMs ?? 0) })}
+            </span>
+          )}
           {isRecording && (
             <>
               <Meter label={t("Tu")} value={level.mic} />
@@ -447,7 +498,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             </button>
           </div>
           {side === "transcript" ? (
-            <TranscriptPanel segments={segments} live={isRecording} />
+            <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} />
           ) : (
             <ChatPanel
               scope={id}

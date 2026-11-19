@@ -110,10 +110,10 @@ export default function Sidebar(p: Props) {
       {p.rec.meetingId && p.rec.meetingId !== selectedId && (
         <button
           className="rec-pill"
-          title={t("Apri il meeting in registrazione")}
+          title={p.rec.importing ? t("Apri il meeting in trascrizione") : t("Apri il meeting in registrazione")}
           onClick={() => p.setView({ kind: "meeting", id: p.rec.meetingId! })}
         >
-          {t("● Registrazione in corso")}
+          {p.rec.importing ? t("● Trascrizione del file in corso") : t("● Registrazione in corso")}
         </button>
       )}
 

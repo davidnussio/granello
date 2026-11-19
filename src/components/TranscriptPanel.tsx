@@ -3,7 +3,15 @@ import type { TranscriptSegment } from "../types";
 import { mmss } from "../format";
 import { t } from "../i18n";
 
-export default function TranscriptPanel({ segments, live }: { segments: TranscriptSegment[]; live: boolean }) {
+export default function TranscriptPanel({
+  segments,
+  live,
+  importing = false,
+}: {
+  segments: TranscriptSegment[];
+  live: boolean;
+  importing?: boolean;
+}) {
   const end = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const box = useRef<HTMLDivElement>(null);
@@ -31,13 +39,17 @@ export default function TranscriptPanel({ segments, live }: { segments: Transcri
     >
       {groups.length === 0 && (
         <p className="muted small pad">
-          {live ? t("In ascolto… la trascrizione compare dopo le prime pause.") : t("Nessuna trascrizione. Premi Registra.")}
+          {live
+            ? t("In ascolto… la trascrizione compare dopo le prime pause.")
+            : importing
+              ? t("Trascrivo il file… il testo compare man mano.")
+              : t("Nessuna trascrizione. Premi Registra o carica un file audio.")}
         </p>
       )}
       {groups.map((g, i) => (
         <div key={i} className={"bubble " + g.source}>
           <div className="bubble-meta">
-            {g.source === "me" ? t("Tu") : t("Altri")} · {mmss(g.start)}
+            {g.source === "me" ? t("Tu") : g.source === "file" ? t("Audio") : t("Altri")} · {mmss(g.start)}
           </div>
           {g.texts.join(" ")}
         </div>

@@ -1,20 +1,22 @@
 //! Cattura audio (microfono + eventuale dispositivo di loopback per l'audio di sistema),
 //! suddivisione in blocchi sulle pause e invio alla trascrizione.
 
-use crate::i18n::tr;
+use crate::commands::AppState;
 use crate::db::Db;
+use crate::decode::AudioFile;
+use crate::i18n::tr;
 use crate::transcribe::{self, TranscriberCache};
 use anyhow::{Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use parking_lot::Mutex;
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 const MIN_CHUNK_SECS: f32 = 6.0;
 const MAX_CHUNK_SECS: f32 = 20.0;
@@ -22,6 +24,9 @@ const TAIL_SECS: f32 = 0.5;
 const SILENCE_RMS: f32 = 0.0025;
 /// Dopo quanto tempo di silenzio digitale assoluto si avvisa l'utente (permessi, mute hardware).
 const DEAD_MIC_SECS: u64 = 8;
+/// Blocchi di un file caricato che possono aspettare la trascrizione: la decodifica è molto
+/// più veloce di whisper e senza un limite l'intero file finirebbe in memoria.
+const IMPORT_QUEUE: usize = 4;
 
 /// Primo errore segnalato da uno stream cpal (es. dispositivo scollegato).
 type StreamError = Arc<Mutex<Option<String>>>;
@@ -226,6 +231,16 @@ struct ErrorEvent {
     message: String,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ImportProgressEvent {
+    meeting_id: String,
+    /// Audio del file già trascritto.
+    done_ms: i64,
+    /// Durata del file, se dichiarata.
+    total_ms: Option<i64>,
+}
+
 pub struct SessionConfig {
     pub meeting_id: String,
     pub mic_device: Option<String>,
@@ -242,6 +257,90 @@ pub struct Session {
     audio_thread: Option<JoinHandle<()>>,
     transcribe_thread: Option<JoinHandle<()>>,
     pub pending: Arc<AtomicUsize>,
+    /// true se l'audio arriva da un file caricato invece che dai dispositivi.
+    pub importing: bool,
+}
+
+/// Come finisce il thread di trascrizione di un file caricato.
+struct ImportInfo {
+    total_ms: Option<i64>,
+}
+
+/// Thread che trascrive i blocchi in arrivo e salva i segmenti. Finisce quando la coda viene
+/// chiusa: a quel punto chiude il meeting ed emette `recording-finished`.
+fn spawn_transcriber(
+    app: AppHandle,
+    db: Arc<Mutex<Db>>,
+    cache: Arc<TranscriberCache>,
+    cfg: &SessionConfig,
+    pending: Arc<AtomicUsize>,
+    chunk_rx: mpsc::Receiver<Chunk>,
+    import: Option<ImportInfo>,
+) -> std::io::Result<JoinHandle<()>> {
+    let meeting_id = cfg.meeting_id.clone();
+    let language = cfg.language.clone();
+    let prompt = cfg.prompt.clone();
+    let model_path = cfg.model_path.clone();
+    let base_ms = cfg.base_ms;
+    std::thread::Builder::new().name("granello-transcribe".into()).spawn(move || {
+        for chunk in chunk_rx {
+            let res = cache
+                .get(&model_path)
+                .and_then(|t| t.transcribe(&chunk.samples, &language, &prompt));
+            match res {
+                Ok(segs) => {
+                    for s in segs {
+                        let saved = db.lock().add_segment(
+                            &meeting_id,
+                            chunk.source,
+                            chunk.start_ms + s.start_ms,
+                            chunk.start_ms + s.end_ms.max(s.start_ms),
+                            &s.text,
+                        );
+                        match saved {
+                            Ok(seg) => {
+                                let _ = app.emit("transcript-segment", seg);
+                            }
+                            Err(e) => log::error!("salvataggio segmento: {e}"),
+                        }
+                    }
+                }
+                Err(e) => {
+                    let _ = app.emit(
+                        "transcription-error",
+                        ErrorEvent { meeting_id: meeting_id.clone(), message: e.to_string() },
+                    );
+                }
+            }
+            pending.fetch_sub(1, Ordering::SeqCst);
+            if let Some(info) = &import {
+                let chunk_ms = chunk.samples.len() as i64 * 1000 / transcribe::SAMPLE_RATE as i64;
+                let _ = app.emit(
+                    "import-progress",
+                    ImportProgressEvent {
+                        meeting_id: meeting_id.clone(),
+                        done_ms: chunk.start_ms - base_ms + chunk_ms,
+                        total_ms: info.total_ms,
+                    },
+                );
+            }
+        }
+        // canale chiuso: registrazione terminata e coda svuotata
+        if let Err(e) = db.lock().mark_ended(&meeting_id) {
+            log::error!("chiusura meeting {meeting_id}: {e}");
+        }
+        if import.is_some() {
+            // un file finisce da solo, senza uno stop: la sessione va liberata qui.
+            // Solo se è ancora la nostra: dopo un annullamento potrebbe essercene un'altra.
+            let state = app.state::<AppState>();
+            let mut slot = state.session.lock();
+            let ours = slot.as_ref().is_some_and(|s| Arc::ptr_eq(&s.pending, &pending));
+            let finished = if ours { slot.take() } else { None };
+            drop(slot);
+            drop(finished);
+        }
+        let _ = app.emit("recording-finished", meeting_id.clone());
+    })
 }
 
 impl Session {
@@ -259,57 +358,8 @@ impl Session {
         let (ready_tx, ready_rx) = mpsc::channel::<Result<()>>();
         let pending = Arc::new(AtomicUsize::new(0));
 
-        // ---- thread di trascrizione ----
-        let transcribe_thread = {
-            let app = app.clone();
-            let db = db.clone();
-            let cache = cache.clone();
-            let pending = pending.clone();
-            let meeting_id = cfg.meeting_id.clone();
-            let language = cfg.language.clone();
-            let prompt = cfg.prompt.clone();
-            let model_path = cfg.model_path.clone();
-            std::thread::Builder::new()
-                .name("granello-transcribe".into())
-                .spawn(move || {
-                    for chunk in chunk_rx {
-                        let res = cache.get(&model_path).and_then(|t| {
-                            t.transcribe(&chunk.samples, &language, &prompt)
-                        });
-                        match res {
-                            Ok(segs) => {
-                                for s in segs {
-                                    let saved = db.lock().add_segment(
-                                        &meeting_id,
-                                        chunk.source,
-                                        chunk.start_ms + s.start_ms,
-                                        chunk.start_ms + s.end_ms.max(s.start_ms),
-                                        &s.text,
-                                    );
-                                    match saved {
-                                        Ok(seg) => {
-                                            let _ = app.emit("transcript-segment", seg);
-                                        }
-                                        Err(e) => log::error!("salvataggio segmento: {e}"),
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                let _ = app.emit(
-                                    "transcription-error",
-                                    ErrorEvent { meeting_id: meeting_id.clone(), message: e.to_string() },
-                                );
-                            }
-                        }
-                        pending.fetch_sub(1, Ordering::SeqCst);
-                    }
-                    // canale chiuso: registrazione terminata e coda svuotata
-                    if let Err(e) = db.lock().mark_ended(&meeting_id) {
-                        log::error!("chiusura meeting {meeting_id}: {e}");
-                    }
-                    let _ = app.emit("recording-finished", meeting_id.clone());
-                })?
-        };
+        let transcribe_thread =
+            spawn_transcriber(app.clone(), db, cache, &cfg, pending.clone(), chunk_rx, None)?;
 
         // ---- thread audio (gli stream cpal non sono Send: vivono qui) ----
         let audio_thread = {
@@ -431,6 +481,61 @@ System Settings → Privacy & Security → Microphone and that the microphone is
             audio_thread: Some(audio_thread),
             transcribe_thread: Some(transcribe_thread),
             pending,
+            importing: false,
+        })
+    }
+
+    /// Trascrive un file audio al posto della cattura live. Il file viene decodificato a
+    /// blocchi e tagliato sulle pause come l'audio del microfono; la sessione si chiude da
+    /// sola alla fine del file (`recording-finished`) oppure prima, con `stop`.
+    pub fn start_import(
+        app: AppHandle,
+        db: Arc<Mutex<Db>>,
+        cache: Arc<TranscriberCache>,
+        cfg: SessionConfig,
+        path: &Path,
+    ) -> Result<Self> {
+        cache.get(&cfg.model_path)?;
+        let mut file = AudioFile::open(path)?;
+
+        let (stop_tx, stop_rx) = mpsc::channel::<()>();
+        let (chunk_tx, chunk_rx) = mpsc::sync_channel::<Chunk>(IMPORT_QUEUE);
+        let pending = Arc::new(AtomicUsize::new(0));
+        let import = ImportInfo { total_ms: file.total_ms };
+        let transcribe_thread =
+            spawn_transcriber(app.clone(), db, cache, &cfg, pending.clone(), chunk_rx, Some(import))?;
+
+        let decode_thread = {
+            let pending = pending.clone();
+            let meeting_id = cfg.meeting_id.clone();
+            let base_ms = cfg.base_ms;
+            std::thread::Builder::new().name("granello-import".into()).spawn(move || {
+                let send = |chunk: Chunk| {
+                    pending.fetch_add(1, Ordering::SeqCst);
+                    // si blocca finché la trascrizione non fa posto in coda
+                    if chunk_tx.send(chunk).is_err() {
+                        pending.fetch_sub(1, Ordering::SeqCst);
+                    }
+                };
+                let stopped = || !matches!(stop_rx.try_recv(), Err(mpsc::TryRecvError::Empty));
+                if let Err(e) = chunk_file(&mut file, base_ms, stopped, send) {
+                    log::error!("file audio di {meeting_id}: {e}");
+                    let _ = app.emit(
+                        "transcription-error",
+                        ErrorEvent { meeting_id: meeting_id.clone(), message: e.to_string() },
+                    );
+                }
+                // chiude la coda: il thread di trascrizione finisce
+            })?
+        };
+
+        Ok(Self {
+            meeting_id: cfg.meeting_id,
+            stop_tx,
+            audio_thread: Some(decode_thread),
+            transcribe_thread: Some(transcribe_thread),
+            pending,
+            importing: true,
         })
     }
 
@@ -465,6 +570,59 @@ System Settings → Privacy & Security → Microphone and that the microphone is
     }
 }
 
+/// Decodifica `file` fino alla fine e consegna a `send` i blocchi tagliati sulle pause, come
+/// per l'audio dal vivo. Se `stopped` diventa vero si interrompe subito, senza l'ultimo blocco.
+/// Un file che da un certo punto in poi è illeggibile consegna comunque la parte già letta.
+fn chunk_file(
+    file: &mut AudioFile,
+    base_ms: i64,
+    stopped: impl Fn() -> bool,
+    mut send: impl FnMut(Chunk),
+) -> Result<()> {
+    let shared = Arc::new(Mutex::new(Vec::<f32>::new()));
+    let mut chunker: Option<Chunker> = None;
+    let mut fresh = Vec::<f32>::new();
+    let mut failure = None;
+    loop {
+        if stopped() {
+            return Ok(());
+        }
+        let block = match file.next_block() {
+            Ok(Some(b)) => b,
+            Ok(None) => break,
+            Err(e) => {
+                failure = Some(e);
+                break;
+            }
+        };
+        let chunker =
+            chunker.get_or_insert_with(|| Chunker::new("file", block.rate, shared.clone(), base_ms));
+        fresh.extend(block.samples);
+        // mezzo secondo alla volta, come farebbe un dispositivo: il Chunker cerca una pausa
+        // a ogni passo
+        let step = (block.rate as usize / 2).max(1);
+        while fresh.len() >= step {
+            shared.lock().extend(fresh.drain(..step));
+            if let (_, Some(chunk)) = chunker.poll(false) {
+                send(chunk);
+            }
+        }
+    }
+    match chunker.as_mut() {
+        Some(chunker) => {
+            shared.lock().extend(fresh);
+            if let (_, Some(chunk)) = chunker.poll(true) {
+                send(chunk);
+            }
+        }
+        None if failure.is_none() => {
+            return Err(tra!("Il file non contiene audio.", "The file contains no audio."));
+        }
+        None => {}
+    }
+    failure.map_or(Ok(()), Err)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -491,6 +649,92 @@ mod tests {
         shared.lock().extend(tone(2.0, 48_000, 0.3));
         let (_, chunk) = c.poll(true);
         assert_eq!(chunk.unwrap().start_ms, 9000);
+    }
+
+    /// WAV mono PCM 16 bit.
+    fn wav_file(name: &str, rate: u32, samples: &[f32]) -> PathBuf {
+        let data_len = samples.len() as u32 * 2;
+        let mut out = Vec::new();
+        out.extend_from_slice(b"RIFF");
+        out.extend_from_slice(&(36 + data_len).to_le_bytes());
+        out.extend_from_slice(b"WAVEfmt ");
+        out.extend_from_slice(&16u32.to_le_bytes());
+        out.extend_from_slice(&1u16.to_le_bytes());
+        out.extend_from_slice(&1u16.to_le_bytes());
+        out.extend_from_slice(&rate.to_le_bytes());
+        out.extend_from_slice(&(rate * 2).to_le_bytes());
+        out.extend_from_slice(&2u16.to_le_bytes());
+        out.extend_from_slice(&16u16.to_le_bytes());
+        out.extend_from_slice(b"data");
+        out.extend_from_slice(&data_len.to_le_bytes());
+        for s in samples {
+            out.extend_from_slice(&((s * i16::MAX as f32) as i16).to_le_bytes());
+        }
+        let path = std::env::temp_dir().join(format!("granello-{}-{name}", std::process::id()));
+        std::fs::write(&path, out).unwrap();
+        path
+    }
+
+    #[test]
+    fn chunks_a_file_on_pauses() {
+        // 8s di voce, 2s di pausa, 30s senza pause, 3s di silenzio, 3s di voce
+        let rate = 44_100;
+        let mut samples = tone(8.0, rate, 0.3);
+        samples.extend(vec![0.0; 2 * rate as usize]);
+        samples.extend(tone(30.0, rate, 0.3));
+        samples.extend(vec![0.0; 3 * rate as usize]);
+        samples.extend(tone(3.0, rate, 0.3));
+        let path = wav_file("pause.wav", rate, &samples);
+
+        let mut chunks = Vec::new();
+        let mut file = AudioFile::open(&path).unwrap();
+        chunk_file(&mut file, 5000, || false, |c| chunks.push(c)).unwrap();
+        assert!(chunks.len() >= 4, "{} blocchi", chunks.len());
+        assert!(chunks.iter().all(|c| c.source == "file"));
+        // in coda alla trascrizione esistente, nell'ordine del file
+        assert_eq!(chunks[0].start_ms, 5000);
+        assert!(chunks.windows(2).all(|w| w[0].start_ms < w[1].start_ms));
+        // nessun blocco oltre il massimo (più il margine di mezzo secondo del passo)
+        let longest = chunks.iter().map(|c| c.samples.len()).max().unwrap();
+        assert!(longest <= 21 * 16_000, "blocco di {longest} campioni");
+        // tutto l'audio non silenzioso è stato consegnato: 46s meno i ~5s di pause
+        let total: usize = chunks.iter().map(|c| c.samples.len()).sum();
+        assert!(total > 40 * 16_000 && total <= 46 * 16_000 + 16, "{total} campioni");
+        let last = chunks.last().unwrap();
+        assert!(last.start_ms > 5000 + 40_000, "ultimo blocco a {} ms", last.start_ms);
+
+        // annullato subito: nessun blocco
+        let mut file = AudioFile::open(&path).unwrap();
+        let mut n = 0;
+        chunk_file(&mut file, 0, || true, |_| n += 1).unwrap();
+        assert_eq!(n, 0);
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    /// Prova a mano con un file e un modello veri:
+    /// GRANELLO_AUDIO=riunione.m4a GRANELLO_MODEL=ggml-….bin cargo test real_file -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn transcribes_a_real_file() {
+        let audio = std::env::var("GRANELLO_AUDIO").expect("GRANELLO_AUDIO");
+        let model = std::env::var("GRANELLO_MODEL").expect("GRANELLO_MODEL");
+        let transcriber = transcribe::Transcriber::load(Path::new(&model)).unwrap();
+        let mut file = AudioFile::open(Path::new(&audio)).unwrap();
+        println!("durata dichiarata: {:?} ms", file.total_ms);
+        let mut text = String::new();
+        let result = chunk_file(
+            &mut file,
+            0,
+            || false,
+            |c| {
+                for s in transcriber.transcribe(&c.samples, "auto", "").unwrap() {
+                    println!("[{:>6} ms] {}", c.start_ms + s.start_ms, s.text);
+                    text.push_str(&s.text);
+                }
+            },
+        );
+        result.unwrap();
+        assert!(!text.trim().is_empty());
     }
 
     #[test]

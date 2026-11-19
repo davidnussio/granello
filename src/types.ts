@@ -43,7 +43,8 @@ export interface TagCount {
 export interface TranscriptSegment {
   id: number;
   meetingId: string;
-  source: "me" | "them";
+  /** "me" = microfono, "them" = audio di sistema, "file" = file audio caricato */
+  source: "me" | "them" | "file";
   startMs: number;
   endMs: number;
   text: string;
@@ -118,6 +119,8 @@ export interface WhisperModelInfo {
 export interface RecordingStatus {
   meetingId: string | null;
   recording: boolean;
+  /** la sessione in corso trascrive un file caricato, non l'audio live */
+  importing: boolean;
   pendingChunks: number;
 }
 

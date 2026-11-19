@@ -46,6 +46,8 @@ export const api = {
   listAudioDevices: () => invoke<string[]>("list_audio_devices"),
   startRecording: (meetingId: string) => invoke<void>("start_recording", { meetingId }),
   stopRecording: () => invoke<void>("stop_recording"),
+  /** Fa scegliere un file audio e lo trascrive nel meeting. false se la scelta viene annullata. */
+  importAudio: (meetingId: string) => invoke<boolean>("import_audio", { meetingId }),
   recordingStatus: () => invoke<RecordingStatus>("recording_status"),
 
   enhanceNotes: (meetingId: string, streamId: string) =>
@@ -89,6 +91,11 @@ export interface AudioLevel {
   mic: number;
   system: number | null;
 }
+export interface ImportProgress {
+  meetingId: string;
+  doneMs: number;
+  totalMs: number | null;
+}
 export interface LlmDelta {
   streamId: string;
   delta: string;
@@ -106,6 +113,7 @@ type Events = {
   "recording-error": { meetingId: string; message: string };
   "recording-warning": { meetingId: string; message: string };
   "audio-level": AudioLevel;
+  "import-progress": ImportProgress;
   "recording-started": string;
   "recording-stopped": string;
   "recording-finished": string;

@@ -15,6 +15,8 @@ const en: Record<string, string> = {
   "Trascrizione completata": "Transcription complete",
   "● Registrazione in corso": "● Recording in progress",
   "Apri il meeting in registrazione": "Open the meeting being recorded",
+  "● Trascrizione del file in corso": "● Transcribing the file",
+  "Apri il meeting in trascrizione": "Open the meeting being transcribed",
 
   // AI settings
   "{name}: {n} modelli disponibili": "{name}: {n} models available",
@@ -123,6 +125,12 @@ const en: Record<string, string> = {
   Altri: "Others",
   "Completo la trascrizione…": "Finishing the transcript…",
   "Registrazione in corso altrove": "Recording in progress elsewhere",
+  "Carica audio": "Upload audio",
+  "Trascrive un file audio o video invece di registrare dal vivo": "Transcribes an audio or video file instead of recording live",
+  "Trascrivo il file… {pct}%": "Transcribing the file… {pct}%",
+  "Trascrivo il file… {time}": "Transcribing the file… {time}",
+  "Annulla la trascrizione del file prima di eliminare il meeting": "Cancel the file transcription before deleting the meeting",
+  "Attendi la fine della trascrizione per generare le note": "Wait for the transcription to finish to generate the notes",
   Trascrizione: "Transcript",
   "✦ Chiedi": "✦ Ask",
   "Confermi?": "Confirm?",
@@ -226,7 +234,8 @@ const en: Record<string, string> = {
 
   // transcript
   "In ascolto… la trascrizione compare dopo le prime pause.": "Listening… the transcript appears after the first pauses.",
-  "Nessuna trascrizione. Premi Registra.": "No transcript yet. Press Record.",
+  "Nessuna trascrizione. Premi Registra o carica un file audio.": "No transcript yet. Press Record or upload an audio file.",
+  "Trascrivo il file… il testo compare man mano.": "Transcribing the file… the text appears as it goes.",
   "● in ascolto": "● listening",
 
   // editor
