@@ -204,19 +204,18 @@ export default function App() {
           />
         )}
         {view.kind === "chat" && (
-          <div className="page">
-            <h1 className="page-title">{t("Chiedi a tutti i tuoi meeting")}</h1>
-            <ChatPanel
-              scope="global"
-              toast={toast}
-              suggestions={[
-                t("Quali azioni sono rimaste aperte questa settimana?"),
-                t("Cosa abbiamo deciso nell'ultimo meeting con il cliente?"),
-                t("Riassumi i temi ricorrenti degli standup"),
-              ]}
-              big
-            />
-          </div>
+          <ChatPanel
+            scope="global"
+            toast={toast}
+            big
+            title={t("Chiedi a tutti i tuoi meeting")}
+            subtitle={t("Granello cerca i meeting più pertinenti alla domanda e risponde citando titolo e data.")}
+            suggestions={[
+              t("Quali azioni sono rimaste aperte questa settimana?"),
+              t("Cosa abbiamo deciso nell'ultimo meeting con il cliente?"),
+              t("Riassumi i temi ricorrenti degli standup"),
+            ]}
+          />
         )}
         {view.kind === "settings" && (
           <SettingsView

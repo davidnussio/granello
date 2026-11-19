@@ -59,7 +59,13 @@ const en: Record<string, string> = {
   Domanda: "Question",
   Stop: "Stop",
   Invia: "Send",
-  "Svuota conversazione": "Clear conversation",
+  "Nuova conversazione": "New conversation",
+  "+ Nuova conversazione": "+ New conversation",
+  "Risposta copiata negli appunti": "Answer copied to the clipboard",
+  "↵ invia · ⇧↵ a capo": "↵ send · ⇧↵ new line",
+  "Interrompi la risposta": "Stop the answer",
+  "Granello cerca i meeting più pertinenti alla domanda e risponde citando titolo e data.":
+    "Granello finds the meetings most relevant to your question and answers citing their title and date.",
 
   // error boundary
   "Qualcosa è andato storto": "Something went wrong",
@@ -121,6 +127,7 @@ const en: Record<string, string> = {
   "✦ Chiedi": "✦ Ask",
   "Confermi?": "Confirm?",
   Elimina: "Delete",
+  "Ferma la registrazione prima di eliminare il meeting": "Stop the recording before deleting the meeting",
   "Chiedi su questo meeting": "Ask about this meeting",
   "Chiudi pannello": "Close panel",
   "Scrivi una email di follow-up": "Write a follow-up email",

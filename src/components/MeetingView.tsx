@@ -259,6 +259,15 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
                 </option>
               ))}
             </select>
+            {/* lontano dalle azioni di tutti i giorni (registra, trascrizione, chiedi) */}
+            <button
+              className={"chip delete-meeting" + (confirmDelete ? " confirm" : "")}
+              onClick={remove}
+              disabled={isRecording}
+              title={isRecording ? t("Ferma la registrazione prima di eliminare il meeting") : ""}
+            >
+              {confirmDelete ? t("Confermi?") : t("Elimina")}
+            </button>
           </div>
         </header>
 
@@ -365,9 +374,6 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
           </button>
           <button className={"btn small ghost" + (side === "chat" ? " on" : "")} onClick={() => setSide(side === "chat" ? "none" : "chat")}>
             {t("✦ Chiedi")}
-          </button>
-          <button className={"btn small ghost danger"} onClick={remove} disabled={isRecording}>
-            {confirmDelete ? t("Confermi?") : t("Elimina")}
           </button>
         </footer>
       </div>
