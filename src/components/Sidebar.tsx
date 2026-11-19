@@ -86,6 +86,21 @@ export default function Sidebar(p: Props) {
                     {m.attendees.length ? ` · ${t("{n} persone", { n: m.attendees.length })}` : ""}
                   </span>
                 )}
+                {m.tags.length > 0 && (
+                  <span className="side-tags">
+                    {/* al massimo due: la riga deve restare leggibile */}
+                    {m.tags.slice(0, 2).map((tag) => (
+                      <span key={tag} className="side-tag">
+                        #{tag}
+                      </span>
+                    ))}
+                    {m.tags.length > 2 && (
+                      <span className="side-tag more" title={m.tags.slice(2).map((x) => "#" + x).join(" ")}>
+                        +{m.tags.length - 2}
+                      </span>
+                    )}
+                  </span>
+                )}
               </button>
             ))}
           </section>

@@ -141,14 +141,118 @@ pub fn update_meeting(
     state
         .db
         .lock()
-        .update_meeting(
-            &id,
-            title.as_deref(),
-            notes_md.as_deref(),
-            enhanced_md.as_deref(),
-            template_id.as_deref(),
-        )
+        .update_meeting(&id, title.as_deref(), notes_md.as_deref(), enhanced_md.as_deref(), template_id.as_deref())
         .map_err(err)
+}
+
+/// Aggiorna partecipanti e/o tag di un meeting (i campi assenti restano invariati).
+#[tauri::command]
+pub fn update_meeting_meta(
+    state: State<AppState>,
+    id: String,
+    attendees: Option<Vec<String>>,
+    tags: Option<Vec<String>>,
+) -> CmdResult<Meeting> {
+    // le email note dal calendario finiscono in rubrica insieme ai nomi
+    let known_emails: Vec<(String, Option<String>)> = match &attendees {
+        Some(_) => calendar_people(&state),
+        None => Vec::new(),
+    };
+    let db = state.db.lock();
+    if let Some(names) = attendees {
+        let people: Vec<(String, Option<String>)> = normalize_names(names, 80, MAX_ATTENDEES)
+            .into_iter()
+            .map(|name| {
+                let email = known_emails.iter().find(|(n, _)| n.eq_ignore_ascii_case(&name)).and_then(|(_, e)| e.clone());
+                (name, email)
+            })
+            .collect();
+        db.set_attendees(&id, &people).map_err(err)?;
+    }
+    if let Some(tags) = tags {
+        db.set_tags(&id, &normalize_tags(tags)).map_err(err)?;
+    }
+    db.get_meeting(&id).map_err(err)?.ok_or_else(|| tr("Meeting non trovato", "Meeting not found").into())
+}
+
+/// Persone presenti negli eventi del calendario in cache. Non aspetta mai: se il calendario
+/// è in aggiornamento in questo momento, semplicemente non propone nulla.
+fn calendar_people(state: &AppState) -> Vec<(String, Option<String>)> {
+    state
+        .calendar
+        .try_lock()
+        .ok()
+        .and_then(|c| c.ics.as_deref().map(calendar::all_attendees))
+        .unwrap_or_default()
+}
+
+// ---------- tag e persone ----------
+
+#[tauri::command]
+pub fn list_tags(state: State<AppState>) -> CmdResult<Vec<TagCount>> {
+    state.db.lock().all_tags().map_err(err)
+}
+
+#[tauri::command]
+pub fn list_people(state: State<AppState>) -> CmdResult<Vec<Person>> {
+    state.db.lock().list_people().map_err(err)
+}
+
+#[tauri::command]
+pub fn delete_person(state: State<AppState>, id: i64) -> CmdResult<()> {
+    state.db.lock().delete_person(id).map_err(err)
+}
+
+/// Completamento automatico dei partecipanti: prima la rubrica (usati di recente),
+/// poi i nomi letti dal calendario che in rubrica non ci sono ancora.
+#[tauri::command]
+pub fn suggest_people(state: State<AppState>, query: String) -> CmdResult<Vec<PersonSuggestion>> {
+    const LIMIT: usize = 8;
+    let q = query.trim().to_lowercase();
+    let mut out: Vec<PersonSuggestion> = state
+        .db
+        .lock()
+        .search_people(&q, LIMIT)
+        .map_err(err)?
+        .into_iter()
+        .map(|p| PersonSuggestion { name: p.name, email: p.email, source: "people".into() })
+        .collect();
+    for (name, email) in calendar_people(&state) {
+        if out.len() >= LIMIT {
+            break;
+        }
+        let matches = name.to_lowercase().contains(&q)
+            || email.as_deref().map(|e| e.to_lowercase().contains(&q)).unwrap_or(false);
+        if matches && !out.iter().any(|o| o.name.eq_ignore_ascii_case(&name)) {
+            out.push(PersonSuggestion { name, email, source: "calendar".into() });
+        }
+    }
+    Ok(out)
+}
+
+/// L'evento di calendario che si svolge all'ora del meeting, se ha partecipanti:
+/// serve a proporre "importa i partecipanti da…" sui meeting creati a mano.
+#[tauri::command]
+pub async fn calendar_match(state: State<'_, AppState>, meeting_id: String) -> CmdResult<Option<CalendarEvent>> {
+    const SLACK_MS: i64 = 10 * 60_000;
+    let (when, linked) = {
+        let db = state.db.lock();
+        let m = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+        (m.started_at.unwrap_or(m.created_at), m.calendar_event_id)
+    };
+    let events = current_events(&state).await;
+    let pick = events
+        .iter()
+        .filter(|e| !e.attendees.is_empty())
+        // l'evento a cui il meeting è già collegato vince; altrimenti quello in corso a quell'ora
+        .find(|e| linked.as_deref() == Some(e.id.as_str()))
+        .or_else(|| {
+            events
+                .iter()
+                .filter(|e| !e.attendees.is_empty() && e.start - SLACK_MS <= when && when < e.end)
+                .min_by_key(|e| (e.start - when).abs())
+        });
+    Ok(pick.cloned())
 }
 
 #[tauri::command]

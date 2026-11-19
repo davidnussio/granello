@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { api, errorText, on, type AppInfo, type ModelDownload } from "../api";
-import type { Settings, WhisperModelInfo } from "../types";
+import type { Person, Settings, WhisperModelInfo } from "../types";
 import AiSettings from "./AiSettings";
 import { t } from "../i18n";
 
@@ -26,6 +26,8 @@ export default function SettingsView({ toast, onCalendarChanged, onLangChanged }
   const [models, setModels] = useState<WhisperModelInfo[]>([]);
   const [dl, setDl] = useState<Record<string, ModelDownload>>({});
   const [info, setInfo] = useState<AppInfo | null>(null);
+  const [people, setPeople] = useState<Person[]>([]);
+  const loadPeople = () => api.listPeople().then(setPeople).catch(() => {});
 
   const loadModels = () => api.listWhisperModels().then(setModels);
 
@@ -33,6 +35,7 @@ export default function SettingsView({ toast, onCalendarChanged, onLangChanged }
     api.getSettings().then(setS).catch((e) => toast(errorText(e)));
     api.listAudioDevices().then(setDevices).catch(() => {});
     api.appInfo().then(setInfo).catch(() => {});
+    loadPeople();
     loadModels().catch(() => {});
     return on("model-download", (d) => {
       setDl((x) => ({ ...x, [d.name]: d }));
@@ -239,6 +242,37 @@ export default function SettingsView({ toast, onCalendarChanged, onLangChanged }
             onBlur={() => save({})}
           />
         </label>
+      </section>
+
+      <section className="card">
+        <h3>
+          {t("Persone")} <span className="muted small">{people.length}</span>
+        </h3>
+        <p className="muted small">
+          {t("Chi ha partecipato ai tuoi meeting: Granello le propone quando aggiungi i partecipanti. Toglierne una non modifica i meeting.")}
+        </p>
+        {people.length === 0 ? (
+          <p className="muted small">{t("Ancora nessuna persona: si aggiungono da sole con i partecipanti dei meeting.")}</p>
+        ) : (
+          <div className="people-list">
+            {people.map((person) => (
+              <div key={person.id} className="people-item">
+                <span className="people-name">{person.name}</span>
+                <span className="muted small ellipsis">{person.email}</span>
+                <div className="spacer" />
+                <span className="muted small">{t("{n} meeting", { n: person.meetings })}</span>
+                <button
+                  className="chip-x"
+                  aria-label={t("Rimuovi {name}", { name: person.name })}
+                  title={t("Rimuovi {name}", { name: person.name })}
+                  onClick={() => api.deletePerson(person.id).then(loadPeople).catch((e) => toast(errorText(e)))}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {info && (

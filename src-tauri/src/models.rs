@@ -12,6 +12,7 @@ pub struct Meeting {
     pub ended_at: Option<i64>,
     pub calendar_event_id: Option<String>,
     pub attendees: Vec<String>,
+    pub tags: Vec<String>,
     pub template_id: Option<String>,
     pub notes_md: String,
     pub enhanced_md: Option<String>,
@@ -25,7 +26,72 @@ pub struct MeetingSummary {
     pub created_at: i64,
     pub has_enhanced: bool,
     pub attendees: Vec<String>,
+    pub tags: Vec<String>,
     pub snippet: Option<String>,
+}
+
+/// Una persona della rubrica: chi ha partecipato (o può partecipare) ai meeting.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Person {
+    pub id: i64,
+    pub name: String,
+    pub email: Option<String>,
+    /// In quanti meeting compare.
+    pub meetings: i64,
+}
+
+/// Proposta per il completamento automatico dei partecipanti.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersonSuggestion {
+    pub name: String,
+    pub email: Option<String>,
+    /// "people" = già in rubrica, "calendar" = letta dagli eventi del calendario
+    pub source: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagCount {
+    pub name: String,
+    pub count: i64,
+}
+
+pub const MAX_TAGS: usize = 12;
+pub const MAX_ATTENDEES: usize = 100;
+
+/// Pulisce un elenco di nomi: spazi, doppioni (senza distinguere maiuscole), lunghezza.
+pub fn normalize_names(items: Vec<String>, max_len: usize, max_items: usize) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for raw in items {
+        let name: String = raw.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(max_len).collect();
+        if name.is_empty() || out.iter().any(|o| o.to_lowercase() == name.to_lowercase()) {
+            continue;
+        }
+        out.push(name);
+        if out.len() == max_items {
+            break;
+        }
+    }
+    out
+}
+
+/// Tag: minuscoli, senza `#` iniziale, senza spazi né virgole (diventano trattini).
+pub fn normalize_tags(items: Vec<String>) -> Vec<String> {
+    let cleaned = items
+        .into_iter()
+        .map(|t| {
+            t.trim()
+                .trim_start_matches('#')
+                .to_lowercase()
+                .split(|c: char| c.is_whitespace() || c == ',')
+                .filter(|p| !p.is_empty())
+                .collect::<Vec<_>>()
+                .join("-")
+        })
+        .collect();
+    normalize_names(cleaned, 32, MAX_TAGS)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -230,6 +296,19 @@ fn is_lang_code(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn normalizes_tags_and_names() {
+        assert_eq!(
+            normalize_tags(vec!["#Cliente".into(), " cliente ".into(), "Sprint Review".into(), "#".into()]),
+            vec!["cliente", "sprint-review"]
+        );
+        assert_eq!(normalize_tags((0..40).map(|i| format!("t{i}")).collect()).len(), MAX_TAGS);
+        assert_eq!(
+            normalize_names(vec!["  Anna   Rossi ".into(), "anna rossi".into(), "".into(), "Luca".into()], 80, 10),
+            vec!["Anna Rossi", "Luca"]
+        );
+    }
 
     #[test]
     fn validates_settings() {

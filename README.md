@@ -13,7 +13,8 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
 - **Templates**: General, 1:1, Standup, Interview, Client meeting, plus your own.
 - **Calendar**: iCal URL (Google, Outlook), recurring events with RRULE, EXDATE and overrides, a notification before the start, one click to open the meeting's notes.
 - **Chat**: ask about one meeting or all of them (SQLite FTS5 full-text search finds the relevant meetings, answers cite title and date).
-- **Search** in the sidebar across titles, notes, AI notes and transcripts.
+- **Tags and participants**: tag meetings (the sidebar shows up to two per meeting) and edit who took part. Granello keeps a people directory and autocompletes from it and from the names in your calendar; a meeting that overlaps a calendar event offers to import its attendees.
+- **Search** in the sidebar across titles, tags, participants, notes, AI notes and transcripts.
 - **Shortcuts**: ⌘N new notes, ⌘K search, ⌘, settings.
 - **English and Italian**: the interface follows your Mac's language and can be changed in Settings → Profile.
 

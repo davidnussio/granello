@@ -515,3 +515,29 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 /* anche in :hover: subito dopo il primo click il puntatore è ancora sopra il pulsante */
 .chip.delete-meeting.confirm,
 .chip.delete-meeting.confirm:hover:not(:disabled) { color: #fff; background: var(--rec); border-color: var(--rec); font-weight: 600; }
+
+/* ---------- partecipanti e tag ---------- */
+.meta-row + .meta-row { margin-top: 6px; }
+.chip-input { display: contents; }
+.chip.tag { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+.chip-x { border: none; background: none; padding: 0 0 0 5px; margin-right: -3px; font-size: 14px; line-height: 1; color: inherit; opacity: 0.45; }
+.chip-x:hover { opacity: 1; }
+.chip.add, .chip.import { background: none; border-style: dashed; cursor: pointer; color: var(--muted); }
+.chip.add:hover, .chip.import:hover { border-color: var(--accent); color: var(--accent); }
+.chip.import { color: var(--accent); border-color: var(--accent); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+.chip-field { position: relative; display: inline-flex; }
+.chip-field input { border: 1px solid var(--accent); background: var(--card); border-radius: 999px; padding: 2px 10px; font-size: 12px; outline: none; width: 170px; box-shadow: 0 0 0 3px var(--accent-soft); }
+.chip-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; min-width: 240px; max-width: 340px; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 34px rgba(0, 0, 0, 0.18); }
+.chip-option { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: none; background: none; border-radius: 6px; text-align: left; font-size: 13px; }
+.chip-option.on { background: var(--accent-soft); }
+.chip-option-name { font-weight: 500; white-space: nowrap; }
+.chip-option-hint { flex: 1; min-width: 0; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.side-tags { display: flex; gap: 4px; margin-top: 2px; min-width: 0; }
+.side-tag { font-size: 10.5px; line-height: 1.5; padding: 0 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 96px; }
+.side-tag.more { background: none; color: var(--muted); padding: 0 2px; flex: none; }
+
+.people-list { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+.people-item { display: flex; align-items: center; gap: 10px; padding: 6px 12px; }
+.people-item + .people-item { border-top: 1px solid var(--line); }
+.people-name { font-weight: 500; white-space: nowrap; }

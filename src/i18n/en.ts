@@ -134,6 +134,21 @@ const en: Record<string, string> = {
   "Quali sono le azioni e chi le fa?": "What are the action items and who owns them?",
   "Cosa non è stato deciso?": "What was left undecided?",
 
+  // tags and people
+  "Rimuovi {name}": "Remove {name}",
+  "+ Partecipante": "+ Participant",
+  "Nome del partecipante": "Participant name",
+  "+ Tag": "+ Tag",
+  "Nome del tag": "Tag name",
+  "dal calendario": "from calendar",
+  "{n} meeting": "{n} meetings",
+  "Importa {n} da «{title}»": "Import {n} from “{title}”",
+  Persone: "People",
+  "Chi ha partecipato ai tuoi meeting: Granello le propone quando aggiungi i partecipanti. Toglierne una non modifica i meeting.":
+    "Who took part in your meetings: Granello suggests them when you add participants. Removing someone doesn't change your meetings.",
+  "Ancora nessuna persona: si aggiungono da sole con i partecipanti dei meeting.":
+    "No people yet: they are added automatically from your meetings' participants.",
+
   // settings
   "Modello {name} eliminato": "Model {name} deleted",
   "Modello {name} scaricato": "Model {name} downloaded",

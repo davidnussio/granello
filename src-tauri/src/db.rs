@@ -14,7 +14,25 @@ fn now_ms() -> i64 {
 
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
-const MIGRATIONS: &[&str] = &[SCHEMA_V1];
+const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2];
+
+/// Tag sui meeting e rubrica delle persone (popolata con i partecipanti già presenti).
+const SCHEMA_V2: &str = r#"
+ALTER TABLE meetings ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+
+CREATE TABLE people (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    email TEXT,
+    created_at INTEGER NOT NULL,
+    last_used_at INTEGER NOT NULL
+);
+
+INSERT OR IGNORE INTO people (name, created_at, last_used_at)
+SELECT TRIM(j.value), m.created_at, m.created_at
+FROM meetings m, json_each(m.attendees) j
+WHERE TRIM(j.value) != '';
+"#;
 
 const SCHEMA_V1: &str = r#"
 CREATE TABLE IF NOT EXISTS meetings (
@@ -102,6 +120,22 @@ impl Db {
             tx.commit()?;
             log::info!("database migrato allo schema {}", i + 1);
         }
+        if current < MIGRATIONS.len() {
+            // l'indice di ricerca può aver cambiato contenuto (es. tag e partecipanti)
+            self.reindex_all()?;
+        }
+        Ok(())
+    }
+
+    fn reindex_all(&self) -> Result<()> {
+        let ids: Vec<String> = {
+            let mut stmt = self.conn.prepare("SELECT id FROM meetings")?;
+            let rows = stmt.query_map([], |r| r.get(0))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        for id in ids {
+            self.reindex(&id)?;
+        }
         Ok(())
     }
 
@@ -138,6 +172,7 @@ impl Db {
 
     fn row_to_meeting(row: &rusqlite::Row) -> rusqlite::Result<Meeting> {
         let attendees: String = row.get("attendees")?;
+        let tags: String = row.get("tags")?;
         Ok(Meeting {
             id: row.get("id")?,
             title: row.get("title")?,
@@ -146,6 +181,7 @@ impl Db {
             ended_at: row.get("ended_at")?,
             calendar_event_id: row.get("calendar_event_id")?,
             attendees: serde_json::from_str(&attendees).unwrap_or_default(),
+            tags: serde_json::from_str(&tags).unwrap_or_default(),
             template_id: row.get("template_id")?,
             notes_md: row.get("notes_md")?,
             enhanced_md: row.get("enhanced_md")?,
@@ -173,6 +209,7 @@ impl Db {
                 template_id
             ],
         )?;
+        self.upsert_people(&attendees.iter().map(|a| (a.clone(), None)).collect::<Vec<_>>())?;
         self.reindex(&id)?;
         self.get_meeting(&id)?.ok_or_else(|| anyhow::anyhow!("meeting non trovato dopo insert"))
     }
@@ -222,6 +259,91 @@ impl Db {
         Ok(())
     }
 
+    /// Sostituisce i partecipanti del meeting e li aggiunge alla rubrica.
+    /// `people`: (nome, email se nota).
+    pub fn set_attendees(&self, id: &str, people: &[(String, Option<String>)]) -> Result<()> {
+        let names: Vec<&str> = people.iter().map(|(n, _)| n.as_str()).collect();
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute(
+            "UPDATE meetings SET attendees = ?1 WHERE id = ?2",
+            params![serde_json::to_string(&names)?, id],
+        )?;
+        self.upsert_people(people)?;
+        self.reindex(id)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn set_tags(&self, id: &str, tags: &[String]) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("UPDATE meetings SET tags = ?1 WHERE id = ?2", params![serde_json::to_string(tags)?, id])?;
+        self.reindex(id)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Tag usati, dal più frequente.
+    pub fn all_tags(&self) -> Result<Vec<TagCount>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT j.value, COUNT(*) FROM meetings m, json_each(m.tags) j
+             GROUP BY j.value ORDER BY COUNT(*) DESC, j.value",
+        )?;
+        let rows = stmt.query_map([], |r| Ok(TagCount { name: r.get(0)?, count: r.get(1)? }))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    // ---------- rubrica ----------
+
+    /// Aggiunge le persone mancanti e aggiorna "ultimo uso" (ed email, se prima mancava).
+    pub fn upsert_people(&self, people: &[(String, Option<String>)]) -> Result<()> {
+        let now = now_ms();
+        for (name, email) in people {
+            if name.trim().is_empty() {
+                continue;
+            }
+            self.conn.execute(
+                "INSERT INTO people (name, email, created_at, last_used_at) VALUES (?1, ?2, ?3, ?3)
+                 ON CONFLICT(name) DO UPDATE SET last_used_at = excluded.last_used_at,
+                 email = COALESCE(people.email, excluded.email)",
+                params![name.trim(), email, now],
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Rubrica completa, con il numero di meeting di ogni persona.
+    pub fn list_people(&self) -> Result<Vec<Person>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT p.id, p.name, p.email,
+                    (SELECT COUNT(*) FROM meetings m, json_each(m.attendees) j WHERE j.value = p.name COLLATE NOCASE)
+             FROM people p ORDER BY p.name",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(Person { id: r.get(0)?, name: r.get(1)?, email: r.get(2)?, meetings: r.get(3)? })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Persone il cui nome (o email) contiene `query`, le usate più di recente per prime.
+    pub fn search_people(&self, query: &str, limit: usize) -> Result<Vec<Person>> {
+        let like = format!("%{}%", query.trim().replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_"));
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, email, 0 FROM people
+             WHERE name LIKE ?1 ESCAPE '\\' OR email LIKE ?1 ESCAPE '\\'
+             ORDER BY last_used_at DESC, name LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![like, limit as i64], |r| {
+            Ok(Person { id: r.get(0)?, name: r.get(1)?, email: r.get(2)?, meetings: r.get(3)? })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Toglie una persona dalla rubrica. I meeting a cui ha partecipato non cambiano.
+    pub fn delete_person(&self, id: i64) -> Result<()> {
+        self.conn.execute("DELETE FROM people WHERE id = ?1", [id])?;
+        Ok(())
+    }
+
     pub fn mark_started(&self, id: &str) -> Result<()> {
         self.conn.execute(
             "UPDATE meetings SET started_at = COALESCE(started_at, ?1), ended_at = NULL WHERE id = ?2",
@@ -252,17 +374,19 @@ impl Db {
         match q {
             None => {
                 let mut stmt = self.conn.prepare(
-                    "SELECT id, title, created_at, enhanced_md IS NOT NULL AND enhanced_md != '', attendees
+                    "SELECT id, title, created_at, enhanced_md IS NOT NULL AND enhanced_md != '', attendees, tags
                      FROM meetings ORDER BY created_at DESC",
                 )?;
                 let rows = stmt.query_map([], |r| {
                     let att: String = r.get(4)?;
+                    let tags: String = r.get(5)?;
                     Ok(MeetingSummary {
                         id: r.get(0)?,
                         title: r.get(1)?,
                         created_at: r.get(2)?,
                         has_enhanced: r.get(3)?,
                         attendees: serde_json::from_str(&att).unwrap_or_default(),
+                        tags: serde_json::from_str(&tags).unwrap_or_default(),
                         snippet: None,
                     })
                 })?;
@@ -278,19 +402,21 @@ impl Db {
                 let mut stmt = self.conn.prepare(
                     "SELECT m.id, m.title, m.created_at,
                             m.enhanced_md IS NOT NULL AND m.enhanced_md != '', m.attendees,
-                            snippet(meetings_fts, -1, '«', '»', '…', 12)
+                            snippet(meetings_fts, -1, '«', '»', '…', 12), m.tags
                      FROM meetings_fts f JOIN meetings m ON m.id = f.meeting_id
                      WHERE meetings_fts MATCH ?1
                      ORDER BY bm25(meetings_fts, 0.0, 10.0, 4.0, 3.0, 1.0) LIMIT 50",
                 )?;
                 let rows = stmt.query_map([fts], |r| {
                     let att: String = r.get(4)?;
+                    let tags: String = r.get(6)?;
                     Ok(MeetingSummary {
                         id: r.get(0)?,
                         title: r.get(1)?,
                         created_at: r.get(2)?,
                         has_enhanced: r.get(3)?,
                         attendees: serde_json::from_str(&att).unwrap_or_default(),
+                        tags: serde_json::from_str(&tags).unwrap_or_default(),
                         snippet: r.get(5)?,
                     })
                 })?;
@@ -349,7 +475,14 @@ impl Db {
         self.conn.execute("DELETE FROM meetings_fts WHERE meeting_id = ?1", [id])?;
         self.conn.execute(
             "INSERT INTO meetings_fts (meeting_id, title, notes, enhanced, transcript) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![id, m.title, m.notes_md, m.enhanced_md.unwrap_or_default(), transcript],
+            // tag e partecipanti stanno con il titolo: così si trovano cercandoli
+            params![
+                id,
+                [m.title.as_str(), &m.tags.join(" "), &m.attendees.join(" ")].join(" · ").trim_end_matches([' ', '·']),
+                m.notes_md,
+                m.enhanced_md.unwrap_or_default(),
+                transcript
+            ],
         )?;
         Ok(())
     }
@@ -586,6 +719,74 @@ mod tests {
         db.delete_meeting(&m.id).unwrap();
         assert!(db.list_meetings(None).unwrap().is_empty());
         assert!(db.chat_history(&m.id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn tags_and_people() {
+        let db = Db::open_in_memory().unwrap();
+        let m = db.create_meeting("Kickoff", None, &["Anna Rossi".into()], None).unwrap();
+        let other = db.create_meeting("Retro", None, &[], None).unwrap();
+        assert!(m.tags.is_empty());
+
+        db.set_tags(&m.id, &["cliente".into(), "q4".into()]).unwrap();
+        db.set_tags(&other.id, &["cliente".into()]).unwrap();
+        db.set_attendees(
+            &m.id,
+            &[("anna rossi".into(), Some("anna@example.ch".into())), ("Luca Bianchi".into(), None)],
+        )
+        .unwrap();
+
+        let got = db.get_meeting(&m.id).unwrap().unwrap();
+        assert_eq!(got.tags, vec!["cliente", "q4"]);
+        assert_eq!(got.attendees, vec!["anna rossi", "Luca Bianchi"]);
+        let tags = db.all_tags().unwrap();
+        assert_eq!(tags[0], TagCount { name: "cliente".into(), count: 2 });
+        assert_eq!(tags.len(), 2);
+
+        // rubrica: niente doppioni che differiscono solo per maiuscole, email aggiunta dopo
+        let people = db.list_people().unwrap();
+        assert_eq!(people.len(), 2);
+        let anna = people.iter().find(|p| p.name == "Anna Rossi").unwrap();
+        assert_eq!(anna.email.as_deref(), Some("anna@example.ch"));
+        assert_eq!(anna.meetings, 1);
+        assert_eq!(db.search_people("bian", 5).unwrap()[0].name, "Luca Bianchi");
+        assert_eq!(db.search_people("example.ch", 5).unwrap()[0].name, "Anna Rossi");
+        assert!(db.search_people("100%", 5).unwrap().is_empty());
+
+        // tag e partecipanti si trovano con la ricerca, e compaiono nell'elenco
+        assert_eq!(db.list_meetings(Some("q4")).unwrap().len(), 1);
+        assert_eq!(db.list_meetings(Some("bianchi")).unwrap()[0].id, m.id);
+        let listed = db.list_meetings(None).unwrap();
+        assert_eq!(listed.iter().find(|x| x.id == m.id).unwrap().tags, vec!["cliente", "q4"]);
+
+        // togliere una persona dalla rubrica non tocca i meeting
+        db.delete_person(anna.id).unwrap();
+        assert_eq!(db.list_people().unwrap().len(), 1);
+        assert_eq!(db.get_meeting(&m.id).unwrap().unwrap().attendees.len(), 2);
+    }
+
+    #[test]
+    fn migrates_v1_database_with_existing_attendees() {
+        let dir = std::env::temp_dir().join(format!("granello-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("db.sqlite");
+        {
+            // un database com'era prima dei tag: solo lo schema 1
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch(SCHEMA_V1).unwrap();
+            conn.pragma_update(None, "user_version", 1).unwrap();
+            conn.execute(
+                "INSERT INTO meetings (id, title, created_at, attendees) VALUES ('old', 'Vecchio', 1, ?1)",
+                [r#"["Anna Rossi","Luca Bianchi"]"#],
+            )
+            .unwrap();
+        }
+        let db = Db::open(&path).unwrap();
+        assert!(db.get_meeting("old").unwrap().unwrap().tags.is_empty());
+        let names: Vec<String> = db.list_people().unwrap().into_iter().map(|p| p.name).collect();
+        assert_eq!(names, vec!["Anna Rossi", "Luca Bianchi"]);
+        assert_eq!(db.list_meetings(Some("rossi")).unwrap().len(), 1, "reindicizzato dopo la migrazione");
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

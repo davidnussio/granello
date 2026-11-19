@@ -6,6 +6,9 @@ import type {
   Meeting,
   MeetingDetail,
   MeetingSummary,
+  Person,
+  PersonSuggestion,
+  TagCount,
   Provider,
   RecordingStatus,
   Settings,
@@ -30,7 +33,15 @@ export const api = {
     enhancedMd?: string;
     templateId?: string;
   }) => invoke<void>("update_meeting", args),
+  updateMeetingMeta: (args: { id: string; attendees?: string[]; tags?: string[] }) =>
+    invoke<Meeting>("update_meeting_meta", args),
   deleteMeeting: (id: string) => invoke<void>("delete_meeting", { id }),
+
+  listTags: () => invoke<TagCount[]>("list_tags"),
+  listPeople: () => invoke<Person[]>("list_people"),
+  deletePerson: (id: number) => invoke<void>("delete_person", { id }),
+  suggestPeople: (query: string) => invoke<PersonSuggestion[]>("suggest_people", { query }),
+  calendarMatch: (meetingId: string) => invoke<CalendarEvent | null>("calendar_match", { meetingId }),
 
   listAudioDevices: () => invoke<string[]>("list_audio_devices"),
   startRecording: (meetingId: string) => invoke<void>("start_recording", { meetingId }),

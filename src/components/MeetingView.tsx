@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorText, newStreamId, on } from "../api";
-import type { Meeting, RecordingStatus, Template, TranscriptSegment } from "../types";
+import type { CalendarEvent, Meeting, RecordingStatus, Template, TranscriptSegment } from "../types";
+import ChipInput, { type ChipSuggestion } from "./ChipInput";
 import NoteEditor from "../editor/NoteEditor";
 import Markdown from "./Markdown";
 import TranscriptPanel from "./TranscriptPanel";
@@ -73,6 +74,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const [busyRec, setBusyRec] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
+  const [calEvent, setCalEvent] = useState<CalendarEvent | null>(null);
   const enhanceRef = useRef<() => void>(() => {});
   const hasEnhancedRef = useRef(false);
   const [finishing, setFinishing] = useState(false);
@@ -96,7 +98,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   useEffect(() => {
     load();
     api.listTemplates().then(setTemplates).catch(() => {});
-  }, [load]);
+    // evento di calendario alla stessa ora: da lì si possono importare i partecipanti
+    api.calendarMatch(id).then(setCalEvent).catch(() => {});
+  }, [load, id]);
 
   useEffect(() => {
     const offs = [
@@ -195,6 +199,34 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     enhance();
   };
 
+  const saveMeta = async (patch: { attendees?: string[]; tags?: string[] }) => {
+    // aggiornamento immediato; il backend restituisce poi i valori ripuliti
+    setMeeting((m) => (m ? { ...m, ...patch } : m));
+    try {
+      const saved = await api.updateMeetingMeta({ id, ...patch });
+      setMeeting((m) => (m ? { ...m, attendees: saved.attendees, tags: saved.tags } : m));
+      onChanged();
+    } catch (e) {
+      toast(errorText(e));
+      load();
+    }
+  };
+
+  const suggestPeople = async (query: string): Promise<ChipSuggestion[]> =>
+    (await api.suggestPeople(query)).map((p) => ({
+      value: p.name,
+      hint: p.email ?? undefined,
+      badge: p.source === "calendar" ? t("dal calendario") : undefined,
+    }));
+
+  const suggestTags = async (query: string): Promise<ChipSuggestion[]> => {
+    const q = query.replace(/^#/, "").toLowerCase();
+    return (await api.listTags())
+      .filter((tag) => tag.name.includes(q))
+      .slice(0, 8)
+      .map((tag) => ({ value: tag.name, hint: t("{n} meeting", { n: tag.count }) }));
+  };
+
   const changeTemplate = async (templateId: string) => {
     setMeeting((m) => (m ? { ...m, templateId } : m));
     await api.updateMeeting({ id, templateId }).catch((e) => toast(errorText(e)));
@@ -225,6 +257,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const hasContent = meeting.notesMd.trim().length > 0 || segments.length > 0;
   const canEnhance = hasContent && !isRecording && streaming === null;
   const when = meeting.startedAt ?? meeting.createdAt;
+  const missingFromEvent = (calEvent?.attendees ?? []).filter(
+    (name) => !meeting.attendees.some((a) => a.toLowerCase() === name.toLowerCase()),
+  );
 
   return (
     <div className={"meeting" + (side !== "none" ? " with-side" : "")}>
@@ -241,12 +276,6 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             <span className="chip">
               {dayLabel(when)} · {time(when)}
             </span>
-            {meeting.attendees.slice(0, 6).map((a) => (
-              <span key={a} className="chip person">
-                {a}
-              </span>
-            ))}
-            {meeting.attendees.length > 6 && <span className="chip">+{meeting.attendees.length - 6}</span>}
             <select
               className="chip select"
               value={meeting.templateId ?? "generale"}
@@ -268,6 +297,37 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             >
               {confirmDelete ? t("Confermi?") : t("Elimina")}
             </button>
+          </div>
+          <div className="meta-row people-row">
+            <ChipInput
+              values={meeting.attendees}
+              onChange={(attendees) => saveMeta({ attendees })}
+              suggest={suggestPeople}
+              addLabel={t("+ Partecipante")}
+              placeholder={t("Nome del partecipante")}
+              chipClass="person"
+            />
+            {missingFromEvent.length > 0 && calEvent && (
+              <button
+                className="chip import"
+                title={missingFromEvent.join(", ")}
+                onClick={() => saveMeta({ attendees: [...meeting.attendees, ...missingFromEvent] })}
+              >
+                {t("Importa {n} da «{title}»", { n: missingFromEvent.length, title: calEvent.title })}
+              </button>
+            )}
+          </div>
+          <div className="meta-row">
+            <ChipInput
+              values={meeting.tags}
+              onChange={(tags) => saveMeta({ tags })}
+              suggest={suggestTags}
+              addLabel={t("+ Tag")}
+              placeholder={t("Nome del tag")}
+              prefix="#"
+              chipClass="tag"
+              normalize={(raw) => raw.trim().replace(/^#+/, "").toLowerCase().replace(/[\s,]+/g, "-")}
+            />
           </div>
         </header>
 

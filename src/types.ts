@@ -6,6 +6,7 @@ export interface Meeting {
   endedAt: number | null;
   calendarEventId: string | null;
   attendees: string[];
+  tags: string[];
   templateId: string | null;
   notesMd: string;
   enhancedMd: string | null;
@@ -17,7 +18,26 @@ export interface MeetingSummary {
   createdAt: number;
   hasEnhanced: boolean;
   attendees: string[];
+  tags: string[];
   snippet: string | null;
+}
+
+export interface Person {
+  id: number;
+  name: string;
+  email: string | null;
+  meetings: number;
+}
+
+export interface PersonSuggestion {
+  name: string;
+  email: string | null;
+  source: "people" | "calendar";
+}
+
+export interface TagCount {
+  name: string;
+  count: number;
 }
 
 export interface TranscriptSegment {

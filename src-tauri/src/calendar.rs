@@ -209,8 +209,9 @@ fn parse_duration(s: &str) -> Option<Duration> {
     Some(total)
 }
 
-fn attendees(e: &RawEvent) -> Vec<String> {
-    let mut out = Vec::new();
+/// Partecipanti di un evento come (nome da mostrare, email se presente).
+fn attendee_pairs(e: &RawEvent) -> Vec<(String, Option<String>)> {
+    let mut out: Vec<(String, Option<String>)> = Vec::new();
     for a in e.all("ATTENDEE") {
         let email = a.value.trim().trim_start_matches("mailto:").trim_start_matches("MAILTO:");
         let name = a
@@ -219,8 +220,26 @@ fn attendees(e: &RawEvent) -> Vec<String> {
             .cloned()
             .filter(|cn| !cn.is_empty() && cn != email)
             .unwrap_or_else(|| email.to_string());
-        if !name.is_empty() && !out.contains(&name) {
-            out.push(name);
+        if !name.is_empty() && !out.iter().any(|(n, _)| *n == name) {
+            out.push((name, Some(email.to_string()).filter(|e| e.contains('@'))));
+        }
+    }
+    out
+}
+
+fn attendees(e: &RawEvent) -> Vec<String> {
+    attendee_pairs(e).into_iter().map(|(name, _)| name).collect()
+}
+
+/// Tutte le persone che compaiono come partecipanti nel calendario (senza doppioni),
+/// per proporle nel completamento automatico.
+pub fn all_attendees(ics: &str) -> Vec<(String, Option<String>)> {
+    let mut out: Vec<(String, Option<String>)> = Vec::new();
+    for e in parse_events(ics) {
+        for (name, email) in attendee_pairs(&e) {
+            if !out.iter().any(|(n, _)| n.eq_ignore_ascii_case(&name)) {
+                out.push((name, email));
+            }
         }
     }
     out
@@ -370,6 +389,13 @@ END:VCALENDAR\r\n";
             ]
         );
         assert_eq!(ev[0].attendees, vec!["Anna Rossi", "Bianchi, Luca"]);
+        assert_eq!(
+            all_attendees(ICS),
+            vec![
+                ("Anna Rossi".to_string(), Some("anna@example.ch".to_string())),
+                ("Bianchi, Luca".to_string(), Some("luca@example.ch".to_string())),
+            ]
+        );
         assert_eq!(ev[1].end - ev[1].start, 30 * 60 * 1000);
     }
 
