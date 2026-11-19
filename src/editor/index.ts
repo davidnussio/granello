@@ -18,10 +18,11 @@ import { table } from "./plugins/table";
 import { media } from "./plugins/media";
 import { linkCard } from "./plugins/linkCard";
 import { toc } from "./plugins/toc";
+import { poll } from "./plugins/poll";
 
 export type { CommandItem, EditorPlugin, PluginContext, SuggestMenu, ToolbarItem } from "./types";
 export { base, formatting, headings, lists, tasks, blocks, links, snippets };
-export { highlight, mention, date, math, callout, toggle, columns, table, media, linkCard, toc };
+export { highlight, mention, date, math, callout, toggle, columns, table, media, linkCard, toc, poll };
 
 /** Plugin attivi di default. L'ordine determina l'ordine di comandi e pulsanti. */
 export const defaultPlugins: EditorPlugin[] = [
@@ -42,6 +43,7 @@ export const defaultPlugins: EditorPlugin[] = [
   media,
   linkCard,
   snippets,
+  poll,
   mention,
   date,
 ];

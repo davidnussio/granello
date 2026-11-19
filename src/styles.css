@@ -653,3 +653,30 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .people-item { display: flex; align-items: center; gap: 10px; padding: 6px 12px; }
 .people-item + .people-item { border-top: 1px solid var(--line); }
 .people-name { font-weight: 500; white-space: nowrap; }
+
+/* ---------- blocchi con dati propri (sondaggio, lavagna a colonne, timer…) ---------- */
+.ProseMirror .data-block { margin: 0 0 0.8em; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); font-size: 14px; }
+.ProseMirror .data-block.ProseMirror-selectednode { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.data-block input[type="text"], .data-block input[type="number"], .data-block input[type="date"] { border: none; background: none; outline: none; color: inherit; font: inherit; min-width: 0; border-radius: 5px; padding: 2px 5px; }
+.data-block input:hover { background: var(--panel); }
+.data-block input:focus { background: var(--panel); box-shadow: 0 0 0 1px var(--accent); }
+.block-btn { flex: none; width: 22px; height: 22px; border: none; background: none; border-radius: 5px; color: var(--muted); line-height: 1; }
+.block-btn:hover:not(:disabled) { background: var(--panel); color: var(--text); }
+.block-btn:disabled { opacity: 0.35; }
+.block-btn.remove { visibility: hidden; }
+:is(.poll-option, .kanban-card, .timeline-item, .pc-item, tr):hover > .block-btn.remove, :is(th, td):hover > .block-btn.remove { visibility: visible; }
+.block-btn.remove:hover:not(:disabled) { color: var(--rec); }
+.block-foot { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.block-add { border: none; background: none; color: var(--accent); font-size: 13px; padding: 2px 4px; border-radius: 5px; }
+.block-add:hover { background: var(--accent-soft); }
+.block-note { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+/* sondaggio */
+.data-block .poll-question { display: block; width: 100%; font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+.poll-option { position: relative; display: flex; align-items: center; gap: 4px; padding: 3px 4px; border-radius: 7px; overflow: hidden; }
+.poll-bar { position: absolute; inset: 0 auto 0 0; background: var(--panel); border-radius: 7px; transition: width 0.2s; }
+.poll-option.winning .poll-bar { background: var(--accent-soft); }
+.poll-option > :not(.poll-bar) { position: relative; }
+.poll-option input { flex: 1; }
+.poll-share { width: 38px; text-align: right; color: var(--muted); font-size: 12px; }
+.poll-votes { min-width: 18px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }

@@ -360,6 +360,17 @@ const en: Record<string, string> = {
   "Apri la sezione": "Expand the section",
   "Sezione richiudibile": "Collapsible section",
   "Dettagli da aprire quando servono": "Details to open when needed",
+  "Domanda del sondaggio": "Poll question",
+  "Opzione {n}": "Option {n}",
+  "Togli un voto": "Remove a vote",
+  "Voti": "Votes",
+  "Aggiungi un voto": "Add a vote",
+  "Togli l'opzione": "Remove the option",
+  "+ Opzione": "+ Option",
+  "{n} voti": "{n} votes",
+  "Sondaggio": "Poll",
+  "Una domanda, le opzioni, i voti": "A question, the options, the votes",
+  "Strumenti": "Tools",
 };
 
 export default en;

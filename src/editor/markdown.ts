@@ -88,8 +88,8 @@ export function backToEditor(editor: Editor, pos: number) {
   view.focus();
 }
 
-/** I blocchi scritti come contenitore `::: nome`. */
-const CONTAINERS = new Set(["toggle", "columns", "column"]);
+/** I blocchi scritti come contenitore `::: nome`. Chi ne definisce uno nuovo si aggiunge qui. */
+export const CONTAINERS = new Set(["toggle", "columns", "column"]);
 
 /**
  * La riga di apertura e chiusura di un contenitore. Uno che ne contiene altri usa più due
@@ -117,4 +117,38 @@ export function useContainer(md: MarkdownIt, name: string, open: (info: string) 
     render: (tokens: Token[], idx: number) =>
       tokens[idx].nesting === 1 ? open(tokens[idx].info.trim().slice(name.length).trim()) : "</div>",
   });
+}
+
+/**
+ * Registra un contenitore `::: nome` il cui contenuto non è Markdown ma dati del blocco
+ * (le opzioni di un sondaggio, le schede di una lavagna…): `toHtml` riceve il testo dopo il
+ * nome e le righe fino alla chiusura.
+ */
+export function rawContainer(md: MarkdownIt, name: string, toHtml: (info: string, lines: string[]) => string) {
+  md.block.ruler.before(
+    "fence",
+    `raw_${name}`,
+    (state, startLine, endLine, silent) => {
+      if (state.sCount[startLine] - state.blkIndent >= 4) return false;
+      const line = (n: number) => state.src.slice(state.bMarks[n] + state.tShift[n], state.eMarks[n]);
+      const open = /^(:{3,})\s*([\w-]+)\s*(.*)$/.exec(line(startLine));
+      if (!open || open[2] !== name) return false;
+      const lines: string[] = [];
+      let end = startLine + 1;
+      for (; end < endLine; end++) {
+        const l = line(end);
+        const close = /^(:{3,})\s*$/.exec(l);
+        if (close && close[1].length >= open[1].length) break;
+        lines.push(l);
+      }
+      if (end >= endLine) return false; // mai chiuso: resta testo
+      if (silent) return true;
+      const token = state.push("html_block", "", 0);
+      token.content = toHtml(open[3].trim(), lines);
+      token.map = [startLine, end + 1];
+      state.line = end + 1;
+      return true;
+    },
+    { alt: ["paragraph", "reference", "blockquote", "list"] },
+  );
 }
