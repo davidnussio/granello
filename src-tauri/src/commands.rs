@@ -3,7 +3,7 @@ use crate::i18n::tr;
 use crate::db::Db;
 use crate::models::*;
 use crate::transcribe::{self, TranscriberCache};
-use crate::{calendar, llm, prompts, secrets};
+use crate::{attachments, calendar, llm, prompts, secrets};
 use futures_util::StreamExt;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -319,7 +319,114 @@ pub fn delete_meeting(state: State<AppState>, id: String) -> CmdResult<()> {
     if state.session.lock().as_ref().map(|s| s.meeting_id == id).unwrap_or(false) {
         return Err(tr("Ferma la registrazione prima di eliminare il meeting", "Stop the recording before deleting the meeting").into());
     }
-    state.db.lock().delete_meeting(&id).map_err(err)
+    let db = state.db.lock();
+    let meeting = db.get_meeting(&id).map_err(err)?;
+    db.delete_meeting(&id).map_err(err)?;
+    // gli allegati citati solo da questo meeting se ne vanno con lui
+    if let Some(m) = meeting {
+        let text = format!("{}\n{}", m.notes_md, m.enhanced_md.unwrap_or_default());
+        for path in attachments::referenced(&text) {
+            if !db.attachment_in_use(&path).unwrap_or(true) {
+                attachments::remove(&state.data_dir, &path);
+            }
+        }
+    }
+    Ok(())
+}
+
+// ---------------- allegati ----------------
+
+/// Salva tra gli allegati un file incollato o trascinato nella nota (contenuto in base64).
+#[tauri::command]
+pub fn save_attachment(state: State<AppState>, name: String, data: String) -> CmdResult<attachments::Attachment> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data.as_bytes())
+        .map_err(|_| tr("Contenuto del file non valido", "Invalid file content"))?;
+    attachments::store(&state.data_dir, &name, &bytes).map_err(err)
+}
+
+/// Fa scegliere un file e lo copia tra gli allegati. Ritorna None se la scelta viene annullata.
+#[tauri::command]
+pub async fn pick_attachment(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    images_only: bool,
+) -> CmdResult<Option<attachments::Attachment>> {
+    use tauri::Manager;
+    use tauri_plugin_dialog::DialogExt;
+
+    let mut dialog = app.dialog().file();
+    if images_only {
+        dialog = dialog
+            .set_title(tr("Scegli un'immagine", "Choose an image"))
+            .add_filter(tr("Immagini", "Images"), &["png", "jpg", "jpeg", "gif", "webp", "heic", "bmp", "tiff"]);
+    } else {
+        dialog = dialog.set_title(tr("Scegli un file", "Choose a file"));
+    }
+    if let Some(window) = app.get_webview_window("main") {
+        dialog = dialog.set_parent(&window);
+    }
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    dialog.pick_file(move |picked| {
+        let _ = tx.send(picked);
+    });
+    let Some(picked) = rx.await.map_err(err)? else { return Ok(None) };
+    let source = picked.into_path().map_err(err)?;
+    let data_dir = state.data_dir.clone();
+    tokio::task::spawn_blocking(move || attachments::import(&data_dir, &source))
+        .await
+        .map_err(err)?
+        .map(Some)
+        .map_err(err)
+}
+
+/// Un'immagine allegata come data URL, da mostrare nell'editor.
+#[tauri::command]
+pub async fn read_attachment(state: State<'_, AppState>, path: String) -> CmdResult<String> {
+    let data_dir = state.data_dir.clone();
+    tokio::task::spawn_blocking(move || attachments::image_data_url(&data_dir, &path))
+        .await
+        .map_err(err)?
+        .map_err(err)
+}
+
+/// Apre un allegato con l'app predefinita per quel tipo di file.
+#[tauri::command]
+pub fn open_attachment(app: AppHandle, state: State<AppState>, path: String) -> CmdResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    let file = attachments::resolve(&state.data_dir, &path).map_err(err)?;
+    app.opener().open_path(file.to_string_lossy(), None::<&str>).map_err(err)
+}
+
+/// Il titolo della pagina a quell'indirizzo, per l'anteprima di un link. None se la pagina
+/// non risponde o non ha un titolo: l'anteprima mostra comunque il sito.
+#[tauri::command]
+pub async fn link_title(state: State<'_, AppState>, url: String) -> CmdResult<Option<String>> {
+    const MAX_HTML: usize = 256 * 1024;
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return Err(tr("L'indirizzo deve iniziare con http:// o https://", "The address must start with http:// or https://").into());
+    }
+    let request = state
+        .http
+        .get(&url)
+        .header("accept", "text/html")
+        .header("user-agent", "Mozilla/5.0 (Macintosh) Granello")
+        .timeout(Duration::from_secs(8));
+    let Ok(resp) = request.send().await else { return Ok(None) };
+    if !resp.status().is_success() {
+        return Ok(None);
+    }
+    // il titolo sta all'inizio della pagina: non serve scaricarla tutta
+    let mut html = Vec::new();
+    let mut body = resp.bytes_stream();
+    while let Some(Ok(chunk)) = body.next().await {
+        html.extend_from_slice(&chunk);
+        if html.len() >= MAX_HTML {
+            break;
+        }
+    }
+    Ok(attachments::page_title(&String::from_utf8_lossy(&html)))
 }
 
 // ---------------- registrazione ----------------

@@ -248,6 +248,90 @@ h3 { margin: 0 0 12px; font-size: 15px; }
 :is(.ProseMirror, .md) a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .ProseMirror hr.ProseMirror-selectednode { border-top-color: var(--accent); }
 
+/* ---------- componenti dell'editor ---------- */
+/* evidenziatore */
+:is(.ProseMirror, .md) mark { background: #fbe89a; color: inherit; border-radius: 3px; padding: 0 2px; }
+:is(.ProseMirror, .md) mark[data-color="green"] { background: #c9ecc4; }
+:is(.ProseMirror, .md) mark[data-color="blue"] { background: #c5e2fb; }
+:is(.ProseMirror, .md) mark[data-color="pink"] { background: #fbd0e2; }
+.hl-dot { display: block; width: 14px; height: 14px; border-radius: 50%; background: #f3d250; }
+.hl-dot[data-color="green"] { background: #7cc873; }
+.hl-dot[data-color="blue"] { background: #6cb3ee; }
+.hl-dot[data-color="pink"] { background: #ee8db5; }
+.tb-highlight { color: #d9b21f; }
+
+/* persone e date: pillole dentro il testo */
+.ProseMirror .mention { color: var(--accent); background: var(--accent-soft); border-radius: 5px; padding: 1px 5px; font-weight: 550; white-space: nowrap; }
+.ProseMirror .date-pill { position: relative; display: inline-flex; align-items: center; border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 0 7px; font-size: 0.92em; white-space: nowrap; cursor: pointer; }
+.ProseMirror .date-pill:hover { border-color: var(--accent); }
+.ProseMirror .date-pill input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; border: none; padding: 0; }
+.ProseMirror :is(.mention, .date-pill, .math-inline).ProseMirror-selectednode { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* formule */
+.ProseMirror .math-inline { cursor: pointer; border-radius: 4px; padding: 0 2px; }
+.ProseMirror .math-block { display: block; margin: 0 0 0.7em; padding: 10px 14px; border-radius: 8px; text-align: center; cursor: pointer; overflow-x: auto; }
+.ProseMirror :is(.math-inline, .math-block):hover { background: var(--panel); }
+.ProseMirror .math-block.ProseMirror-selectednode { outline: 2px solid var(--accent); }
+.math-render.empty { color: var(--muted); font-style: italic; }
+.math-input { display: none; font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--accent); border-radius: 6px; padding: 3px 7px; outline: none; }
+.math-inline.editing .math-render { display: none; }
+.math-inline.editing .math-input { display: inline-block; width: 220px; }
+.math-block.editing .math-input { display: block; width: 100%; min-height: 64px; margin-top: 10px; resize: vertical; text-align: left; }
+
+/* riquadri in evidenza */
+.ProseMirror .callout { position: relative; margin: 0 0 0.7em; padding: 10px 14px 10px 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); }
+.ProseMirror .callout::before { content: "ⓘ"; position: absolute; left: 13px; top: 9px; font-size: 16px; color: var(--ai); }
+.ProseMirror .callout > :last-child { margin-bottom: 0; }
+.ProseMirror .callout[data-callout="warning"] { border-color: #e9c46a; background: rgba(233, 196, 106, 0.16); }
+.ProseMirror .callout[data-callout="warning"]::before { content: "⚠"; color: #c98a12; }
+.ProseMirror .callout[data-callout="decision"] { border-color: var(--accent); background: var(--accent-soft); }
+.ProseMirror .callout[data-callout="decision"]::before { content: "✓"; color: var(--accent); font-weight: 700; }
+
+/* sezioni richiudibili */
+.ProseMirror .toggle { display: flex; align-items: flex-start; gap: 2px; margin: 0 0 0.55em; }
+.toggle-arrow { flex: none; width: 22px; height: 1.6em; border: none; background: none; border-radius: 5px; color: var(--muted); font-size: 12px; transition: transform 0.12s; user-select: none; }
+.toggle-arrow:hover { background: var(--panel); color: var(--text); }
+.toggle.open > .toggle-arrow { transform: rotate(90deg); }
+.toggle-content { flex: 1; min-width: 0; }
+.toggle-summary { font-weight: 600; }
+.toggle-summary:has(> br:only-child)::before { content: attr(data-placeholder); color: var(--muted); font-weight: 400; float: left; height: 0; pointer-events: none; }
+.toggle:not(.open) > .toggle-content > :not(.toggle-summary) { display: none; }
+.toggle.open > .toggle-content > :not(.toggle-summary):first-of-type { margin-top: 4px; }
+.toggle-content > :last-child { margin-bottom: 0; }
+
+/* colonne */
+.ProseMirror .columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 22px; margin: 0 0 0.7em; }
+.ProseMirror .column { min-width: 0; padding-left: 12px; border-left: 2px solid var(--line); }
+.ProseMirror .column > :last-child { margin-bottom: 0; }
+
+/* tabelle */
+:is(.ProseMirror, .md) table { border-collapse: collapse; width: 100%; margin: 0 0 0.8em; table-layout: fixed; font-size: 14px; }
+:is(.ProseMirror, .md) :is(th, td) { border: 1px solid var(--line); padding: 5px 9px; vertical-align: top; text-align: left; position: relative; }
+:is(.ProseMirror, .md) th { background: var(--panel); font-weight: 600; }
+:is(.ProseMirror, .md) :is(th, td) > p { margin: 0; }
+.ProseMirror .selectedCell::after { content: ""; position: absolute; inset: 0; background: var(--accent-soft); opacity: 0.55; pointer-events: none; }
+
+/* immagini, allegati, anteprime dei link */
+.ProseMirror .note-image { margin: 0 0 0.8em; }
+.ProseMirror .note-image img { display: block; max-width: 100%; max-height: 520px; border-radius: 8px; border: 1px solid var(--line); }
+.ProseMirror .note-image.ProseMirror-selectednode img { outline: 2px solid var(--accent); }
+.ProseMirror .note-image.missing { padding: 10px 14px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; }
+:is(.ProseMirror, .md) a[href^="attachments/"] { display: inline-block; border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 0 8px; color: var(--text); text-decoration: none; font-size: 0.93em; }
+:is(.ProseMirror, .md) a[href^="attachments/"]:hover { border-color: var(--accent); }
+.ProseMirror .link-card { margin: 0 0 0.7em; }
+.ProseMirror .link-card a { display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 9px 14px; text-decoration: none; color: var(--text); }
+.ProseMirror .link-card a:hover, .ProseMirror .link-card.ProseMirror-selectednode a { border-color: var(--accent); }
+.link-card-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-card-site { font-size: 12px; color: var(--muted); }
+.link-card-input { width: 100%; border: 1px solid var(--accent); background: var(--bg); border-radius: 8px; padding: 8px 12px; outline: none; }
+
+/* indice */
+.ProseMirror .toc { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; margin: 0 0 0.8em; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.ProseMirror .toc.ProseMirror-selectednode { border-color: var(--accent); }
+.toc-item { border: none; background: none; color: var(--accent); font-size: 14px; text-align: left; padding-top: 1px; padding-bottom: 1px; padding-right: 0; }
+.toc-item:hover { text-decoration: underline; }
+.toc-empty { color: var(--muted); font-size: 13px; }
+
 /* azioni (checklist) */
 .ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0; }
 .ProseMirror ul[data-type="taskList"] li { display: flex; gap: 9px; align-items: flex-start; margin: 3px 0; }
@@ -513,6 +597,10 @@ h3 { margin: 0 0 12px; font-size: 15px; }
 /* in fondo: deve vincere sulle regole base */
 @media (prefers-color-scheme: dark) {
   .nav-item:hover, .side-item:hover, .btn.ghost:hover:not(:disabled), .btn.ghost.on { background: rgba(255, 255, 255, 0.07); }
+  :is(.ProseMirror, .md) mark { background: #6b5a14; }
+  :is(.ProseMirror, .md) mark[data-color="green"] { background: #2f5a2b; }
+  :is(.ProseMirror, .md) mark[data-color="blue"] { background: #244a6b; }
+  :is(.ProseMirror, .md) mark[data-color="pink"] { background: #6b2b48; }
   .btn:hover:not(:disabled) { border-color: #55564d; }
   .side-snippet mark { background: #6b5a1e; }
 }

@@ -368,6 +368,16 @@ impl Db {
         Ok(())
     }
 
+    /// true se qualche meeting cita ancora quell'allegato nelle note o nelle note AI.
+    pub fn attachment_in_use(&self, path: &str) -> Result<bool> {
+        let n: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM meetings WHERE instr(notes_md, ?1) > 0 OR instr(COALESCE(enhanced_md, ''), ?1) > 0",
+            [path],
+            |r| r.get(0),
+        )?;
+        Ok(n > 0)
+    }
+
     pub fn list_meetings(&self, query: Option<&str>) -> Result<Vec<MeetingSummary>> {
         let q = query.map(str::trim).filter(|q| !q.is_empty());
         let mut out = Vec::new();

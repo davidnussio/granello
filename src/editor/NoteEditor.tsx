@@ -34,8 +34,8 @@ export default function NoteEditor({
   onChangeRef.current = onChange;
 
   const { extensions, toolbar, bridge } = useMemo(() => {
-    const resolved = resolvePlugins(plugins, { placeholder });
     const bridge = new SlashBridge();
+    const resolved = resolvePlugins(plugins, { placeholder, menu: bridge });
     return {
       extensions: [...resolved.extensions, slashExtension(resolved.commands, bridge)],
       toolbar: resolved.toolbar,

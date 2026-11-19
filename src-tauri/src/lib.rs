@@ -2,6 +2,7 @@
 #[macro_use]
 mod i18n;
 
+mod attachments;
 mod audio;
 mod calendar;
 mod commands;
@@ -114,6 +115,11 @@ pub fn run() {
             commands::delete_whisper_model,
             commands::upcoming_events,
             commands::set_calendar_enabled,
+            commands::save_attachment,
+            commands::pick_attachment,
+            commands::read_attachment,
+            commands::open_attachment,
+            commands::link_title,
         ])
         .build(tauri::generate_context!())
         .expect("errore nell'avvio di Granello");

@@ -7,6 +7,21 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
 ## Features
 
 - **Notes + recording**: Markdown editor (TipTap) with a `/` command menu, a formatting toolbar on selection, links and checklists, autosave, recording with audio levels and a timer, resuming on the same meeting.
+- **Editor blocks**: tables, callouts, collapsible sections, columns, images (paste a screenshot), file attachments, link previews, LaTeX formulas, a live table of contents, highlighting, `@person` mentions and date pills. Everything is still saved as readable Markdown:
+
+  | Block | Shortcut | In Markdown |
+  | --- | --- | --- |
+  | Table | `\| ` + space | a Markdown table |
+  | Callout | `! ` + space | `> [!NOTE]`, `> [!WARNING]`, `> [!DECISION]` |
+  | Collapsible section | `/` menu | `::: details Title` … `:::` |
+  | Columns | `/` menu | `:::: columns` with a `::: column` each |
+  | Image, attachment | paste, drop or `/` menu | `![alt](attachments/…)`, `[📎 name](attachments/…)` |
+  | Link preview | `/` menu | `[Title](https://… "preview")` |
+  | Formula | `$x^2$`, `$$` + space | `$…$`, `$$` … `$$` |
+  | Table of contents | `/` menu | `[[toc]]` |
+  | Highlight | ⌘⇧H | `==text==`, `==text=={.green}` |
+  | Person | `@` | `@[Name]` |
+  | Date | `/` menu | `[[2026-11-26]]` |
 - **Local transcription**: whisper.cpp with Metal on Apple Silicon. Audio is cut on pauses (6-20 s), resampled to 16 kHz and transcribed on a dedicated thread. Typical hallucinations ("Thanks for watching", "[Music]"...) are filtered out. The meeting title and attendees are passed as the initial prompt to improve names and terms.
 - **Two sources**: the microphone ("You") and a loopback device for the call audio ("Others").
 - **Upload a recording**: instead of recording live, *Upload audio* transcribes an existing file (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, or the audio track of an MP4/MOV video) with the same pipeline, appending to the meeting's transcript. The file is read in place, never copied. Opus is not supported.
@@ -52,7 +67,7 @@ In the frontend Italian is the source language: `t("Testo italiano")` looks up t
 
 ## Privacy
 
-Audio is never saved: it is transcribed locally and discarded. Notes and transcripts stay in the local database. Only text (notes and transcript) is sent to the AI provider you chose, when you generate AI notes or use the chat; with a local provider nothing leaves your Mac. API keys live in the Keychain; the iCal URLs live in the local database.
+Audio is never saved: it is transcribed locally and discarded. Notes and transcripts stay in the local database. Only text (notes and transcript) is sent to the AI provider you chose, when you generate AI notes or use the chat; with a local provider nothing leaves your Mac. API keys live in the Keychain; the iCal URLs live in the local database. Pasted images and attached files are copied into the app's data folder (`attachments/`) and removed when the last meeting that uses them is deleted. A link preview asks the linked page for its title once, when you create it; images from the Internet are never loaded.
 
 ## Architecture
 

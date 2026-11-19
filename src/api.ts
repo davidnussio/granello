@@ -81,9 +81,31 @@ export const api = {
   downloadWhisperModel: (name: string) => invoke<void>("download_whisper_model", { name }),
   deleteWhisperModel: (name: string) => invoke<void>("delete_whisper_model", { name }),
 
+  /** Copia tra gli allegati un file incollato o trascinato (contenuto in base64). */
+  saveAttachment: (name: string, data: string) => invoke<Attachment>("save_attachment", { name, data }),
+  /** Fa scegliere un file e lo copia tra gli allegati. null se la scelta viene annullata. */
+  pickAttachment: (imagesOnly: boolean) => invoke<Attachment | null>("pick_attachment", { imagesOnly }),
+  /** Un'immagine allegata come data URL, da mostrare nell'editor. */
+  readAttachment: (path: string) => invoke<string>("read_attachment", { path }),
+  openAttachment: (path: string) => invoke<void>("open_attachment", { path }),
+  /** Il titolo della pagina a quell'indirizzo, per le anteprime dei link. */
+  linkTitle: (url: string) => invoke<string | null>("link_title", { url }),
+
   upcomingEvents: (force = false) => invoke<CalendarOverview>("upcoming_events", { force }),
   setCalendarEnabled: (id: string, enabled: boolean) => invoke<void>("set_calendar_enabled", { id, enabled }),
 };
+
+/** Un file copiato tra gli allegati: `path` è relativo alla cartella dati (attachments/…). */
+export interface Attachment {
+  path: string;
+  name: string;
+  size: number;
+}
+
+/** Mostra un avviso da un punto dell'app che non ha accesso ai toast (es. un plugin dell'editor). */
+export function notify(text: string) {
+  window.dispatchEvent(new CustomEvent<string>("granello:notify", { detail: text }));
+}
 
 export interface AppInfo {
   version: string;

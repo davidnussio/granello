@@ -75,6 +75,8 @@ export const links: EditorPlugin = {
       autolink: true,
       linkOnPaste: true,
       protocols: ["http", "https", "mailto"],
+      // oltre agli indirizzi web, i link agli allegati della nota (percorso relativo)
+      isAllowedUri: (url, ctx) => url.startsWith("attachments/") || ctx.defaultValidate(url),
       HTMLAttributes: { rel: "noopener noreferrer" },
     }),
   ],

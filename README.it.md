@@ -7,6 +7,21 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
 ## Funzioni
 
 - **Note + registrazione**: editor Markdown (TipTap) con menu `/` dei comandi, barra di formattazione sulla selezione, link e checklist, salvataggio automatico, registrazione con livelli audio e cronometro, ripresa sullo stesso meeting.
+- **Blocchi dell'editor**: tabelle, riquadri in evidenza, sezioni richiudibili, colonne, immagini (incolla uno screenshot), allegati, anteprime dei link, formule LaTeX, indice sempre aggiornato, evidenziatore, menzioni `@persona` e date. Tutto resta salvato come Markdown leggibile:
+
+  | Blocco | Scorciatoia | In Markdown |
+  | --- | --- | --- |
+  | Tabella | `\| ` + spazio | una tabella Markdown |
+  | Riquadro | `! ` + spazio | `> [!NOTE]`, `> [!WARNING]`, `> [!DECISION]` |
+  | Sezione richiudibile | menu `/` | `::: details Titolo` … `:::` |
+  | Colonne | menu `/` | `:::: columns` con un `::: column` ciascuna |
+  | Immagine, allegato | incolla, trascina o menu `/` | `![alt](attachments/…)`, `[📎 nome](attachments/…)` |
+  | Anteprima link | menu `/` | `[Titolo](https://… "preview")` |
+  | Formula | `$x^2$`, `$$` + spazio | `$…$`, `$$` … `$$` |
+  | Indice | menu `/` | `[[toc]]` |
+  | Evidenziatore | ⌘⇧H | `==testo==`, `==testo=={.green}` |
+  | Persona | `@` | `@[Nome]` |
+  | Data | menu `/` | `[[2026-11-26]]` |
 - **Trascrizione locale**: whisper.cpp con Metal su Apple Silicon. L'audio viene tagliato sulle pause (6-20 s), ricampionato a 16 kHz e trascritto in un thread dedicato. Filtra le allucinazioni tipiche ("Sottotitoli a cura di QTSS", "[Musica]"...). Il titolo e i partecipanti vengono passati come prompt iniziale per migliorare nomi e termini.
 - **Due sorgenti**: microfono ("Tu") e un dispositivo di loopback per l'audio della call ("Altri").
 - **Carica una registrazione**: invece di registrare dal vivo, *Carica audio* trascrive un file esistente (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, o la traccia audio di un video MP4/MOV) con la stessa pipeline, in coda alla trascrizione del meeting. Il file viene letto dov'è, mai copiato. Opus non è supportato.
@@ -52,7 +67,7 @@ Nel frontend l'italiano è la lingua sorgente: `t("Testo italiano")` cerca la tr
 
 ## Privacy
 
-L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. Al provider AI scelto viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat; con un provider locale non esce nulla dal Mac. Le API key stanno nel Portachiavi; gli URL iCal stanno nel database locale.
+L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. Al provider AI scelto viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat; con un provider locale non esce nulla dal Mac. Le API key stanno nel Portachiavi; gli URL iCal stanno nel database locale. Le immagini incollate e i file allegati vengono copiati nella cartella dati dell'app (`attachments/`) ed eliminati quando viene cancellato l'ultimo meeting che li usa. Un'anteprima di link chiede il titolo alla pagina collegata una sola volta, quando la crei; le immagini da Internet non vengono mai caricate.
 
 ## Architettura
 

@@ -1728,6 +1728,7 @@ name = "granello"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "chrono",
  "chrono-tz 0.10.4",
  "cpal",

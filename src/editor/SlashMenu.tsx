@@ -5,12 +5,12 @@ import { Extension } from "@tiptap/react";
 import { PluginKey } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionProps } from "@tiptap/suggestion";
 import { filterCommands } from "./index";
-import type { CommandItem } from "./types";
+import type { CommandItem, SuggestMenu } from "./types";
 
 type MenuState = SuggestionProps<CommandItem> | null;
 
 /** Ponte tra il plugin ProseMirror (che vive fuori da React) e il componente del menu. */
-export class SlashBridge {
+export class SlashBridge implements SuggestMenu {
   private listener: (s: MenuState) => void = () => {};
   /** Impostato dal componente: gestisce frecce/invio mentre il menu è aperto. */
   onKeyDown: (e: KeyboardEvent) => boolean = () => false;
@@ -26,6 +26,11 @@ export class SlashBridge {
   }
 }
 
+/** Un comando è "di contesto" se tutto il suo gruppo compare solo in certe situazioni. */
+function isContextGroup(item: CommandItem, all: CommandItem[]): boolean {
+  return !!item.when && all.filter((c) => c.group === item.group).every((c) => c.when);
+}
+
 /** Estensione TipTap: digitando "/" apre il menu con i comandi offerti dai plugin. */
 export function slashExtension(commands: CommandItem[], bridge: SlashBridge) {
   return Extension.create({
@@ -37,7 +42,12 @@ export function slashExtension(commands: CommandItem[], bridge: SlashBridge) {
           pluginKey: new PluginKey("slashMenu"),
           char: "/",
           allowSpaces: false,
-          items: ({ query }) => filterCommands(commands, query),
+          items: ({ query, editor }) => {
+            // i comandi legati al contesto (es. quelli della tabella) stanno in cima
+            const available = commands.filter((c) => !c.when || c.when(editor));
+            const context = available.filter((c) => isContextGroup(c, commands));
+            return filterCommands([...context, ...available.filter((c) => !context.includes(c))], query);
+          },
           allow: ({ editor }) => !editor.isActive("codeBlock") && !editor.isActive("code"),
           command: ({ editor, range, props }) => {
             editor.chain().focus().deleteRange(range).run();

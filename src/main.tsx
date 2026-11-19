@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api } from "./api";
+import { api, errorText, notify } from "./api";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "./styles.css";
@@ -16,6 +16,8 @@ document.addEventListener("click", (e) => {
   if (a.closest(".ProseMirror[contenteditable='true']") && !e.metaKey && !e.ctrlKey) return;
   const href = a.getAttribute("href") ?? "";
   if (/^(https?:|mailto:)/i.test(href)) openUrl(href).catch(() => {});
+  // un allegato della nota si apre con l'app predefinita per quel tipo di file
+  else if (href.startsWith("attachments/")) api.openAttachment(href).catch((err) => notify(errorText(err)));
 });
 
 window.addEventListener("error", (e) => {

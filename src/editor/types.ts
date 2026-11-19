@@ -1,9 +1,18 @@
 import type { ComponentType } from "react";
 import type { AnyExtension, Editor } from "@tiptap/react";
+import type { SuggestionProps } from "@tiptap/suggestion";
 
 /** Opzioni dell'istanza di editor passate a ogni plugin. */
 export interface PluginContext {
   placeholder?: string;
+  /** Il menu a comparsa dell'editor: lo usa "/" e chi propone altri elenchi (es. le persone con "@"). */
+  menu: SuggestMenu;
+}
+
+/** Il menu a comparsa visto da un plugin: gli si passa lo stato del suggerimento, o null per chiuderlo. */
+export interface SuggestMenu {
+  set(state: SuggestionProps<CommandItem> | null): void;
+  onKeyDown(e: KeyboardEvent): boolean;
 }
 
 /** Voce del menu "/" (e, in futuro, di una command palette). */
@@ -18,6 +27,8 @@ export interface CommandItem {
   group: string;
   /** Parole in più per la ricerca. */
   keywords?: string[];
+  /** Se presente, il comando compare solo quando vale (es. "Aggiungi riga" dentro una tabella) e sta in cima. */
+  when?: (editor: Editor) => boolean;
   run: (editor: Editor) => void;
 }
 

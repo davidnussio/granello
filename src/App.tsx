@@ -47,6 +47,13 @@ export default function App() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), action ? 15000 : 6000);
   }, []);
 
+  // avvisi da punti dell'app che non ricevono `toast` (i plugin dell'editor, l'apertura dei link)
+  useEffect(() => {
+    const onNotify = (e: Event) => toast((e as CustomEvent<string>).detail);
+    window.addEventListener("granello:notify", onNotify);
+    return () => window.removeEventListener("granello:notify", onNotify);
+  }, [toast]);
+
   const refreshMeetings = useCallback(() => {
     api.listMeetings(query).then(setMeetings).catch((e) => toast(errorText(e)));
   }, [query, toast]);

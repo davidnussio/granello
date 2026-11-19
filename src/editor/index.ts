@@ -7,12 +7,44 @@ import { tasks } from "./plugins/tasks";
 import { blocks } from "./plugins/blocks";
 import { links } from "./plugins/links";
 import { snippets } from "./plugins/snippets";
+import { highlight } from "./plugins/highlight";
+import { mention } from "./plugins/mention";
+import { date } from "./plugins/date";
+import { math } from "./plugins/math";
+import { callout } from "./plugins/callout";
+import { toggle } from "./plugins/toggle";
+import { columns } from "./plugins/columns";
+import { table } from "./plugins/table";
+import { media } from "./plugins/media";
+import { linkCard } from "./plugins/linkCard";
+import { toc } from "./plugins/toc";
 
-export type { CommandItem, EditorPlugin, PluginContext, ToolbarItem } from "./types";
+export type { CommandItem, EditorPlugin, PluginContext, SuggestMenu, ToolbarItem } from "./types";
 export { base, formatting, headings, lists, tasks, blocks, links, snippets };
+export { highlight, mention, date, math, callout, toggle, columns, table, media, linkCard, toc };
 
 /** Plugin attivi di default. L'ordine determina l'ordine di comandi e pulsanti. */
-export const defaultPlugins: EditorPlugin[] = [base, formatting, headings, lists, tasks, blocks, links, snippets];
+export const defaultPlugins: EditorPlugin[] = [
+  base,
+  formatting,
+  highlight,
+  headings,
+  toc,
+  lists,
+  tasks,
+  blocks,
+  table,
+  toggle,
+  columns,
+  math,
+  callout,
+  links,
+  media,
+  linkCard,
+  snippets,
+  mention,
+  date,
+];
 
 /** Unisce i contributi dei plugin. Un plugin successivo con lo stesso `name` sostituisce il precedente. */
 export function resolvePlugins(plugins: EditorPlugin[], ctx: PluginContext): ResolvedPlugins {
