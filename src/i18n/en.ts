@@ -441,6 +441,11 @@ const en: Record<string, string> = {
   "Pulisci": "Clear",
   "Lavagna": "Whiteboard",
   "Uno schizzo a mano libera": "A freehand sketch",
+  "Incolla un link di YouTube, Loom, Figma, Vimeo o di una mappa": "Paste a YouTube, Loom, Figma, Vimeo or map link",
+  "Indirizzo da incorporare": "Address to embed",
+  "Carica {provider}": "Load {provider}",
+  "Incorpora": "Embed",
+  "YouTube, Loom, Figma, Vimeo, una mappa": "YouTube, Loom, Figma, Vimeo, a map",
 };
 
 export default en;
