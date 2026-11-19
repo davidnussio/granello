@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Extension } from "@tiptap/react";
@@ -109,8 +110,8 @@ export function SlashMenu({ bridge }: { bridge: SlashBridge }) {
 
   let lastGroup = "";
   return createPortal(
-    <div className="slash-menu" style={style} ref={list} role="listbox" aria-label="Comandi">
-      {items.length === 0 && <div className="slash-empty">Nessun comando per "{query}"</div>}
+    <div className="slash-menu" style={style} ref={list} role="listbox" aria-label={t("Comandi")}>
+      {items.length === 0 && <div className="slash-empty">{t("Nessun comando per \"{query}\"", { query })}</div>}
       {items.map((item, i) => {
         const header = item.group !== lastGroup ? item.group : null;
         lastGroup = item.group;

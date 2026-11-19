@@ -1,4 +1,5 @@
 use crate::secrets::ANTHROPIC_ID;
+use crate::i18n::tr;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,6 +106,8 @@ pub const DEFAULT_CLAUDE_MODEL: &str = "claude-sonnet-5-5";
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub user_name: String,
+    /// Lingua dell'interfaccia: "system" (default), "it" o "en".
+    pub ui_language: String,
     /// Solo per leggere le impostazioni salvate prima dei provider multipli.
     pub claude_model: String,
     pub providers: Vec<Provider>,
@@ -142,6 +145,9 @@ impl Settings {
         if self.chat_model.provider_id.is_empty() {
             self.chat_model = self.notes_model.clone();
         }
+        if !matches!(self.ui_language.as_str(), "it" | "en") {
+            self.ui_language = "system".into();
+        }
         if self.language.is_empty() {
             self.language = "it".into();
         }
@@ -167,11 +173,11 @@ impl Settings {
                 && p.id.len() <= 40
                 && p.id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
             if !id_ok || !seen.insert(p.id.clone()) {
-                return Err("Identificatore del provider non valido o duplicato".into());
+                return Err(tr("Identificatore del provider non valido o duplicato", "Invalid or duplicate provider identifier").into());
             }
             p.name = p.name.trim().chars().take(40).collect();
             if p.name.is_empty() {
-                return Err("Ogni provider deve avere un nome".into());
+                return Err(tr("Ogni provider deve avere un nome", "Every provider needs a name").into());
             }
             p.base_url = p.base_url.trim().trim_end_matches('/').to_string();
             let url_ok = (p.base_url.starts_with("http://") || p.base_url.starts_with("https://"))
@@ -179,38 +185,38 @@ impl Settings {
             match p.kind {
                 ProviderKind::Anthropic if p.base_url.is_empty() => {}
                 _ if url_ok => {}
-                _ => return Err(format!("{}: l'indirizzo deve iniziare con http:// o https://", p.name)),
+                _ => return Err(trf!("{}: l'indirizzo deve iniziare con http:// o https://", "{}: the address must start with http:// or https://", p.name)),
             }
             p.context_tokens = p.context_tokens.filter(|n| *n > 0);
         }
-        for (label, m) in [("le note AI", &mut self.notes_model), ("la chat", &mut self.chat_model)] {
+        for (label, m) in [(tr("le note AI", "AI notes"), &mut self.notes_model), (tr("la chat", "chat"), &mut self.chat_model)] {
             m.model = m.model.trim().to_string();
             if !seen.contains(&m.provider_id) {
-                return Err(format!("Il provider scelto per {label} non esiste più"));
+                return Err(trf!("Il provider scelto per {label} non esiste più", "The provider selected for {label} no longer exists"));
             }
             // i nomi dei modelli locali contengono "/" e ":" (es. qwen/qwen3-8b, llama3.2:3b)
             let model_ok = !m.model.is_empty()
                 && m.model.len() <= 200
                 && m.model.chars().all(|c| c.is_ascii_alphanumeric() || "-._:@/+".contains(c));
             if !model_ok {
-                return Err(format!("Scegli un modello valido per {label}"));
+                return Err(trf!("Scegli un modello valido per {label}", "Choose a valid model for {label}"));
             }
         }
         self.language = self.language.trim().to_ascii_lowercase();
         if !(self.language.is_empty() || self.language == "auto" || is_lang_code(&self.language)) {
-            return Err("Lingua non valida".into());
+            return Err(tr("Lingua non valida", "Invalid language").into());
         }
         self.ics_url = self.ics_url.map(|u| u.trim().to_string()).filter(|u| !u.is_empty());
         if let Some(u) = &self.ics_url {
             let ok = ["https://", "http://", "webcal://"].iter().any(|p| u.starts_with(p));
             if !ok || u.chars().any(char::is_whitespace) {
-                return Err("L'URL del calendario deve iniziare con https:// o webcal://".into());
+                return Err(tr("L'URL del calendario deve iniziare con https:// o webcal://", "The calendar URL must start with https:// or webcal://").into());
             }
         }
         self.mic_device = self.mic_device.filter(|d| !d.is_empty());
         self.system_device = self.system_device.filter(|d| !d.is_empty());
         if self.system_device.is_some() && self.system_device == self.mic_device {
-            return Err("Microfono e audio degli altri partecipanti devono essere dispositivi diversi".into());
+            return Err(tr("Microfono e audio degli altri partecipanti devono essere dispositivi diversi", "The microphone and the other participants' audio must be different devices").into());
         }
         self.notify_before_min = self.notify_before_min.clamp(1, 60);
         Ok(self.with_defaults())

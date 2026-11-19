@@ -1,4 +1,5 @@
 use crate::models::*;
+use crate::i18n::tr;
 use anyhow::Result;
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
@@ -89,9 +90,10 @@ impl Db {
     fn migrate(&self) -> Result<()> {
         let current: usize = self.conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if current > MIGRATIONS.len() {
-            anyhow::bail!(
-                "Il database è stato creato da una versione più recente di Granello (schema {current}). Aggiorna l'app."
-            );
+            return Err(crate::tra!(
+                "Il database è stato creato da una versione più recente di Granello (schema {current}). Aggiorna l'app.",
+                "This database was created by a newer version of Granello (schema {current}). Update the app."
+            ));
         }
         for (i, sql) in MIGRATIONS.iter().enumerate().skip(current) {
             let tx = self.conn.unchecked_transaction()?;
@@ -119,7 +121,8 @@ impl Db {
         Ok(ids.len())
     }
 
-    fn seed_templates(&self) -> Result<()> {
+    /// Inserisce o aggiorna i template di sistema nella lingua corrente dell'interfaccia.
+    pub fn seed_templates(&self) -> Result<()> {
         for t in crate::prompts::builtin_templates() {
             self.conn.execute(
                 "INSERT INTO templates (id, name, description, instructions, builtin) VALUES (?1, ?2, ?3, ?4, 1)
@@ -157,7 +160,7 @@ impl Db {
         template_id: Option<&str>,
     ) -> Result<Meeting> {
         let id = uuid::Uuid::new_v4().to_string();
-        let title = if title.trim().is_empty() { "Nuovo meeting" } else { title.trim() };
+        let title = if title.trim().is_empty() { tr("Nuovo meeting", "New meeting") } else { title.trim() };
         self.conn.execute(
             "INSERT INTO meetings (id, title, created_at, calendar_event_id, attendees, template_id)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",

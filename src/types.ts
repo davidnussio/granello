@@ -65,6 +65,8 @@ export interface ModelRef {
 
 export interface Settings {
   userName: string;
+  /** "system" | "it" | "en" */
+  uiLanguage: string;
   providers: Provider[];
   notesModel: ModelRef;
   chatModel: ModelRef;

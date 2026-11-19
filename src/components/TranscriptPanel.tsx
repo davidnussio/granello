@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { TranscriptSegment } from "../types";
 import { mmss } from "../format";
+import { t } from "../i18n";
 
 export default function TranscriptPanel({ segments, live }: { segments: TranscriptSegment[]; live: boolean }) {
   const end = useRef<HTMLDivElement>(null);
@@ -30,18 +31,18 @@ export default function TranscriptPanel({ segments, live }: { segments: Transcri
     >
       {groups.length === 0 && (
         <p className="muted small pad">
-          {live ? "In ascolto… la trascrizione compare dopo le prime pause." : "Nessuna trascrizione. Premi Registra."}
+          {live ? t("In ascolto… la trascrizione compare dopo le prime pause.") : t("Nessuna trascrizione. Premi Registra.")}
         </p>
       )}
       {groups.map((g, i) => (
         <div key={i} className={"bubble " + g.source}>
           <div className="bubble-meta">
-            {g.source === "me" ? "Tu" : "Altri"} · {mmss(g.start)}
+            {g.source === "me" ? t("Tu") : t("Altri")} · {mmss(g.start)}
           </div>
           {g.texts.join(" ")}
         </div>
       ))}
-      {live && <div className="listening">● in ascolto</div>}
+      {live && <div className="listening">{t("● in ascolto")}</div>}
       <div ref={end} />
     </div>
   );

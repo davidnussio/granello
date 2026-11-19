@@ -7,6 +7,7 @@ import ChatPanel from "./components/ChatPanel";
 import SettingsView from "./components/SettingsView";
 import TemplatesView from "./components/TemplatesView";
 import Home from "./components/Home";
+import { getLang, resolveLang, setLang, t } from "./i18n";
 
 export interface SetupStatus {
   hasKey: boolean;
@@ -29,6 +30,15 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [setup, setSetup] = useState<SetupStatus | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  // cambiare lingua ridisegna tutta l'interfaccia: t() legge la lingua corrente
+  const [, setLangState] = useState(getLang());
+  const applyLang = useCallback((setting: string) => {
+    setLang(resolveLang(setting));
+    setLangState(getLang());
+  }, []);
+  useEffect(() => {
+    api.getSettings().then((s) => applyLang(s.uiLanguage)).catch(() => {});
+  }, [applyLang]);
 
   const toast = useCallback((text: string, action?: Toast["action"]) => {
     const id = Date.now() + Math.random();
@@ -46,7 +56,7 @@ export default function App() {
         .upcomingEvents(force)
         .then(setEvents)
         .catch((e) => {
-          if (force) toast(`Calendario: ${errorText(e)}`);
+          if (force) toast(t("Calendario: {error}", { error: errorText(e) }));
         });
     },
     [toast],
@@ -90,15 +100,15 @@ export default function App() {
         refreshRec();
         refreshMeetings();
       }),
-      on("transcription-error", (e) => toast(`Trascrizione: ${e.message}`)),
+      on("transcription-error", (e) => toast(t("Trascrizione: {error}", { error: e.message }))),
       on("recording-warning", (e) => toast(e.message)),
       on("recording-error", (e) => {
         // il dispositivo audio è sparito: la cattura si è già fermata, si chiude la sessione
-        toast(`Registrazione interrotta: ${e.message}. La parte già registrata viene trascritta.`);
+        toast(t("Registrazione interrotta: {error}. La parte già registrata viene trascritta.", { error: e.message }));
         api.stopRecording().catch(() => {}).finally(refreshRec);
       }),
       on("meeting-starting", (e) =>
-        toast(`Sta per iniziare: ${e.title}`, { label: "Prendi note", run: () => openEvent(e) }),
+        toast(t("Sta per iniziare: {title}", { title: e.title }), { label: t("Prendi note"), run: () => openEvent(e) }),
       ),
     ];
     return () => {
@@ -195,41 +205,50 @@ export default function App() {
         )}
         {view.kind === "chat" && (
           <div className="page">
-            <h1 className="page-title">Chiedi a tutti i tuoi meeting</h1>
+            <h1 className="page-title">{t("Chiedi a tutti i tuoi meeting")}</h1>
             <ChatPanel
               scope="global"
               toast={toast}
               suggestions={[
-                "Quali azioni sono rimaste aperte questa settimana?",
-                "Cosa abbiamo deciso nell'ultimo meeting con il cliente?",
-                "Riassumi i temi ricorrenti degli standup",
+                t("Quali azioni sono rimaste aperte questa settimana?"),
+                t("Cosa abbiamo deciso nell'ultimo meeting con il cliente?"),
+                t("Riassumi i temi ricorrenti degli standup"),
               ]}
               big
             />
           </div>
         )}
-        {view.kind === "settings" && <SettingsView toast={toast} onCalendarChanged={() => refreshEvents(true)} />}
+        {view.kind === "settings" && (
+          <SettingsView
+            toast={toast}
+            onCalendarChanged={() => refreshEvents(true)}
+            onLangChanged={(l) => {
+              applyLang(l);
+              refreshMeetings();
+            }}
+          />
+        )}
         {view.kind === "templates" && <TemplatesView toast={toast} />}
       </main>
       <div className="toasts">
-        {toasts.map((t) => (
-          <div key={t.id} className="toast" role="status">
-            <span>{t.text}</span>
-            {t.action && (
+        {toasts.map((item) => (
+          <div key={item.id} className="toast" role="status">
+            <span>{item.text}</span>
+            {item.action && (
               <button
                 className="btn small primary"
                 onClick={() => {
-                  t.action!.run();
-                  setToasts((x) => x.filter((y) => y.id !== t.id));
+                  item.action!.run();
+                  setToasts((x) => x.filter((y) => y.id !== item.id));
                 }}
               >
-                {t.action.label}
+                {item.action.label}
               </button>
             )}
             <button
               className="toast-x"
-              aria-label="Chiudi notifica"
-              onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))}
+              aria-label={t("Chiudi notifica")}
+              onClick={() => setToasts((x) => x.filter((y) => y.id !== item.id))}
             >
               ×
             </button>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, errorText } from "../api";
 import type { ModelRef, Provider, Settings } from "../types";
+import { t } from "../i18n";
 
 interface Props {
   s: Settings;
@@ -47,7 +48,12 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
     try {
       const list = await api.listProviderModels(p);
       setModels((x) => ({ ...x, [p.id]: list }));
-      if (!quiet) toast(list.length ? `${p.name}: ${list.length} modelli disponibili` : `${p.name} non ha modelli caricati`);
+      if (!quiet)
+        toast(
+          list.length
+            ? t("{name}: {n} modelli disponibili", { name: p.name, n: list.length })
+            : t("{name} non ha modelli caricati", { name: p.name }),
+        );
       return list;
     } catch (e) {
       if (!quiet) toast(`${p.name}: ${errorText(e)}`);
@@ -63,7 +69,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
   const addProvider = async (preset: (typeof PRESETS)[number]) => {
     let id = preset.id;
     for (let n = 2; s.providers.some((p) => p.id === id); n++) id = `${preset.id}-${n}`;
-    const p: Provider = { id, name: preset.name, kind: "openai", baseUrl: preset.baseUrl, contextTokens: null };
+    const p: Provider = { id, name: t(preset.name), kind: "openai", baseUrl: preset.baseUrl, contextTokens: null };
     if (await save({ providers: [...s.providers, p] })) loadModels(p, true);
   };
 
@@ -84,7 +90,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
       setKeyDraft((x) => ({ ...x, [p.id]: "" }));
       setHasKey((x) => ({ ...x, [p.id]: !!key }));
       api.hasApiKey(p.id).then((v) => setHasKey((x) => ({ ...x, [p.id]: v })));
-      toast(key ? "API key salvata nel Portachiavi" : "API key rimossa");
+      toast(key ? t("API key salvata nel Portachiavi") : t("API key rimossa"));
     } catch (e) {
       toast(errorText(e));
     }
@@ -102,7 +108,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
       const available = models[providerId] ?? (await loadModels(p, true));
       const model = providerId === ANTHROPIC ? "claude-sonnet-5-5" : (available[0] ?? "");
       if (model) await save({ [field]: { providerId, model } });
-      else toast(`Scrivi il nome del modello di ${p.name} da usare per ${label.toLowerCase()}`);
+      else toast(t("Scrivi il nome del modello di {name}", { name: p.name }));
     };
     return (
       <div className="field">
@@ -111,7 +117,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
           <select
             className="provider-select"
             value={ref.providerId}
-            aria-label={`Provider per ${label}`}
+            aria-label={t("Provider per {label}", { label })}
             onChange={(e) => changeProvider(e.target.value)}
           >
             {s.providers.map((p) => (
@@ -123,8 +129,8 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
           <input
             value={ref.model}
             list={listId}
-            placeholder="Nome del modello"
-            aria-label={`Modello per ${label}`}
+            placeholder={t("Nome del modello")}
+            aria-label={t("Modello per {label}", { label })}
             spellCheck={false}
             onFocus={() => {
               const p = provider(ref.providerId);
@@ -146,11 +152,11 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
 
   return (
     <section className="card">
-      <h3>Modelli AI</h3>
-      {picker("Note AI", "notesModel", "Scrive le note arricchite: conta la qualità, conviene il modello migliore che hai.")}
-      {picker("Chat", "chatModel", "Risponde alle domande sui meeting: può essere un modello più piccolo o locale.")}
+      <h3>{t("Modelli AI")}</h3>
+      {picker(t("Note AI"), "notesModel", t("Scrive le note arricchite: conta la qualità, conviene il modello migliore che hai."))}
+      {picker(t("Chat"), "chatModel", t("Risponde alle domande sui meeting: può essere un modello più piccolo o locale."))}
 
-      <h4 className="sub">Provider</h4>
+      <h4 className="sub">{t("Provider")}</h4>
       {s.providers.map((p) => {
         const builtin = p.id === ANTHROPIC;
         const draft = keyDraft[p.id] ?? "";
@@ -162,25 +168,25 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
                 className="provider-name"
                 value={p.name}
                 disabled={builtin}
-                aria-label="Nome del provider"
+                aria-label={t("Nome del provider")}
                 onChange={(e) => patchProvider(p.id, { name: e.target.value })}
                 onBlur={() => save({})}
               />
-              <span className="chip tiny">{p.kind === "anthropic" ? "Anthropic" : "Compatibile OpenAI"}</span>
+              <span className="chip tiny">{p.kind === "anthropic" ? "Anthropic" : t("Compatibile OpenAI")}</span>
               <div className="spacer" />
               <button className="btn small" onClick={() => loadModels(p)} disabled={checking === p.id}>
-                {checking === p.id ? "Verifico…" : "Verifica"}
+                {checking === p.id ? t("Verifico…") : t("Verifica")}
               </button>
               {!builtin && (
                 <button className="btn small ghost danger" onClick={() => removeProvider(p.id)}>
-                  Rimuovi
+                  {t("Rimuovi")}
                 </button>
               )}
             </div>
             {p.kind === "openai" && (
               <div className="row gap">
                 <label className="field grow">
-                  <span>Indirizzo</span>
+                  <span>{t("Indirizzo")}</span>
                   <input
                     value={p.baseUrl}
                     placeholder="http://localhost:1234/v1"
@@ -190,13 +196,13 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
                   />
                 </label>
                 <label className="field ctx">
-                  <span>Contesto (token)</span>
+                  <span>{t("Contesto (token)")}</span>
                   <input
                     type="number"
                     min={0}
                     step={1024}
                     value={p.contextTokens ?? ""}
-                    placeholder="non impostato"
+                    placeholder={t("non impostato")}
                     onChange={(e) => patchProvider(p.id, { contextTokens: Number(e.target.value) || null })}
                     onBlur={() => save({})}
                   />
@@ -204,45 +210,43 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
               </div>
             )}
             <label className="field">
-              <span>API key</span>
+              <span>{t("API key")}</span>
               <div className="row gap">
                 <input
                   type="password"
                   value={draft}
                   placeholder={
                     saved
-                      ? "•••••••••• salvata nel Portachiavi"
+                      ? t("•••••••••• salvata nel Portachiavi")
                       : builtin
                         ? "sk-ant-…"
-                        : "Non serve per i server locali"
+                        : t("Non serve per i server locali")
                   }
                   onChange={(e) => setKeyDraft((x) => ({ ...x, [p.id]: e.target.value }))}
                 />
                 <button className="btn" onClick={() => saveKey(p)} disabled={!draft && !saved}>
-                  {draft ? "Salva" : "Rimuovi"}
+                  {draft ? t("Salva") : t("Rimuovi")}
                 </button>
               </div>
             </label>
             {p.kind === "openai" && isLocal(p.baseUrl) && (
               <small className="muted">
-                Resta tutto su questo Mac. I server locali troncano in silenzio i testi più lunghi del contesto del
-                modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello
-                ti avvisa prima di inviare un meeting che non ci sta.
+                {t("Resta tutto su questo Mac. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare un meeting che non ci sta.")}
               </small>
             )}
             {p.kind === "openai" && p.baseUrl.startsWith("http://") && !isLocal(p.baseUrl) && (
               <small className="warn">
-                Indirizzo non cifrato (http) verso un altro computer: note e trascrizioni viaggiano in chiaro sulla rete.
+                {t("Indirizzo non cifrato (http) verso un altro computer: note e trascrizioni viaggiano in chiaro sulla rete.")}
               </small>
             )}
           </div>
         );
       })}
       <div className="row gap add-provider">
-        <span className="muted small">Aggiungi:</span>
+        <span className="muted small">{t("Aggiungi:")}</span>
         {PRESETS.map((preset) => (
           <button key={preset.id} className="btn small" onClick={() => addProvider(preset)}>
-            + {preset.label}
+            + {t(preset.label)}
           </button>
         ))}
       </div>

@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import type { EditorPlugin } from "../types";
 
 export const blocks: EditorPlugin = {
@@ -5,28 +6,46 @@ export const blocks: EditorPlugin = {
   commands: [
     {
       id: "quote",
-      title: "Citazione",
-      hint: "> + spazio",
+      get title() {
+        return t("Citazione");
+      },
+      get hint() {
+        return t("> + spazio");
+      },
       icon: "❝",
-      group: "Blocchi",
+      get group() {
+        return t("Blocchi");
+      },
       keywords: ["quote", "blockquote", "citazione"],
       run: (e) => e.chain().focus().toggleBlockquote().run(),
     },
     {
       id: "code-block",
-      title: "Blocco di codice",
-      hint: "``` + spazio",
+      get title() {
+        return t("Blocco di codice");
+      },
+      get hint() {
+        return t("``` + spazio");
+      },
       icon: "</>",
-      group: "Blocchi",
+      get group() {
+        return t("Blocchi");
+      },
       keywords: ["code", "codice", "snippet"],
       run: (e) => e.chain().focus().toggleCodeBlock().run(),
     },
     {
       id: "divider",
-      title: "Separatore",
-      hint: "--- + invio",
+      get title() {
+        return t("Separatore");
+      },
+      get hint() {
+        return t("--- + invio");
+      },
       icon: "—",
-      group: "Blocchi",
+      get group() {
+        return t("Blocchi");
+      },
       keywords: ["linea", "divider", "hr", "separatore"],
       run: (e) => e.chain().focus().setHorizontalRule().run(),
     },

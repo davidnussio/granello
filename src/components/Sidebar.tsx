@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import type { CalendarEvent, MeetingSummary, RecordingStatus, View } from "../types";
 import { groupByDay, time } from "../format";
+import { t } from "../i18n";
 
 interface Props {
   view: View;
@@ -23,15 +24,15 @@ export default function Sidebar(p: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-top">
-        <button className="btn primary wide" onClick={p.onNew} title="Nuove note (⌘N)">
-          + Nuove note
+        <button className="btn primary wide" onClick={p.onNew} title={t("Nuove note (⌘N)")}>
+          {t("+ Nuove note")}
         </button>
         <input
           className="search"
           ref={p.searchRef}
           type="search"
-          aria-label="Cerca nei meeting"
-          placeholder="Cerca nei meeting…  ⌘K"
+          aria-label={t("Cerca nei meeting")}
+          placeholder={t("Cerca nei meeting…  ⌘K")}
           value={p.query}
           onChange={(e) => p.setQuery(e.target.value)}
         />
@@ -42,18 +43,18 @@ export default function Sidebar(p: Props) {
           ⌂ Home
         </button>
         <button className={navCls(p.view.kind === "chat")} onClick={() => p.setView({ kind: "chat" })}>
-          ✦ Chiedi ai meeting
+          {t("✦ Chiedi ai meeting")}
         </button>
       </nav>
 
       {soon.length > 0 && !p.query && (
         <section className="side-section">
-          <h4>In arrivo</h4>
+          <h4>{t("In arrivo")}</h4>
           {soon.map((e) => (
             <button key={e.id} className="side-item event" onClick={() => p.onOpenEvent(e)}>
               <span className="side-time">{time(e.start)}</span>
               <span className="side-title">{e.title}</span>
-              {e.start <= now && e.end > now && <span className="live-dot" title="In corso" />}
+              {e.start <= now && e.end > now && <span className="live-dot" title={t("In corso")} />}
             </button>
           ))}
         </section>
@@ -61,7 +62,7 @@ export default function Sidebar(p: Props) {
 
       <div className="side-list">
         {p.meetings.length === 0 && (
-          <p className="muted small pad">{p.query ? "Nessun risultato" : "Ancora nessun meeting"}</p>
+          <p className="muted small pad">{p.query ? t("Nessun risultato") : t("Ancora nessun meeting")}</p>
         )}
         {groupByDay(p.meetings, (m) => m.createdAt).map(([day, items]) => (
           <section key={day} className="side-section">
@@ -82,7 +83,7 @@ export default function Sidebar(p: Props) {
                   <span className="side-meta">
                     {time(m.createdAt)}
                     {m.hasEnhanced ? " · ✦" : ""}
-                    {m.attendees.length ? ` · ${m.attendees.length} persone` : ""}
+                    {m.attendees.length ? ` · ${t("{n} persone", { n: m.attendees.length })}` : ""}
                   </span>
                 )}
               </button>
@@ -91,12 +92,22 @@ export default function Sidebar(p: Props) {
         ))}
       </div>
 
+      {p.rec.meetingId && p.rec.meetingId !== selectedId && (
+        <button
+          className="rec-pill"
+          title={t("Apri il meeting in registrazione")}
+          onClick={() => p.setView({ kind: "meeting", id: p.rec.meetingId! })}
+        >
+          {t("● Registrazione in corso")}
+        </button>
+      )}
+
       <div className="sidebar-bottom">
         <button className={navCls(p.view.kind === "templates")} onClick={() => p.setView({ kind: "templates" })}>
-          ☰ Template
+          {t("☰ Template")}
         </button>
         <button className={navCls(p.view.kind === "settings")} onClick={() => p.setView({ kind: "settings" })}>
-          ⚙ Impostazioni
+          {t("⚙ Impostazioni")}
         </button>
       </div>
     </aside>

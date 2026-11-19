@@ -6,6 +6,7 @@
 //! annullamento da parte dell'utente, motivo di arresto (`stop_reason`) e
 //! prompt caching del system prompt per le conversazioni a più turni.
 
+use crate::i18n::tr;
 use crate::models::ProviderKind;
 use futures_util::StreamExt;
 use serde::Serialize;
@@ -20,22 +21,45 @@ const MAX_RETRY_WAIT: Duration = Duration::from_secs(30);
 /// Ogni quanto si controlla la richiesta di annullamento mentre si aspetta la rete.
 const CANCEL_POLL: Duration = Duration::from_millis(250);
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum LlmError {
-    #[error("Generazione annullata")]
     Cancelled,
-    #[error("API key non valida o mancante. Controllala nelle Impostazioni.")]
     Auth,
-    #[error("Errore del modello ({status}): {message}")]
     Api { status: u16, message: String },
-    #[error("Il modello ha rifiutato la richiesta")]
     Refused,
-    #[error("La risposta si è interrotta prima della fine. Riprova.")]
     Interrupted,
-    #[error("Impossibile raggiungere {name} ({url}). Controlla che il server sia avviato.")]
     Unreachable { name: String, url: String },
-    #[error("Errore di rete: {0}")]
     Network(String),
+}
+
+impl std::error::Error for LlmError {}
+
+impl std::fmt::Display for LlmError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = match self {
+            Self::Cancelled => tr("Generazione annullata", "Generation cancelled").to_string(),
+            Self::Auth => tr(
+                "API key non valida o mancante. Controllala nelle Impostazioni.",
+                "Invalid or missing API key. Check it in Settings.",
+            )
+            .to_string(),
+            Self::Api { status, message } => {
+                trf!("Errore del modello ({status}): {message}", "Model error ({status}): {message}")
+            }
+            Self::Refused => tr("Il modello ha rifiutato la richiesta", "The model declined the request").to_string(),
+            Self::Interrupted => tr(
+                "La risposta si è interrotta prima della fine. Riprova.",
+                "The answer was cut off before the end. Try again.",
+            )
+            .to_string(),
+            Self::Unreachable { name, url } => trf!(
+                "Impossibile raggiungere {name} ({url}). Controlla che il server sia avviato.",
+                "Can't reach {name} ({url}). Check that the server is running."
+            ),
+            Self::Network(e) => trf!("Errore di rete: {e}", "Network error: {e}"),
+        };
+        f.write_str(&msg)
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

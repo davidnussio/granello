@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import type { EditorPlugin } from "../types";
 
 const dateFmt = new Intl.DateTimeFormat("it-CH", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -9,37 +10,61 @@ export const snippets: EditorPlugin = {
   commands: [
     {
       id: "decision",
-      title: "Decisione",
-      hint: "Evidenzia una decisione presa",
+      get title() {
+        return t("Decisione");
+      },
+      get hint() {
+        return t("Evidenzia una decisione presa");
+      },
       icon: "✓",
-      group: "Meeting",
+      get group() {
+        return t("Meeting");
+      },
       keywords: ["decisione", "deciso", "decision"],
-      run: (e) => e.chain().focus().insertContent("**Decisione:** ").run(),
+      run: (e) => e.chain().focus().insertContent(t("**Decisione:** ")).run(),
     },
     {
       id: "question",
-      title: "Domanda aperta",
-      hint: "Qualcosa da chiarire dopo",
+      get title() {
+        return t("Domanda aperta");
+      },
+      get hint() {
+        return t("Qualcosa da chiarire dopo");
+      },
       icon: "?",
-      group: "Meeting",
+      get group() {
+        return t("Meeting");
+      },
       keywords: ["domanda", "dubbio", "question", "aperta"],
-      run: (e) => e.chain().focus().insertContent("**Da chiarire:** ").run(),
+      run: (e) => e.chain().focus().insertContent(t("**Da chiarire:** ")).run(),
     },
     {
       id: "now",
-      title: "Ora attuale",
-      hint: "Inserisce l'orario",
+      get title() {
+        return t("Ora attuale");
+      },
+      get hint() {
+        return t("Inserisce l'orario");
+      },
       icon: "◷",
-      group: "Meeting",
+      get group() {
+        return t("Meeting");
+      },
       keywords: ["ora", "orario", "time", "adesso"],
       run: (e) => e.chain().focus().insertContent(`${timeFmt.format(new Date())} `).run(),
     },
     {
       id: "today",
-      title: "Data di oggi",
-      hint: "Inserisce la data",
+      get title() {
+        return t("Data di oggi");
+      },
+      get hint() {
+        return t("Inserisce la data");
+      },
       icon: "▦",
-      group: "Meeting",
+      get group() {
+        return t("Meeting");
+      },
       keywords: ["data", "oggi", "date", "today"],
       run: (e) => e.chain().focus().insertContent(`${dateFmt.format(new Date())} `).run(),
     },

@@ -1,9 +1,10 @@
 //! Cattura audio (microfono + eventuale dispositivo di loopback per l'audio di sistema),
 //! suddivisione in blocchi sulle pause e invio alla trascrizione.
 
+use crate::i18n::tr;
 use crate::db::Db;
 use crate::transcribe::{self, TranscriberCache};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -45,11 +46,11 @@ fn find_device(name: Option<&str>) -> Result<cpal::Device> {
     match name.filter(|n| !n.is_empty()) {
         None => host
             .default_input_device()
-            .ok_or_else(|| anyhow!("nessun microfono disponibile")),
+            .ok_or_else(|| tra!("nessun microfono disponibile", "no microphone available")),
         Some(n) => host
             .input_devices()?
             .find(|d| d.name().map(|dn| dn == n).unwrap_or(false))
-            .ok_or_else(|| anyhow!("dispositivo audio \"{n}\" non trovato")),
+            .ok_or_else(|| tra!("dispositivo audio \"{n}\" non trovato", "audio device \"{n}\" not found")),
     }
 }
 
@@ -63,13 +64,13 @@ fn open_stream(
     let rate = supported.sample_rate().0;
     let channels = supported.channels() as usize;
     let config: cpal::StreamConfig = supported.clone().into();
-    let label = device.name().unwrap_or_else(|_| "dispositivo audio".into());
+    let label = device.name().unwrap_or_else(|_| tr("dispositivo audio", "audio device").into());
     let err_fn = move |e: cpal::StreamError| {
         log::error!("errore stream audio ({label}): {e}");
         let mut slot = error.lock();
         if slot.is_none() {
             *slot = Some(match e {
-                cpal::StreamError::DeviceNotAvailable => format!("\"{label}\" non è più disponibile"),
+                cpal::StreamError::DeviceNotAvailable => trf!("\"{label}\" non è più disponibile", "\"{label}\" is no longer available"),
                 other => format!("{label}: {other}"),
             });
         }
@@ -122,7 +123,7 @@ fn open_stream(
                 None,
             )?
         }
-        f => return Err(anyhow!("formato audio non supportato: {f:?}")),
+        f => return Err(tra!("formato audio non supportato: {f:?}", "unsupported audio format: {f:?}")),
     };
     stream.play()?;
     Ok((stream, rate))
@@ -392,9 +393,13 @@ impl Session {
                                 "recording-warning",
                                 ErrorEvent {
                                     meeting_id: meeting_id.clone(),
-                                    message: "Nessun segnale dal microfono. Controlla che Granello abbia il permesso \
-in Impostazioni di Sistema → Privacy e sicurezza → Microfono e che il microfono non sia disattivato."
-                                        .into(),
+                                    message: tr(
+                                        "Nessun segnale dal microfono. Controlla che Granello abbia il permesso \
+in Impostazioni di Sistema → Privacy e sicurezza → Microfono e che il microfono non sia disattivato.",
+                                        "No signal from the microphone. Check that Granello is allowed in \
+System Settings → Privacy & Security → Microphone and that the microphone is not muted.",
+                                    )
+                                    .into(),
                                 },
                             );
                         }
@@ -417,7 +422,7 @@ in Impostazioni di Sistema → Privacy e sicurezza → Microfono e che il microf
         match ready_rx.recv_timeout(Duration::from_secs(10)) {
             Ok(Ok(())) => {}
             Ok(Err(e)) => return Err(e),
-            Err(_) => return Err(anyhow!("timeout nell'apertura dei dispositivi audio")),
+            Err(_) => return Err(tra!("timeout nell'apertura dei dispositivi audio", "timed out opening the audio devices")),
         }
 
         Ok(Self {

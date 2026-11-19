@@ -1,145 +1,159 @@
 # Granello
 
-Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Granello registra e trascrive **in locale** con whisper.cpp, poi Claude unisce le tue note e la trascrizione in note complete. Nessun bot entra nella call.
+**English** · [Italiano](README.it.md)
 
-## Funzioni
+A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, Granello records and transcribes **locally** with whisper.cpp, then an AI model (Claude or a local model) merges your notes and the transcript into complete notes. No bot joins the call.
 
-- **Note + registrazione**: editor Markdown (TipTap) con menu `/` dei comandi, barra di formattazione sulla selezione, link e checklist, salvataggio automatico, registrazione con livelli audio e cronometro, ripresa sullo stesso meeting.
-- **Trascrizione locale**: whisper.cpp con Metal su Apple Silicon. L'audio viene tagliato sulle pause (6-20 s), ricampionato a 16 kHz e trascritto in un thread dedicato. Filtra le allucinazioni tipiche ("Sottotitoli a cura di QTSS", "[Musica]"...). Il titolo e i partecipanti vengono passati come prompt iniziale per migliorare nomi e termini.
-- **Due sorgenti**: microfono ("Tu") e un dispositivo di loopback per l'audio della call ("Altri").
-- **Note AI**: Claude (streaming) arricchisce le tue note seguendo il template scelto. Le note AI restano modificabili.
-- **Template**: Generale, 1:1, Standup, Colloquio, Meeting cliente + template personalizzati.
-- **Calendario**: URL iCal (Google, Outlook), eventi ricorrenti con RRULE, EXDATE e override, notifica prima dell'inizio, un click per aprire le note del meeting.
-- **Chat**: domande su un meeting o su tutti (ricerca full-text SQLite FTS5 per trovare i meeting pertinenti, con citazione di titolo e data).
-- **Ricerca** nella sidebar su titoli, note, note AI e trascrizioni.
-- **Scorciatoie**: ⌘N nuove note, ⌘K cerca, ⌘, impostazioni.
+## Features
 
-## Modelli AI
+- **Notes + recording**: Markdown editor (TipTap) with a `/` command menu, a formatting toolbar on selection, links and checklists, autosave, recording with audio levels and a timer, resuming on the same meeting.
+- **Local transcription**: whisper.cpp with Metal on Apple Silicon. Audio is cut on pauses (6-20 s), resampled to 16 kHz and transcribed on a dedicated thread. Typical hallucinations ("Thanks for watching", "[Music]"...) are filtered out. The meeting title and attendees are passed as the initial prompt to improve names and terms.
+- **Two sources**: the microphone ("You") and a loopback device for the call audio ("Others").
+- **AI notes**: the model (streaming) enriches your notes following the template you chose. AI notes stay editable.
+- **Templates**: General, 1:1, Standup, Interview, Client meeting, plus your own.
+- **Calendar**: iCal URL (Google, Outlook), recurring events with RRULE, EXDATE and overrides, a notification before the start, one click to open the meeting's notes.
+- **Chat**: ask about one meeting or all of them (SQLite FTS5 full-text search finds the relevant meetings, answers cite title and date).
+- **Search** in the sidebar across titles, notes, AI notes and transcripts.
+- **Shortcuts**: ⌘N new notes, ⌘K search, ⌘, settings.
+- **English and Italian**: the interface follows your Mac's language and can be changed in Settings → Profile.
 
-Le note AI e la chat possono usare modelli diversi, anche di provider diversi (Impostazioni → Modelli AI). Due protocolli coprono tutto:
+## AI models
 
-| Tipo di provider | Per cosa |
+AI notes and chat can use different models, even from different providers (Settings → AI models). Two protocols cover everything:
+
+| Provider type | Used for |
 |---|---|
-| Anthropic | Claude (provider predefinito, sempre presente) |
-| Compatibile OpenAI | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, OpenRouter e qualsiasi server che esponga `/chat/completions` |
+| Anthropic | Claude (the default provider, always present) |
+| OpenAI-compatible | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, OpenRouter and any server exposing `/chat/completions` |
 
-- L'elenco dei modelli viene letto dal server (`/models`); "Verifica" controlla che il provider risponda.
-- Ogni provider ha la sua API key nel Portachiavi; i server locali di solito non ne vogliono una.
-- **Contesto dei modelli locali**: un'ora di meeting sono decine di migliaia di token e i server locali troncano in silenzio quello che non ci sta (Ollama parte con un contesto ridotto). Indicando il contesto del provider, Granello stima la dimensione della richiesta e si ferma con un errore chiaro invece di produrre note su mezza trascrizione.
-- Il ragionamento dei modelli "thinking" locali (`<think>…</think>`) viene tolto dalla risposta.
-- Con un provider locale per note e chat non esce nulla dal Mac.
+- The model list is read from the server (`/models`); "Test" checks that the provider responds.
+- Each provider has its own API key in the Keychain; local servers usually don't need one.
+- **Context of local models**: an hour of meeting is tens of thousands of tokens, and local servers silently truncate what doesn't fit (Ollama starts with a small context). If you enter the provider's context size, Granello estimates the request size and stops with a clear error instead of producing notes from half a transcript.
+- The reasoning of local "thinking" models (`<think>…</think>`) is stripped from the answer.
+- With a local provider for both notes and chat, nothing leaves your Mac.
 
-## Affidabilità
+## Languages
 
-- **Niente meeting persi**: se chiudi l'app mentre registri, la cattura si ferma e l'audio già registrato viene trascritto prima dell'uscita (fino a 2 minuti). Dopo un crash, i meeting rimasti "in registrazione" vengono chiusi e reindicizzati al riavvio.
-- **Dispositivo audio scollegato** (es. AirPods): la sessione si chiude in modo pulito con un avviso, tenendo quello che è stato registrato. Se il microfono non dà alcun segnale per 8 secondi compare un avviso sui permessi.
-- **Claude**: riprova automatica su errori transitori (429, 5xx, sovraccarico, rete), generazione annullabile, risposte troncate o interrotte segnalate invece che salvate in silenzio. Una rigenerazione fallita non tocca le note AI esistenti. Nella chat sul singolo meeting il contesto è in prompt cache.
-- **Database**: migrazioni versionate (`PRAGMA user_version`), scritture in transazione, WAL. Un database creato da una versione più recente non viene aperto.
-- **Download dei modelli**: file parziali rimossi in caso di errore, controllo di dimensione e formato, modelli eliminabili dalle Impostazioni.
-- **Istanza singola**: aprire l'app una seconda volta porta in primo piano la finestra esistente.
-- **Log** in `~/Library/Logs/ch.dambox.granello/Granello.log` (con rotazione). Non contengono note, trascrizioni, API key né l'URL del calendario.
+The interface is available in English and Italian. On first launch it follows the system language (Italian if the Mac is set to Italian, English otherwise); Settings → Profile lets you pin a language, and the change applies immediately. Errors, notifications, built-in templates and date/time formats follow the same language. The *meeting language* (the one being spoken, used for transcription and for the AI notes) is a separate setting.
+
+In the frontend Italian is the source language: `t("Testo italiano")` looks up the translation in `src/i18n/en.ts`. `pnpm check` fails if a string has no English translation. In the backend every message carries both versions: `tr("italiano", "english")`, and `trf!` for messages with parameters.
+
+## Reliability
+
+- **No lost meetings**: if you quit while recording, capture stops and the audio already recorded is transcribed before the app exits (up to 2 minutes). After a crash, meetings left "recording" are closed and reindexed on the next launch.
+- **Audio device unplugged** (e.g. AirPods): the session ends cleanly with a warning and keeps what was recorded. If the microphone gives no signal at all for 8 seconds, a permissions hint appears.
+- **AI models**: automatic retry on transient errors (429, 5xx, overload, network), cancellable generation, truncated or interrupted answers reported instead of silently saved. A failed regeneration leaves the existing AI notes untouched. In single-meeting chat with Claude, the context is prompt-cached.
+- **Database**: versioned migrations (`PRAGMA user_version`), transactional writes, WAL. A database created by a newer version is not opened.
+- **Model downloads**: partial files removed on error, size and format checks, models deletable from Settings.
+- **Single instance**: opening the app a second time brings the existing window to the front.
+- **Logs** in `~/Library/Logs/ch.dambox.granello/Granello.log` (rotated). They contain no notes, transcripts, API keys or the calendar URL.
 
 ## Privacy
 
-L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. Al provider AI scelto viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat; con un provider locale non esce nulla dal Mac. Le API key stanno nel Portachiavi; l'URL iCal sta nel database locale.
+Audio is never saved: it is transcribed locally and discarded. Notes and transcripts stay in the local database. Only text (notes and transcript) is sent to the AI provider you chose, when you generate AI notes or use the chat; with a local provider nothing leaves your Mac. API keys live in the Keychain; the iCal URL lives in the local database.
 
-## Architettura
+## Architecture
 
 ```
 src-tauri/src
-├── lib.rs         setup, stato, log, istanza singola, uscita pulita, watcher calendario + notifiche
-├── commands.rs    comandi Tauri (meeting, registrazione, AI, template, impostazioni, modelli, calendario)
-├── audio.rs       cattura cpal (thread audio) + Chunker sulle pause + thread di trascrizione
-├── transcribe.rs  whisper-rs, catalogo modelli, resampling, filtro allucinazioni
-├── llm.rs         streaming dai modelli AI (Anthropic e compatibili OpenAI): retry, annullamento, prompt caching
-├── prompts.rs     prompt di enhance/chat e template di sistema
-├── calendar.rs    parser iCal + espansione ricorrenze
-├── db.rs          SQLite (rusqlite bundled) + FTS5, migrazioni versionate, recupero dopo crash
-└── secrets.rs     API key dei provider nel Portachiavi macOS
+├── lib.rs         setup, state, logging, single instance, clean exit, calendar watcher + notifications
+├── commands.rs    Tauri commands (meetings, recording, AI, templates, settings, models, calendar)
+├── audio.rs       cpal capture (audio thread) + pause-based Chunker + transcription thread
+├── transcribe.rs  whisper-rs, model catalog, resampling, hallucination filter
+├── llm.rs         streaming from AI models (Anthropic and OpenAI-compatible): retry, cancellation, prompt caching
+├── prompts.rs     enhance/chat prompts and built-in templates
+├── calendar.rs    iCal parser + recurrence expansion
+├── db.rs          SQLite (bundled rusqlite) + FTS5, versioned migrations, crash recovery
+├── secrets.rs     provider API keys in the macOS Keychain
+└── i18n.rs        language of backend texts (Italian / English)
 src/               React + TypeScript (Vite)
-└── editor/        editor delle note, composto da plugin
+├── editor/        the note editor, assembled from plugins
+└── i18n/          interface translations
 ```
 
-### Editor a plugin
+### Plugin-based editor
 
-L'editor (`src/editor`) è un guscio TipTap che non conosce le singole funzioni: le ricava da una lista di plugin. Un plugin può contribuire estensioni TipTap, comandi per il menu `/` e pulsanti per la barra che compare sul testo selezionato.
+The editor (`src/editor`) is a TipTap shell that knows nothing about individual features: it gets them from a list of plugins. A plugin can contribute TipTap extensions, commands for the `/` menu and buttons for the toolbar shown on selected text.
 
 ```ts
-// src/editor/plugins/esempio.ts
+// src/editor/plugins/example.ts
+import { t } from "../../i18n";
 import type { EditorPlugin } from "../types";
 
-export const esempio: EditorPlugin = {
-  name: "esempio",
-  extensions: () => [/* nodi, mark o scorciatoie TipTap */],
+export const example: EditorPlugin = {
+  name: "example",
+  extensions: () => [/* TipTap nodes, marks or shortcuts */],
   commands: [
     {
-      id: "rischio",
-      title: "Rischio",
+      id: "risk",
+      get title() {
+        return t("Rischio"); // Italian source text; add the English one to src/i18n/en.ts
+      },
       icon: "!",
       group: "Meeting",
       keywords: ["rischio", "risk"],
-      run: (e) => e.chain().focus().insertContent("**Rischio:** ").run(),
+      run: (e) => e.chain().focus().insertContent(t("**Rischio:** ")).run(),
     },
   ],
-  toolbar: [/* pulsanti, anche con un pannello proprio (vedi plugins/links.tsx) */],
+  toolbar: [/* buttons, optionally with their own panel (see plugins/links.tsx) */],
 };
 ```
 
-Per attivarlo si aggiunge a `defaultPlugins` in `src/editor/index.ts`, oppure si passa una lista propria a `<NoteEditor plugins={...} />`. Un plugin con lo stesso `name` di uno esistente lo sostituisce. I plugin inclusi: `base`, `formatting`, `headings`, `lists`, `tasks`, `blocks`, `links`, `snippets`.
+To enable it, add it to `defaultPlugins` in `src/editor/index.ts`, or pass your own list to `<NoteEditor plugins={...} />`. A plugin with the same `name` as an existing one replaces it. Built-in plugins: `base`, `formatting`, `headings`, `lists`, `tasks`, `blocks`, `links`, `snippets`.
 
-Dati in `~/Library/Application Support/ch.dambox.granello/` (database `granello.sqlite`, modelli in `models/`).
+Data lives in `~/Library/Application Support/ch.dambox.granello/` (the `granello.sqlite` database, models in `models/`).
 
-## Avvio
+## Getting started
 
-Requisiti: macOS 13+, Rust stable, Node 20+, pnpm, Xcode Command Line Tools, `cmake` (`brew install cmake`).
+Requirements: macOS 13+, stable Rust, Node 20+, pnpm, Xcode Command Line Tools, `cmake` (`brew install cmake`).
 
 ```bash
 pnpm install
-pnpm tauri dev          # sviluppo
-pnpm tauri build      # .app e .dmg in src-tauri/target/release/bundle
+pnpm tauri dev          # development
+pnpm tauri build        # .app and .dmg in src-tauri/target/release/bundle
 ```
 
-Controlli prima di un rilascio:
+Checks before a release:
 
 ```bash
-pnpm check              # tsc + clippy (warning = errore) + cargo test
+pnpm check              # tsc + translations + clippy (warnings are errors) + cargo test
 ```
 
-### Distribuzione
+### Distribution
 
-`pnpm tauri build` produce un'app **non firmata**: su un altro Mac Gatekeeper la blocca. Per distribuirla servono un certificato *Developer ID Application* e la notarizzazione Apple: imposta `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (password specifica per l'app) e `APPLE_TEAM_ID` prima del build, Tauri firma e notarizza da solo. Le entitlement per microfono e rete sono già in `src-tauri/entitlements.plist`.
+`pnpm tauri build` produces an **unsigned** app: Gatekeeper blocks it on another Mac. Distributing it requires a *Developer ID Application* certificate and Apple notarization: set `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password) and `APPLE_TEAM_ID` before building, and Tauri signs and notarizes on its own. The microphone and network entitlements are already in `src-tauri/entitlements.plist`.
 
-Primo avvio (la Home mostra cosa manca):
+First launch (the Home screen shows what's missing):
 
-1. **Impostazioni → Modelli AI**: incolla la API key di Claude (finisce nel Portachiavi; in alternativa esporta `ANTHROPIC_API_KEY`), oppure aggiungi un provider locale come LM Studio o Ollama.
-2. **Impostazioni → Trascrizione**: scarica `large-v3-turbo-q5_0` (547 MB, consigliato su Apple Silicon) oppure `base` per una prova veloce.
-3. **Impostazioni → Calendario**: incolla l'indirizzo segreto iCal.
-4. Al primo Registra macOS chiede il permesso per il microfono.
+1. **Settings → AI models**: paste your Claude API key (it goes to the Keychain; alternatively export `ANTHROPIC_API_KEY`), or add a local provider such as LM Studio or Ollama.
+2. **Settings → Local transcription**: download `large-v3-turbo-q5_0` (547 MB, recommended on Apple Silicon) or `base` for a quick try.
+3. **Settings → Calendar**: paste the secret iCal address.
+4. The first time you press Record, macOS asks for microphone permission.
 
-## Audio degli altri partecipanti
+## Other participants' audio
 
-Per ora l'audio di sistema passa da un dispositivo di loopback:
+For now, system audio goes through a loopback device:
 
 1. `brew install blackhole-2ch`
-2. In *Configurazione MIDI Audio* crea un **dispositivo multi-uscita** con le cuffie + BlackHole 2ch.
-3. Imposta quel dispositivo come uscita di sistema (o di Teams/Zoom).
-4. In Granello scegli *BlackHole 2ch* come "Audio degli altri partecipanti".
+2. In *Audio MIDI Setup* create a **multi-output device** with your headphones + BlackHole 2ch.
+3. Set that device as the system output (or the Teams/Zoom output).
+4. In Granello choose *BlackHole 2ch* as "Other participants' audio".
 
-Usa le cuffie: senza cancellazione dell'eco il microfono riprende anche gli altri e la trascrizione si duplica.
+Use headphones: without echo cancellation the microphone also picks up the others and the transcript is duplicated.
 
-## Prossimi passi
+## Next steps
 
-- Cattura nativa dell'audio di sistema con ScreenCaptureKit / Core Audio process tap (macOS 14.2+), senza BlackHole.
-- Cancellazione dell'eco tra microfono e audio di sistema.
-- OAuth Google Calendar al posto dell'URL iCal.
-- Esportazione verso Notion / Google Docs, condivisione delle note.
-- Aggiornamenti automatici (tauri-plugin-updater) una volta attiva la firma.
-- Salvataggio opzionale dell'audio per ritrascrivere con un modello migliore.
+- Native system-audio capture with ScreenCaptureKit / Core Audio process taps (macOS 14.2+), without BlackHole.
+- Echo cancellation between the microphone and system audio.
+- Google Calendar OAuth instead of the iCal URL.
+- Export to Notion / Google Docs, sharing notes.
+- Automatic updates (tauri-plugin-updater) once signing is in place.
+- Optionally saving audio to re-transcribe with a better model.
 
-## Test
+## Tests
 
 ```bash
 cd src-tauri && cargo test
 ```
 
-Coprono chunking audio, resampling, filtro allucinazioni, parser iCal con ricorrenze, SSE/retry/annullamento di Claude, validazione delle impostazioni, database, migrazioni, recupero dopo crash e ricerca.
+They cover audio chunking, resampling, the hallucination filter, the iCal parser with recurrences, streaming/retry/cancellation for AI models (including against a simulated OpenAI-compatible server), settings validation, the database, migrations, crash recovery and search.

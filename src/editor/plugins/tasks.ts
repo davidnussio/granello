@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import type { EditorPlugin } from "../types";
@@ -8,10 +9,16 @@ export const tasks: EditorPlugin = {
   commands: [
     {
       id: "task-list",
-      title: "Azione da fare",
-      hint: "[ ] + spazio",
+      get title() {
+        return t("Azione da fare");
+      },
+      get hint() {
+        return t("[ ] + spazio");
+      },
       icon: "☑",
-      group: "Elenchi",
+      get group() {
+        return t("Elenchi");
+      },
       keywords: ["todo", "task", "checklist", "azione", "compito"],
       run: (e) => e.chain().focus().toggleTaskList().run(),
     },
@@ -21,7 +28,9 @@ export const tasks: EditorPlugin = {
       id: "task-list",
       group: "block",
       label: "☑",
-      title: "Azione da fare (⌘⇧9)",
+      get title() {
+        return t("Azione da fare (⌘⇧9)");
+      },
       isActive: (e) => e.isActive("taskList"),
       run: (e) => e.chain().focus().toggleTaskList().run(),
     },

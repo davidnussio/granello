@@ -8,6 +8,47 @@ pub fn builtin_templates() -> Vec<Template> {
         instructions: instructions.into(),
         builtin: true,
     };
+    if crate::i18n::lang() == crate::i18n::Lang::En {
+        return vec![
+            t(
+                "generale",
+                "General",
+                "For any meeting",
+                "Structure the notes in sections with headings (###) that follow the topics actually discussed, \
+in the order they came up. End with a \"### Next steps\" section listing the agreed actions \
+(owner and due date when mentioned).",
+            ),
+            t(
+                "one-on-one",
+                "1:1",
+                "One-on-one with a report or a manager",
+                "Use these sections:\n### Updates\n### Blockers and difficulties\n### Feedback (given and received)\n\
+### Growth and goals\n### Next steps\nSkip empty sections. Keep the tone personal and concise.",
+            ),
+            t(
+                "standup",
+                "Standup",
+                "Daily or team sync",
+                "Group by person. For each: what they did, what they will do, any blockers. \
+Then a \"### Blockers to resolve\" section and \"### Next steps\". Be very concise.",
+            ),
+            t(
+                "colloquio",
+                "Interview",
+                "Job interview",
+                "Use these sections:\n### Candidate profile\n### Relevant experience\n### Technical skills\n\
+### Soft skills and motivation\n### Candidate's questions\n### Positive signals\n### Doubts or risks\n### Next steps\n\
+Report facts and quotes, not judgements the transcript doesn't support.",
+            ),
+            t(
+                "cliente",
+                "Client meeting",
+                "Sales call or client call",
+                "Use these sections:\n### Client context\n### Needs and problems\n### Objections\n\
+### Budget, timeline and decision makers\n### What we proposed\n### Next steps\nQuote numbers and dates exactly as stated.",
+            ),
+        ];
+    }
     vec![
         t(
             "generale",
@@ -95,6 +136,7 @@ quando il contesto lo rende evidente.\n\
 - \"Altri\" nella trascrizione indica gli altri partecipanti (audio di sistema), non una persona precisa.\n\
 - Le azioni vanno come checklist Markdown: \"- [ ] Responsabile: azione (scadenza)\".\n\
 - Non usare il trattino lungo.\n\
+- Scrivi anche i titoli delle sezioni nella lingua delle note, traducendo quelli indicati dal template se serve.\n\
 - Rispondi solo con le note, senza preamboli né blocchi di codice."
     )
 }

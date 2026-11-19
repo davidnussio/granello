@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import { useEffect, useRef, useState } from "react";
 import Link from "@tiptap/extension-link";
 import type { Editor } from "@tiptap/react";
@@ -34,8 +35,8 @@ function LinkPanel({ editor, close }: { editor: Editor; close: () => void }) {
       <input
         ref={input}
         value={url}
-        placeholder="Incolla o scrivi un link…"
-        aria-label="Indirizzo del link"
+        placeholder={t("Incolla o scrivi un link…")}
+        aria-label={t("Indirizzo del link")}
         onChange={(e) => setUrl(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
@@ -45,14 +46,14 @@ function LinkPanel({ editor, close }: { editor: Editor; close: () => void }) {
           }
         }}
       />
-      <button type="submit" className="tb-btn" title="Applica">
+      <button type="submit" className="tb-btn" title={t("Applica")}>
         ↵
       </button>
       {current && (
         <button
           type="button"
           className="tb-btn"
-          title="Rimuovi link"
+          title={t("Rimuovi link")}
           onClick={() => {
             editor.chain().focus().extendMarkRange("link").unsetLink().run();
             close();
@@ -74,7 +75,7 @@ export const links: EditorPlugin = {
       autolink: true,
       linkOnPaste: true,
       protocols: ["http", "https", "mailto"],
-      HTMLAttributes: { rel: "noopener noreferrer", title: "⌘+click per aprire" },
+      HTMLAttributes: { rel: "noopener noreferrer" },
     }),
   ],
   toolbar: [
@@ -82,7 +83,9 @@ export const links: EditorPlugin = {
       id: "link",
       group: "link",
       label: "🔗",
-      title: "Link",
+      get title() {
+        return t("Link");
+      },
       isActive: (e) => e.isActive("link"),
       panel: LinkPanel,
     },

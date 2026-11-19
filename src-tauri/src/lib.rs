@@ -1,3 +1,7 @@
+// prima degli altri moduli: definisce le macro trf!/tra! che usano
+#[macro_use]
+mod i18n;
+
 mod audio;
 mod calendar;
 mod commands;
@@ -49,7 +53,11 @@ pub fn run() {
                 Ok(n) => log::warn!("{n} meeting erano rimasti in registrazione: chiusi e reindicizzati"),
                 Err(e) => log::error!("recupero dei meeting interrotti: {e}"),
             }
-            log::info!("Granello {} avviato", env!("CARGO_PKG_VERSION"));
+            // lingua dell'interfaccia: dalle impostazioni, altrimenti quella del sistema
+            let ui_language = db.get_settings().map(|s| s.ui_language).unwrap_or_default();
+            i18n::set(i18n::resolve(&ui_language));
+            db.seed_templates()?;
+            log::info!("Granello {} avviato (lingua {:?})", env!("CARGO_PKG_VERSION"), i18n::lang());
             app.manage(AppState {
                 db: Arc::new(Mutex::new(db)),
                 data_dir,
@@ -145,8 +153,11 @@ fn spawn_calendar_watcher(app: tauri::AppHandle) {
                     let _ = app
                         .notification()
                         .builder()
-                        .title(format!("Sta per iniziare: {}", e.title))
-                        .body("Apri Granello e premi Registra per prendere le note.")
+                        .title(trf!("Sta per iniziare: {}", "Starting soon: {}", e.title))
+                        .body(i18n::tr(
+                            "Apri Granello e premi Registra per prendere le note.",
+                            "Open Granello and press Record to take notes.",
+                        ))
                         .show();
                     let _ = app.emit("meeting-starting", e);
                 }

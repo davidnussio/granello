@@ -1,4 +1,5 @@
 use crate::audio::{self, Session, SessionConfig};
+use crate::i18n::tr;
 use crate::db::Db;
 use crate::models::*;
 use crate::transcribe::{self, TranscriberCache};
@@ -100,7 +101,7 @@ pub fn list_meetings(state: State<AppState>, query: Option<String>) -> CmdResult
 #[tauri::command]
 pub fn get_meeting(state: State<AppState>, id: String) -> CmdResult<MeetingDetail> {
     let db = state.db.lock();
-    let meeting = db.get_meeting(&id).map_err(err)?.ok_or("Meeting non trovato")?;
+    let meeting = db.get_meeting(&id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
     let segments = db.segments(&id).map_err(err)?;
     Ok(MeetingDetail { meeting, segments })
 }
@@ -153,7 +154,7 @@ pub fn update_meeting(
 #[tauri::command]
 pub fn delete_meeting(state: State<AppState>, id: String) -> CmdResult<()> {
     if state.session.lock().as_ref().map(|s| s.meeting_id == id).unwrap_or(false) {
-        return Err("Ferma la registrazione prima di eliminare il meeting".into());
+        return Err(tr("Ferma la registrazione prima di eliminare il meeting", "Stop the recording before deleting the meeting").into());
     }
     state.db.lock().delete_meeting(&id).map_err(err)
 }
@@ -172,12 +173,12 @@ pub fn start_recording(app: AppHandle, state: State<AppState>, meeting_id: Strin
         if s.meeting_id == meeting_id {
             return Ok(());
         }
-        return Err("È già in corso una registrazione su un altro meeting".into());
+        return Err(tr("È già in corso una registrazione su un altro meeting", "Another meeting is already being recorded").into());
     }
     let (settings, meeting, base_ms) = {
         let db = state.db.lock();
         let settings = db.get_settings().map_err(err)?;
-        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or("Meeting non trovato")?;
+        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
         let base_ms = db.transcript_end_ms(&meeting_id).map_err(err)?;
         (settings, meeting, base_ms)
     };
@@ -244,10 +245,10 @@ fn resolve_model(state: &AppState, settings: &Settings, which: &ModelRef) -> Cmd
         .iter()
         .find(|p| p.id == which.provider_id)
         .cloned()
-        .ok_or("Il provider AI scelto non esiste più: controlla le Impostazioni")?;
+        .ok_or(tr("Il provider AI scelto non esiste più: controlla le Impostazioni", "The selected AI provider no longer exists: check Settings"))?;
     let api_key = secrets::get_api_key(&state.data_dir, &provider.id).map_err(err)?;
     if provider.kind == ProviderKind::Anthropic && api_key.is_none() {
-        return Err(format!("Configura la API key di {} nelle Impostazioni", provider.name));
+        return Err(trf!("Configura la API key di {} nelle Impostazioni", "Set the {} API key in Settings", provider.name));
     }
     Ok(ResolvedModel { provider, api_key, model: which.model.clone() })
 }
@@ -274,9 +275,11 @@ impl ResolvedModel {
         let chars: usize = system.chars().count() + messages.iter().map(|m| m.content.chars().count()).sum::<usize>();
         let estimated = estimate_tokens(chars);
         if estimated > limit as usize {
-            return Err(format!(
+            return Err(trf!(
                 "Il testo da inviare (circa {estimated} token) supera il contesto di {} ({limit} token). \
 Aumenta il contesto del modello o scegline uno più capiente.",
+                "The text to send (about {estimated} tokens) exceeds the context of {} ({limit} tokens). \
+Increase the model's context or pick a model with a larger one.",
                 self.provider.name
             ));
         }
@@ -299,10 +302,10 @@ pub async fn enhance_notes(
     let (model, system, user) = {
         let db = state.db.lock();
         let settings = db.get_settings().map_err(err)?;
-        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or("Meeting non trovato")?;
+        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
         let segments = db.segments(&meeting_id).map_err(err)?;
         if meeting.notes_md.trim().is_empty() && segments.is_empty() {
-            return Err("Non c'è niente da arricchire: scrivi qualche nota o registra il meeting".into());
+            return Err(tr("Non c'è niente da arricchire: scrivi qualche nota o registra il meeting", "There is nothing to enhance: write some notes or record the meeting").into());
         }
         let template = meeting
             .template_id
@@ -330,10 +333,13 @@ pub async fn enhance_notes(
     let mut text = strip_code_fence(&done.text);
     if text.trim().is_empty() {
         // non sovrascrivere note esistenti con una risposta vuota
-        return Err("Claude non ha prodotto note. Riprova.".into());
+        return Err(tr("Claude non ha prodotto note. Riprova.", "The model produced no notes. Try again.").into());
     }
     if done.truncated {
-        text.push_str("\n\n*[Note troncate: la risposta ha raggiunto il limite di lunghezza. Rigenera per riprovare.]*");
+        text.push_str(tr(
+            "\n\n*[Note troncate: la risposta ha raggiunto il limite di lunghezza. Rigenera per riprovare.]*",
+            "\n\n*[Notes truncated: the answer hit the length limit. Regenerate to try again.]*",
+        ));
     }
     state
         .db
@@ -387,7 +393,7 @@ pub async fn chat(
 ) -> CmdResult<ChatMessage> {
     let question = question.trim().to_string();
     if question.is_empty() {
-        return Err("Scrivi una domanda".into());
+        return Err(tr("Scrivi una domanda", "Type a question").into());
     }
     let (model, system, mut history, user_msg_id) = {
         let db = state.db.lock();
@@ -405,11 +411,11 @@ pub async fn chat(
                 })
                 .collect::<Vec<_>>();
             if with_tr.is_empty() {
-                return Err("Non ci sono ancora meeting su cui fare domande".into());
+                return Err(tr("Non ci sono ancora meeting su cui fare domande", "There are no meetings to ask about yet").into());
             }
             prompts::chat_system_global(&with_tr)
         } else {
-            let m = db.get_meeting(&scope).map_err(err)?.ok_or("Meeting non trovato")?;
+            let m = db.get_meeting(&scope).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
             let segs = db.segments(&scope).map_err(err)?;
             prompts::chat_system_meeting(&m, &segs, &settings.user_name)
         };
@@ -457,7 +463,7 @@ pub async fn chat(
         }
         Ok(_) => {
             let _ = db.delete_chat_message(user_msg_id);
-            Err("Claude non ha risposto. Riprova.".into())
+            Err(tr("Claude non ha risposto. Riprova.", "The model did not answer. Try again.").into())
         }
         Err(e) => {
             // la domanda senza risposta non resta nello storico: l'interfaccia la rimette nel campo di testo
@@ -477,7 +483,7 @@ pub fn list_templates(state: State<AppState>) -> CmdResult<Vec<Template>> {
 #[tauri::command]
 pub fn save_template(state: State<AppState>, template: Template) -> CmdResult<Template> {
     if template.name.trim().is_empty() || template.instructions.trim().is_empty() {
-        return Err("Nome e istruzioni sono obbligatori".into());
+        return Err(tr("Nome e istruzioni sono obbligatori", "Name and instructions are required").into());
     }
     state.db.lock().save_template(&template).map_err(err)
 }
@@ -498,11 +504,16 @@ pub fn get_settings(state: State<AppState>) -> CmdResult<Settings> {
 pub fn save_settings(state: State<AppState>, settings: Settings) -> CmdResult<Settings> {
     let s = settings.validated()?;
     if !transcribe::is_known_model(&s.whisper_model) {
-        return Err("Modello Whisper sconosciuto".into());
+        return Err(tr("Modello Whisper sconosciuto", "Unknown Whisper model").into());
     }
     let db = state.db.lock();
     let old = db.get_settings().map_err(err)?;
     db.save_settings(&s).map_err(err)?;
+    if old.ui_language != s.ui_language {
+        // errori, notifiche e template di sistema seguono subito la nuova lingua
+        crate::i18n::set(crate::i18n::resolve(&s.ui_language));
+        db.seed_templates().map_err(err)?;
+    }
     drop(db);
     // un provider eliminato non lascia la sua chiave nel Portachiavi
     for gone in old.providers.iter().filter(|o| !s.providers.iter().any(|p| p.id == o.id)) {
@@ -530,12 +541,12 @@ pub async fn list_provider_models(state: State<'_, AppState>, provider: Provider
             state
                 .http
                 .get(format!("{base}/v1/models?limit=100"))
-                .header("x-api-key", key.ok_or("Salva prima la API key")?)
+                .header("x-api-key", key.ok_or(tr("Salva prima la API key", "Save the API key first"))?)
                 .header("anthropic-version", "2023-06-01")
         }
         ProviderKind::Openai => {
             if !(base.starts_with("http://") || base.starts_with("https://")) {
-                return Err("L'indirizzo deve iniziare con http:// o https://".into());
+                return Err(tr("L'indirizzo deve iniziare con http:// o https://", "The address must start with http:// or https://").into());
             }
             let r = state.http.get(format!("{base}/models"));
             match key {
@@ -546,18 +557,18 @@ pub async fn list_provider_models(state: State<'_, AppState>, provider: Provider
     };
     let resp = req.timeout(Duration::from_secs(10)).send().await.map_err(|e| {
         if e.is_connect() {
-            format!("Impossibile raggiungere {}: il server è avviato?", provider.name)
+            trf!("Impossibile raggiungere {}: il server è avviato?", "Can't reach {}: is the server running?", provider.name)
         } else {
-            format!("Errore di rete: {}", e.without_url())
+            trf!("Errore di rete: {}", "Network error: {}", e.without_url())
         }
     })?;
     if !resp.status().is_success() {
         return Err(match resp.status().as_u16() {
-            401 | 403 => "API key non valida o mancante".into(),
-            code => format!("Il server ha risposto {code}"),
+            401 | 403 => tr("API key non valida o mancante", "Invalid or missing API key").into(),
+            code => trf!("Il server ha risposto {code}", "The server answered {code}"),
         });
     }
-    let body: serde_json::Value = resp.json().await.map_err(|_| "Risposta non valida dal server".to_string())?;
+    let body: serde_json::Value = resp.json().await.map_err(|_| tr("Risposta non valida dal server", "Invalid response from the server").to_string())?;
     let mut models: Vec<String> = body["data"]
         .as_array()
         .map(|a| a.iter().filter_map(|m| m["id"].as_str().map(String::from)).collect())
@@ -600,7 +611,7 @@ pub fn has_api_key(state: State<AppState>, provider_id: String) -> bool {
 pub fn set_api_key(state: State<AppState>, provider_id: String, key: String) -> CmdResult<()> {
     let known = state.db.lock().get_settings().map_err(err)?.providers.iter().any(|p| p.id == provider_id);
     if !known {
-        return Err("Salva il provider prima di impostare la chiave".into());
+        return Err(tr("Salva il provider prima di impostare la chiave", "Save the provider before setting its key").into());
     }
     secrets::set_api_key(&state.data_dir, &provider_id, key.trim()).map_err(err)
 }
@@ -624,10 +635,10 @@ struct DownloadEvent {
 #[tauri::command]
 pub async fn download_whisper_model(app: AppHandle, state: State<'_, AppState>, name: String) -> CmdResult<()> {
     if !transcribe::is_known_model(&name) {
-        return Err("Modello sconosciuto".into());
+        return Err(tr("Modello sconosciuto", "Unknown model").into());
     }
     if !state.downloading.lock().insert(name.clone()) {
-        return Err("Download già in corso".into());
+        return Err(tr("Download già in corso", "Download already in progress").into());
     }
     let res = download(&app, &state, &name).await;
     state.downloading.lock().remove(&name);
@@ -637,10 +648,10 @@ pub async fn download_whisper_model(app: AppHandle, state: State<'_, AppState>, 
 #[tauri::command]
 pub fn delete_whisper_model(state: State<AppState>, name: String) -> CmdResult<()> {
     if !transcribe::is_known_model(&name) {
-        return Err("Modello sconosciuto".into());
+        return Err(tr("Modello sconosciuto", "Unknown model").into());
     }
     if state.session.lock().is_some() {
-        return Err("Ferma la registrazione prima di eliminare un modello".into());
+        return Err(tr("Ferma la registrazione prima di eliminare un modello", "Stop the recording before deleting a model").into());
     }
     state.transcribers.clear(); // rilascia il file e la memoria
     match std::fs::remove_file(transcribe::model_path(&state.models_dir, &name)) {
@@ -677,9 +688,9 @@ async fn download_to(app: &AppHandle, state: &AppState, name: &str, part: &std::
         .get(transcribe::model_url(name))
         .send()
         .await
-        .map_err(|e| format!("Download fallito: {e}"))?;
+        .map_err(|e| trf!("Download fallito: {e}", "Download failed: {e}"))?;
     if !resp.status().is_success() {
-        return Err(format!("Download fallito: {}", resp.status()));
+        return Err(trf!("Download fallito: {}", "Download failed: {}", resp.status()));
     }
     let total = resp.content_length();
     let mut file = tokio::fs::File::create(part).await.map_err(err)?;
@@ -688,11 +699,11 @@ async fn download_to(app: &AppHandle, state: &AppState, name: &str, part: &std::
     let mut downloaded: u64 = 0;
     let mut last_emit = Instant::now();
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("Download interrotto: {e}"))?;
+        let chunk = chunk.map_err(|e| trf!("Download interrotto: {e}", "Download interrupted: {e}"))?;
         if !checked_magic && !chunk.is_empty() {
             // un captive portal o una pagina di errore non sono un modello
             if !transcribe::looks_like_ggml(&chunk) {
-                return Err("Il file scaricato non è un modello Whisper valido".into());
+                return Err(tr("Il file scaricato non è un modello Whisper valido", "The downloaded file is not a valid Whisper model").into());
             }
             checked_magic = true;
         }
@@ -710,7 +721,7 @@ async fn download_to(app: &AppHandle, state: &AppState, name: &str, part: &std::
     file.sync_all().await.map_err(err)?;
     drop(file);
     if !checked_magic || total.map(|t| downloaded != t).unwrap_or(false) {
-        return Err("Download incompleto, riprova".into());
+        return Err(tr("Download incompleto, riprova", "Incomplete download, try again").into());
     }
     Ok(())
 }

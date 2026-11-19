@@ -1,5 +1,6 @@
 //! Trascrizione locale con whisper.cpp (whisper-rs). Su macOS usa Metal.
 
+use crate::i18n::tr;
 use crate::models::WhisperModelInfo;
 use anyhow::{anyhow, Context, Result};
 use parking_lot::Mutex;
@@ -9,12 +10,19 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 pub const SAMPLE_RATE: u32 = 16_000;
 
 /// (nome, MB, descrizione)
-const MODELS: &[(&str, u32, &str)] = &[
-    ("base", 142, "Veloce, qualità base. Utile per provare."),
-    ("small", 466, "Buon compromesso su Mac Intel."),
-    ("large-v3-turbo-q5_0", 547, "Consigliato su Apple Silicon: quasi qualità large, veloce."),
-    ("large-v3-turbo", 1620, "Qualità massima turbo, più memoria."),
-    ("medium", 1530, "Alternativa multilingue robusta."),
+const MODELS: &[(&str, u32, (&str, &str))] = &[
+    ("base", 142, ("Veloce, qualità base. Utile per provare.", "Fast, basic quality. Good for a first try.")),
+    ("small", 466, ("Buon compromesso su Mac Intel.", "A good trade-off on Intel Macs.")),
+    (
+        "large-v3-turbo-q5_0",
+        547,
+        (
+            "Consigliato su Apple Silicon: quasi qualità large, veloce.",
+            "Recommended on Apple Silicon: near-large quality, fast.",
+        ),
+    ),
+    ("large-v3-turbo", 1620, ("Qualità massima turbo, più memoria.", "Best turbo quality, more memory.")),
+    ("medium", 1530, ("Alternativa multilingue robusta.", "A solid multilingual alternative.")),
 ];
 
 pub fn model_catalog(dir: &Path) -> Vec<WhisperModelInfo> {
@@ -24,7 +32,7 @@ pub fn model_catalog(dir: &Path) -> Vec<WhisperModelInfo> {
             name: (*name).into(),
             size_mb: *mb,
             downloaded: model_path(dir, name).exists(),
-            description: (*desc).into(),
+            description: tr(desc.0, desc.1).into(),
         })
         .collect()
 }
@@ -61,8 +69,9 @@ pub struct Segment {
 impl Transcriber {
     pub fn load(path: &Path) -> Result<Self> {
         if !path.exists() {
-            return Err(anyhow!(
+            return Err(tra!(
                 "Modello Whisper non trovato ({}). Scaricalo dalle Impostazioni.",
+                "Whisper model not found ({}). Download it from Settings.",
                 path.display()
             ));
         }
@@ -72,7 +81,7 @@ impl Transcriber {
             path.to_str().context("percorso modello non valido")?,
             params,
         )
-        .map_err(|e| anyhow!("caricamento modello whisper: {e:?}"))?;
+        .map_err(|e| tra!("caricamento modello whisper: {e:?}", "loading the whisper model: {e:?}"))?;
         Ok(Self { ctx, path: path.to_path_buf() })
     }
 

@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { api } from "../api";
+import { t } from "../i18n";
 
 interface State {
   error: Error | null;
@@ -21,14 +22,13 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
     if (!this.state.error) return this.props.children;
     return (
       <div className="crash">
-        <h2>Qualcosa è andato storto</h2>
+        <h2>{t("Qualcosa è andato storto")}</h2>
         <p className="muted">
-          L'interfaccia ha avuto un errore imprevisto. Le tue note e le trascrizioni sono salvate: ricarica per
-          continuare.
+          {t("L'interfaccia ha avuto un errore imprevisto. Le tue note e le trascrizioni sono salvate: ricarica per continuare.")}
         </p>
         <pre>{this.state.error.message}</pre>
         <button className="btn primary" onClick={() => window.location.reload()}>
-          Ricarica
+          {t("Ricarica")}
         </button>
       </div>
     );

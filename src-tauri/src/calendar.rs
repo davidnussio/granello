@@ -1,8 +1,9 @@
 //! Calendario via URL iCal (es. "Indirizzo segreto in formato iCal" di Google Calendar,
 //! o la pubblicazione ICS di Outlook). Supporta eventi ricorrenti, EXDATE e override.
 
+use crate::i18n::tr;
 use crate::models::CalendarEvent;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use std::collections::{HashMap, HashSet};
 
@@ -39,22 +40,22 @@ pub async fn fetch_ics(client: &reqwest::Client, url: &str) -> Result<String> {
         .send()
         .await
         // l'URL iCal è segreto: non deve finire nei messaggi di errore né nei log
-        .map_err(|e| anyhow!("download calendario fallito: {}", e.without_url()))?;
+        .map_err(|e| tra!("download calendario fallito: {}", "calendar download failed: {}", e.without_url()))?;
     if !resp.status().is_success() {
-        return Err(anyhow!("download calendario fallito: {}", resp.status()));
+        return Err(tra!("download calendario fallito: {}", "calendar download failed: {}", resp.status()));
     }
     let mut body: Vec<u8> = Vec::new();
     let mut stream = resp.bytes_stream();
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| anyhow!("download calendario interrotto: {}", e.without_url()))?;
+        let chunk = chunk.map_err(|e| tra!("download calendario interrotto: {}", "calendar download interrupted: {}", e.without_url()))?;
         if body.len() + chunk.len() > MAX_ICS_BYTES {
-            return Err(anyhow!("il calendario supera i 20 MB"));
+            return Err(tra!("il calendario supera i 20 MB", "the calendar is larger than 20 MB"));
         }
         body.extend_from_slice(&chunk);
     }
     let text = String::from_utf8_lossy(&body).into_owned();
     if !text.contains("BEGIN:VCALENDAR") {
-        return Err(anyhow!("l'URL non restituisce un calendario iCal"));
+        return Err(tra!("l'URL non restituisce un calendario iCal", "the URL does not return an iCal calendar"));
     }
     Ok(text)
 }
@@ -257,7 +258,7 @@ pub fn events_between(ics: &str, from: DateTime<Utc>, to: DateTime<Utc>) -> Vec<
             .first("SUMMARY")
             .map(|s| unescape(&s.value))
             .filter(|s| !s.trim().is_empty())
-            .unwrap_or_else(|| "(senza titolo)".into());
+            .unwrap_or_else(|| tr("(senza titolo)", "(untitled)").into());
         let location = e.first("LOCATION").map(|l| unescape(&l.value)).filter(|l| !l.is_empty());
         let people = attendees(e);
 

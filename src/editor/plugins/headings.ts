@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import type { CommandItem, EditorPlugin, ToolbarItem } from "../types";
 
 type Level = 1 | 2 | 3;
@@ -5,10 +6,16 @@ const NAMES: Record<Level, string> = { 1: "Titolo", 2: "Sezione", 3: "Sottosezio
 
 const command = (level: Level): CommandItem => ({
   id: `h${level}`,
-  title: NAMES[level],
-  hint: `${"#".repeat(level)} + spazio`,
+  get title() {
+    return t(NAMES[level]);
+  },
+  get hint() {
+    return t("{marks} + spazio", { marks: "#".repeat(level) });
+  },
   icon: `H${level}`,
-  group: "Struttura",
+  get group() {
+    return t("Struttura");
+  },
   keywords: ["titolo", "heading", "intestazione", `h${level}`],
   run: (e) => e.chain().focus().setHeading({ level }).run(),
 });
@@ -17,7 +24,9 @@ const button = (level: Level): ToolbarItem => ({
   id: `h${level}`,
   group: "block",
   label: `H${level}`,
-  title: NAMES[level],
+  get title() {
+    return t(NAMES[level]);
+  },
   isActive: (e) => e.isActive("heading", { level }),
   run: (e) => e.chain().focus().toggleHeading({ level }).run(),
 });
@@ -27,10 +36,16 @@ export const headings: EditorPlugin = {
   commands: [
     {
       id: "paragraph",
-      title: "Testo",
-      hint: "Paragrafo normale",
+      get title() {
+        return t("Testo");
+      },
+      get hint() {
+        return t("Paragrafo normale");
+      },
       icon: "¶",
-      group: "Struttura",
+      get group() {
+        return t("Struttura");
+      },
       keywords: ["paragrafo", "normale", "text"],
       run: (e) => e.chain().focus().setParagraph().run(),
     },

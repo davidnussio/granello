@@ -94,7 +94,10 @@ button:disabled { cursor: default; opacity: 0.5; }
 .side-item:hover { background: rgba(0, 0, 0, 0.04); }
 .side-item.active { background: var(--card); box-shadow: 0 0 0 1px var(--line); }
 .side-item.event { flex-direction: row; align-items: center; gap: 8px; }
-.side-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+/* block, non flex: su un contenitore flex i puntini di troncamento non compaiono */
+.side-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; min-width: 0; }
+.side-title .rec-dot { display: inline-block; margin-right: 6px; }
+.side-item.event .side-title { flex: 1; }
 .side-time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; }
 .side-meta, .side-snippet { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-snippet mark { background: #f4e2a1; color: inherit; border-radius: 2px; }
@@ -145,7 +148,16 @@ h3 { margin: 0 0 12px; font-size: 15px; }
   color: var(--muted);
 }
 .chip.person { color: var(--text); }
-.chip.select { appearance: none; cursor: pointer; padding-right: 12px; }
+.chip.select {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 24px;
+  color: var(--text);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237b7a72' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+.chip.select:hover { border-color: var(--accent); }
 .chip.tiny { font-size: 10px; padding: 0 6px; }
 
 /* ---------- home ---------- */
@@ -161,7 +173,7 @@ h3 { margin: 0 0 12px; font-size: 15px; }
   margin-bottom: 8px;
 }
 .event-card.live { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.event-time { width: 110px; flex: none; font-variant-numeric: tabular-nums; font-weight: 500; }
+.event-time { min-width: 110px; flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 500; }
 .event-body { flex: 1; min-width: 0; }
 .event-title { font-weight: 550; }
 
@@ -448,3 +460,8 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .field.grow { flex: 1; }
 .field.ctx { width: 150px; flex: none; }
 .add-provider { margin-top: 12px; flex-wrap: wrap; }
+
+/* ---------- stato globale ---------- */
+.rec-pill { margin: 0 12px 8px; padding: 6px 10px; border: none; border-radius: 999px; background: var(--rec); color: #fff; font-size: 12px; font-weight: 600; text-align: center; animation: pulse 2s infinite; }
+.saved-flag { margin-left: 12px; font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--accent); opacity: 0; transition: opacity 0.25s; }
+.saved-flag.on { opacity: 1; }

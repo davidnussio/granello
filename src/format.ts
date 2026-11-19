@@ -1,5 +1,18 @@
-const dayFmt = new Intl.DateTimeFormat("it-CH", { weekday: "long", day: "numeric", month: "long" });
-const timeFmt = new Intl.DateTimeFormat("it-CH", { hour: "2-digit", minute: "2-digit" });
+import { locale, t } from "./i18n";
+
+// i formatter dipendono dalla lingua dell'interfaccia: si ricreano solo quando cambia
+let cached: { loc: string; day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } | null = null;
+function fmt() {
+  const loc = locale();
+  if (!cached || cached.loc !== loc) {
+    cached = {
+      loc,
+      day: new Intl.DateTimeFormat(loc, { weekday: "long", day: "numeric", month: "long" }),
+      time: new Intl.DateTimeFormat(loc, { hour: "2-digit", minute: "2-digit" }),
+    };
+  }
+  return cached;
+}
 
 function startOfDay(ts: number) {
   const d = new Date(ts);
@@ -9,15 +22,15 @@ function startOfDay(ts: number) {
 
 export function dayLabel(ts: number): string {
   const diff = Math.round((startOfDay(Date.now()) - startOfDay(ts)) / 86_400_000);
-  if (diff === 0) return "Oggi";
-  if (diff === 1) return "Ieri";
-  if (diff === -1) return "Domani";
-  const s = dayFmt.format(new Date(ts));
+  if (diff === 0) return t("Oggi");
+  if (diff === 1) return t("Ieri");
+  if (diff === -1) return t("Domani");
+  const s = fmt().day.format(new Date(ts));
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export function time(ts: number): string {
-  return timeFmt.format(new Date(ts));
+  return fmt().time.format(new Date(ts));
 }
 
 export function mmss(ms: number): string {

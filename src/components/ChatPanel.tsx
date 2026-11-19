@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, errorText, newStreamId, on } from "../api";
 import type { ChatMessage } from "../types";
 import Markdown from "./Markdown";
+import { t } from "../i18n";
 
 interface Props {
   scope: string;
@@ -78,7 +79,7 @@ export default function ChatPanel({ scope, toast, suggestions = [], big }: Props
         ))}
         {streaming !== null && (
           <div className="msg assistant">
-            {streaming ? <Markdown text={streaming} /> : <span className="muted">Sto pensando…</span>}
+            {streaming ? <Markdown text={streaming} /> : <span className="muted">{t("Sto pensando…")}</span>}
           </div>
         )}
         <div ref={end} />
@@ -93,8 +94,8 @@ export default function ChatPanel({ scope, toast, suggestions = [], big }: Props
         <textarea
           rows={big ? 2 : 1}
           value={input}
-          placeholder="Fai una domanda…"
-          aria-label="Domanda"
+          placeholder={t("Fai una domanda…")}
+          aria-label={t("Domanda")}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -109,11 +110,11 @@ export default function ChatPanel({ scope, toast, suggestions = [], big }: Props
             className="btn small"
             onClick={() => streamRef.current && api.cancelStream(streamRef.current).catch(() => {})}
           >
-            Stop
+            {t("Stop")}
           </button>
         ) : (
           <button className="btn primary small" disabled={!input.trim()}>
-            Invia
+            {t("Invia")}
           </button>
         )}
         {messages.length > 0 && (
@@ -122,8 +123,8 @@ export default function ChatPanel({ scope, toast, suggestions = [], big }: Props
             className="btn ghost small"
             onClick={clear}
             disabled={streaming !== null}
-            title="Svuota conversazione"
-            aria-label="Svuota conversazione"
+            title={t("Svuota conversazione")}
+            aria-label={t("Svuota conversazione")}
           >
             ⌫
           </button>

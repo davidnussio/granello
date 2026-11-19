@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import type { EditorPlugin } from "../types";
 
 export const formatting: EditorPlugin = {
@@ -8,7 +9,9 @@ export const formatting: EditorPlugin = {
       group: "inline",
       label: "B",
       className: "tb-bold",
-      title: "Grassetto (⌘B)",
+      get title() {
+        return t("Grassetto (⌘B)");
+      },
       isActive: (e) => e.isActive("bold"),
       run: (e) => e.chain().focus().toggleBold().run(),
     },
@@ -17,7 +20,9 @@ export const formatting: EditorPlugin = {
       group: "inline",
       label: "I",
       className: "tb-italic",
-      title: "Corsivo (⌘I)",
+      get title() {
+        return t("Corsivo (⌘I)");
+      },
       isActive: (e) => e.isActive("italic"),
       run: (e) => e.chain().focus().toggleItalic().run(),
     },
@@ -26,7 +31,9 @@ export const formatting: EditorPlugin = {
       group: "inline",
       label: "S",
       className: "tb-strike",
-      title: "Barrato (⌘⇧S)",
+      get title() {
+        return t("Barrato (⌘⇧S)");
+      },
       isActive: (e) => e.isActive("strike"),
       run: (e) => e.chain().focus().toggleStrike().run(),
     },
@@ -35,7 +42,9 @@ export const formatting: EditorPlugin = {
       group: "inline",
       label: "</>",
       className: "tb-code",
-      title: "Codice (⌘E)",
+      get title() {
+        return t("Codice (⌘E)");
+      },
       isActive: (e) => e.isActive("code"),
       run: (e) => e.chain().focus().toggleCode().run(),
     },

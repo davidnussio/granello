@@ -6,11 +6,12 @@ import Markdown from "./Markdown";
 import TranscriptPanel from "./TranscriptPanel";
 import ChatPanel from "./ChatPanel";
 import { dayLabel, mmss, time } from "../format";
+import { t } from "../i18n";
 
 interface Props {
   id: string;
   rec: RecordingStatus;
-  toast: (t: string) => void;
+  toast: (text: string, action?: { label: string; run: () => void }) => void;
   onChanged: () => void;
   onRecChanged: () => void;
   onDeleted: () => void;
@@ -71,6 +72,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const [elapsed, setElapsed] = useState(0);
   const [busyRec, setBusyRec] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  const enhanceRef = useRef<() => void>(() => {});
+  const hasEnhancedRef = useRef(false);
   const [finishing, setFinishing] = useState(false);
   const [enhVersion, setEnhVersion] = useState(0);
   const streamRef = useRef<string | null>(null);
@@ -103,14 +107,19 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         if (l.meetingId === id) setLevel({ mic: l.mic, system: l.system });
       }),
       on("recording-finished", (mid) => {
-        if (mid === id) setFinishing(false);
+        if (mid !== id) return;
+        setFinishing(false);
+        // il passo successivo naturale dopo la registrazione
+        if (!hasEnhancedRef.current) {
+          toast(t("Trascrizione completata"), { label: t("✦ Genera note AI"), run: () => enhanceRef.current() });
+        }
       }),
       on("llm-delta", (d) => {
         if (d.streamId === streamRef.current) setStreaming((s) => (s ?? "") + d.delta);
       }),
     ];
     return () => offs.forEach((o) => o());
-  }, [id]);
+  }, [id, toast]);
 
   // cronometro
   useEffect(() => {
@@ -172,6 +181,20 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     }
   };
 
+  enhanceRef.current = enhance;
+  hasEnhancedRef.current = !!meeting?.enhancedMd;
+
+  // rigenerare sostituisce le note AI (e le modifiche fatte a mano): serve una conferma
+  const requestEnhance = () => {
+    if (meeting?.enhancedMd && !confirmRegen) {
+      setConfirmRegen(true);
+      setTimeout(() => setConfirmRegen(false), 4000);
+      return;
+    }
+    setConfirmRegen(false);
+    enhance();
+  };
+
   const changeTemplate = async (templateId: string) => {
     setMeeting((m) => (m ? { ...m, templateId } : m));
     await api.updateMeeting({ id, templateId }).catch((e) => toast(errorText(e)));
@@ -180,7 +203,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const copyEnhanced = async () => {
     const text = meeting?.enhancedMd ?? "";
     await navigator.clipboard.writeText(`# ${meeting?.title}\n\n${text}`);
-    toast("Note copiate negli appunti");
+    toast(t("Note copiate negli appunti"));
   };
 
   const remove = async () => {
@@ -197,7 +220,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     }
   };
 
-  if (!meeting) return <div className="page muted">Caricamento…</div>;
+  if (!meeting) return <div className="page muted">{t("Caricamento…")}</div>;
 
   const hasContent = meeting.notesMd.trim().length > 0 || segments.length > 0;
   const canEnhance = hasContent && !isRecording && streaming === null;
@@ -209,9 +232,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         <header className="meeting-header">
           <input
             className="title-input"
-            aria-label="Titolo del meeting"
+            aria-label={t("Titolo del meeting")}
             defaultValue={meeting.title}
-            placeholder="Titolo del meeting"
+            placeholder={t("Titolo del meeting")}
             onChange={(e) => saveTitle(e.target.value)}
           />
           <div className="meta-row">
@@ -228,7 +251,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               className="chip select"
               value={meeting.templateId ?? "generale"}
               onChange={(e) => changeTemplate(e.target.value)}
-              title="Template usato per le note AI"
+              title={t("Template usato per le note AI")}
             >
               {templates.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -242,38 +265,48 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         <div className="toolbar">
           <div className="seg">
             <button className={tab === "notes" ? "on" : ""} onClick={() => setTab("notes")}>
-              Le mie note
+              {t("Le mie note")}
             </button>
             <button
               className={tab === "enhanced" ? "on" : ""}
               onClick={() => setTab("enhanced")}
               disabled={!meeting.enhancedMd && streaming === null}
             >
-              ✦ Note AI
+              {t("✦ Note AI")}
             </button>
           </div>
           <div className="spacer" />
           {tab === "enhanced" && meeting.enhancedMd && streaming === null && (
             <button className="btn small ghost" onClick={copyEnhanced}>
-              Copia
+              {t("Copia")}
             </button>
           )}
           {streaming !== null ? (
             <button
               className="btn small"
               onClick={() => streamRef.current && api.cancelStream(streamRef.current).catch(() => {})}
-              title="Interrompe la generazione: le note AI precedenti restano invariate"
+              title={t("Interrompe la generazione: le note AI precedenti restano invariate")}
             >
-              ◼ Interrompi
+              {t("◼ Interrompi")}
             </button>
           ) : (
             <button
-              className={"btn small" + (canEnhance && !meeting.enhancedMd ? " primary" : "")}
+              className={"btn small" + (canEnhance && !meeting.enhancedMd ? " primary" : "") + (confirmRegen ? " danger" : "")}
               disabled={!canEnhance}
-              onClick={enhance}
-              title={isRecording ? "Ferma la registrazione per generare le note" : ""}
+              onClick={requestEnhance}
+              title={
+                isRecording
+                  ? t("Ferma la registrazione per generare le note")
+                  : meeting.enhancedMd
+                    ? t("Rigenerando, le note AI attuali e le tue modifiche vengono sostituite")
+                    : ""
+              }
             >
-              {meeting.enhancedMd ? "↻ Rigenera note AI" : "✦ Genera note AI"}
+              {confirmRegen
+                ? t("Sostituire le note AI?")
+                : meeting.enhancedMd
+                  ? t("↻ Rigenera note AI")
+                  : t("✦ Genera note AI")}
             </button>
           )}
         </div>
@@ -283,7 +316,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             <NoteEditor
               docKey={id + ":notes"}
               value={meeting.notesMd}
-              placeholder="Scrivi i punti importanti, al resto pensa la trascrizione. Digita / per i comandi."
+              placeholder={t("Scrivi i punti importanti, al resto pensa la trascrizione. Digita / per i comandi.")}
               onChange={(md) => {
                 setMeeting((m) => (m ? { ...m, notesMd: md } : m));
                 saveNotes(md);
@@ -310,31 +343,31 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             className={"rec-btn" + (isRecording ? " on" : "")}
             onClick={toggleRecording}
             disabled={busyRec || otherRecording}
-            title={otherRecording ? "C'è già una registrazione in corso su un altro meeting" : ""}
+            title={otherRecording ? t("C'è già una registrazione in corso su un altro meeting") : ""}
           >
             <span className="rec-icon" />
-            {isRecording ? "Stop" : segments.length ? "Riprendi" : "Registra"}
+            {isRecording ? t("Stop") : segments.length ? t("Riprendi") : t("Registra")}
           </button>
           {isRecording && (
             <>
-              <Meter label="Tu" value={level.mic} />
-              {level.system !== null && <Meter label="Altri" value={level.system} />}
+              <Meter label={t("Tu")} value={level.mic} />
+              {level.system !== null && <Meter label={t("Altri")} value={level.system} />}
               <span className="muted small mono">{mmss(elapsed)}</span>
             </>
           )}
           {(finishing || (isRecording && rec.pendingChunks > 1)) && (
-            <span className="muted small">Completo la trascrizione…</span>
+            <span className="muted small">{t("Completo la trascrizione…")}</span>
           )}
-          {!isRecording && otherRecording && <span className="muted small">Registrazione in corso altrove</span>}
+          {!isRecording && otherRecording && <span className="muted small">{t("Registrazione in corso altrove")}</span>}
           <div className="spacer" />
           <button className={"btn small ghost" + (side === "transcript" ? " on" : "")} onClick={() => setSide(side === "transcript" ? "none" : "transcript")}>
-            Trascrizione {segments.length ? `(${segments.length})` : ""}
+            {t("Trascrizione")} {segments.length ? `(${segments.length})` : ""}
           </button>
           <button className={"btn small ghost" + (side === "chat" ? " on" : "")} onClick={() => setSide(side === "chat" ? "none" : "chat")}>
-            ✦ Chiedi
+            {t("✦ Chiedi")}
           </button>
           <button className={"btn small ghost danger"} onClick={remove} disabled={isRecording}>
-            {confirmDelete ? "Confermi?" : "Elimina"}
+            {confirmDelete ? t("Confermi?") : t("Elimina")}
           </button>
         </footer>
       </div>
@@ -342,8 +375,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
       {side !== "none" && (
         <aside className="side-panel">
           <div className="side-panel-head">
-            <strong>{side === "transcript" ? "Trascrizione" : "Chiedi su questo meeting"}</strong>
-            <button className="toast-x" aria-label="Chiudi pannello" onClick={() => setSide("none")}>
+            <strong>{side === "transcript" ? t("Trascrizione") : t("Chiedi su questo meeting")}</strong>
+            <button className="toast-x" aria-label={t("Chiudi pannello")} onClick={() => setSide("none")}>
               ×
             </button>
           </div>
@@ -353,7 +386,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             <ChatPanel
               scope={id}
               toast={toast}
-              suggestions={["Scrivi una email di follow-up", "Quali sono le azioni e chi le fa?", "Cosa non è stato deciso?"]}
+              suggestions={[t("Scrivi una email di follow-up"), t("Quali sono le azioni e chi le fa?"), t("Cosa non è stato deciso?")]}
             />
           )}
         </aside>

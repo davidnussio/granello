@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 import type { EditorPlugin } from "../types";
 
 export const lists: EditorPlugin = {
@@ -5,19 +6,31 @@ export const lists: EditorPlugin = {
   commands: [
     {
       id: "bullet-list",
-      title: "Elenco puntato",
-      hint: "- + spazio",
+      get title() {
+        return t("Elenco puntato");
+      },
+      get hint() {
+        return t("- + spazio");
+      },
       icon: "•",
-      group: "Elenchi",
+      get group() {
+        return t("Elenchi");
+      },
       keywords: ["lista", "bullet", "punti"],
       run: (e) => e.chain().focus().toggleBulletList().run(),
     },
     {
       id: "ordered-list",
-      title: "Elenco numerato",
-      hint: "1. + spazio",
+      get title() {
+        return t("Elenco numerato");
+      },
+      get hint() {
+        return t("1. + spazio");
+      },
       icon: "1.",
-      group: "Elenchi",
+      get group() {
+        return t("Elenchi");
+      },
       keywords: ["lista", "numeri", "ordered"],
       run: (e) => e.chain().focus().toggleOrderedList().run(),
     },
@@ -27,7 +40,9 @@ export const lists: EditorPlugin = {
       id: "bullet-list",
       group: "block",
       label: "•",
-      title: "Elenco puntato (⌘⇧8)",
+      get title() {
+        return t("Elenco puntato (⌘⇧8)");
+      },
       isActive: (e) => e.isActive("bulletList"),
       run: (e) => e.chain().focus().toggleBulletList().run(),
     },
