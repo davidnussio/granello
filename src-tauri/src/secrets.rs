@@ -22,11 +22,20 @@ fn account(provider_id: &str) -> String {
     }
 }
 
+/// Variabili d'ambiente da cui leggere la chiave di Claude, in ordine. L'ultima è il nome che
+/// `envsec run --inject` dà al segreto `claude.api-key` (il trattino resta).
+const CLAUDE_ENV: &[&str] = &["ANTHROPIC_API_KEY", "CLAUDE_API_KEY", "CLAUDE_API-KEY"];
+
+/// Con la chiave nell'ambiente il Portachiavi non viene letto: niente richiesta di password.
 fn env_key(provider_id: &str) -> Option<String> {
     if provider_id != ANTHROPIC_ID {
         return None;
     }
-    std::env::var("ANTHROPIC_API_KEY").ok().filter(|k| !k.is_empty())
+    key_from(|name| std::env::var(name).ok())
+}
+
+fn key_from(var: impl Fn(&str) -> Option<String>) -> Option<String> {
+    CLAUDE_ENV.iter().find_map(|name| var(name).map(|k| k.trim().to_string()).filter(|k| !k.is_empty()))
 }
 
 /// Chiavi già lette in questo avvio, per provider. `None` = il Portachiavi non ha la voce.
@@ -129,6 +138,18 @@ mod tests {
         assert_eq!(account(ANTHROPIC_ID), "anthropic-api-key"); // compatibile con le versioni precedenti
         assert_eq!(account("lmstudio"), "provider-lmstudio-api-key");
         assert!(env_key("lmstudio").is_none());
+    }
+
+    #[test]
+    fn reads_the_claude_key_from_the_environment() {
+        let env = |pairs: &'static [(&'static str, &'static str)]| {
+            move |name: &str| pairs.iter().find(|(n, _)| *n == name).map(|(_, v)| v.to_string())
+        };
+        assert_eq!(key_from(env(&[("CLAUDE_API-KEY", " sk-envsec\n")])).as_deref(), Some("sk-envsec"));
+        assert_eq!(key_from(env(&[("CLAUDE_API_KEY", "sk-b"), ("CLAUDE_API-KEY", "sk-c")])).as_deref(), Some("sk-b"));
+        // una variabile vuota non conta: si passa alla successiva
+        assert_eq!(key_from(env(&[("ANTHROPIC_API_KEY", ""), ("CLAUDE_API_KEY", "sk-b")])).as_deref(), Some("sk-b"));
+        assert_eq!(key_from(env(&[("OPENAI_API_KEY", "sk-x")])), None);
     }
 
     #[test]

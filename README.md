@@ -128,6 +128,7 @@ Requirements: macOS 13+, stable Rust, Node 20+, pnpm, Xcode Command Line Tools, 
 ```bash
 pnpm install
 pnpm tauri dev          # development
+pnpm dev:secrets        # development, with the Claude key injected by envsec (no Keychain prompt)
 pnpm tauri build        # .app and .dmg in src-tauri/target/release/bundle
 ```
 
@@ -143,7 +144,7 @@ pnpm check              # tsc + translations + clippy (warnings are errors) + ca
 
 First launch (the Home screen shows what's missing):
 
-1. **Settings → AI models**: paste your Claude API key (it goes to the Keychain; alternatively export `ANTHROPIC_API_KEY`), or add a local provider such as LM Studio or Ollama.
+1. **Settings → AI models**: paste your Claude API key (it goes to the Keychain; alternatively export `ANTHROPIC_API_KEY` or `CLAUDE_API_KEY`; with the key in the environment the Keychain is never read), or add a local provider such as LM Studio or Ollama.
 2. **Settings → Local transcription**: download `large-v3-turbo-q5_0` (547 MB, recommended on Apple Silicon) or `base` for a quick try.
 3. **Settings → Calendar**: add a calendar and paste its secret iCal address. You can add more than one.
 4. The first time you press Record, macOS asks for microphone permission.

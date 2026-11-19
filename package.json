@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "tauri": "tauri",
+    "dev:secrets": "envsec -c ai run --inject \"pnpm tauri dev\"",
     "test": "cd src-tauri && cargo test",
     "check": "tsc && node scripts/check-i18n.mjs && cd src-tauri && cargo clippy --all-targets -- -D warnings && cargo test"
   },
