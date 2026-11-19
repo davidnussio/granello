@@ -7,7 +7,7 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
 ## Features
 
 - **Notes + recording**: Markdown editor (TipTap) with a `/` command menu, a formatting toolbar on selection, links and checklists, autosave, recording with audio levels and a timer, resuming on the same meeting.
-- **Editor blocks**: tables, callouts, collapsible sections, columns, images (paste a screenshot), file attachments, link previews, LaTeX formulas, a live table of contents, highlighting, `@person` mentions and date pills. Everything is still saved as readable Markdown:
+- **Editor blocks**: tables, callouts, collapsible sections, columns, images (paste a screenshot), file attachments, link previews, LaTeX formulas, a live table of contents, highlighting, `@person` mentions and date pills; plus meeting tools: polls, kanban boards, timelines, pros and cons, decision matrices, star ratings, timers, progress bars, charts, Mermaid diagrams, a freehand whiteboard and embeds. Everything is still saved as readable Markdown:
 
   | Block | Shortcut | In Markdown |
   | --- | --- | --- |
@@ -22,6 +22,18 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
   | Highlight | ⌘⇧H | `==text==`, `==text=={.green}` |
   | Person | `@` | `@[Name]` |
   | Date | `/` menu | `[[2026-11-26]]` |
+  | Poll | `/` menu | `::: poll Question` with `- [3] Option` lines |
+  | Kanban board | `/` menu | `::: kanban` with `## Column` and `- card` lines |
+  | Timeline | `/` menu | `::: timeline` with `- 2026-11-26 Milestone` lines |
+  | Pros and cons | `/` menu | `::: pros-cons` with `+ pro`, `- con`, `= verdict` |
+  | Decision matrix | `/` menu | `::: matrix` around a table (criterion, weight, a score per option) |
+  | Star rating | `/` menu | `[[rating:4]]` |
+  | Timer | `/` menu | `[[timer:05:00]]` |
+  | Progress bar | `/` menu | `[[progress]]` (computed from the section's checklists) |
+  | Chart | `/` menu | `[[chart:bar]]`, `[[chart:line]]` (draws the table above it) |
+  | Diagram | `/` menu | a `mermaid` code block |
+  | Whiteboard | `/` menu | a `sketch` code block, one line per stroke |
+  | Embed | `/` menu | `[Title](https://… "embed")` |
 - **Local transcription**: whisper.cpp with Metal on Apple Silicon. Audio is cut on pauses (6-20 s), resampled to 16 kHz and transcribed on a dedicated thread. Typical hallucinations ("Thanks for watching", "[Music]"...) are filtered out. The meeting title and attendees are passed as the initial prompt to improve names and terms.
 - **Two sources**: the microphone ("You") and a loopback device for the call audio ("Others").
 - **Upload a recording**: instead of recording live, *Upload audio* transcribes an existing file (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, or the audio track of an MP4/MOV video) with the same pipeline, appending to the meeting's transcript. The file is read in place, never copied. Opus is not supported.
@@ -67,7 +79,7 @@ In the frontend Italian is the source language: `t("Testo italiano")` looks up t
 
 ## Privacy
 
-Audio is never saved: it is transcribed locally and discarded. Notes and transcripts stay in the local database. Only text (notes and transcript) is sent to the AI provider you chose, when you generate AI notes or use the chat; with a local provider nothing leaves your Mac. API keys live in the Keychain; the iCal URLs live in the local database. Pasted images and attached files are copied into the app's data folder (`attachments/`) and removed when the last meeting that uses them is deleted. A link preview asks the linked page for its title once, when you create it; images from the Internet are never loaded.
+Audio is never saved: it is transcribed locally and discarded. Notes and transcripts stay in the local database. Only text (notes and transcript) is sent to the AI provider you chose, when you generate AI notes or use the chat; with a local provider nothing leaves your Mac. API keys live in the Keychain; the iCal URLs live in the local database. Pasted images and attached files are copied into the app's data folder (`attachments/`) and removed when the last meeting that uses them is deleted. A link preview asks the linked page for its title once, when you create it; images from the Internet are never loaded. Embedded content (YouTube, Vimeo, Loom, Figma, maps) is loaded only when you press *Load* on it, and only from those services.
 
 ## Architecture
 

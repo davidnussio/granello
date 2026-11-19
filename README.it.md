@@ -7,7 +7,7 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
 ## Funzioni
 
 - **Note + registrazione**: editor Markdown (TipTap) con menu `/` dei comandi, barra di formattazione sulla selezione, link e checklist, salvataggio automatico, registrazione con livelli audio e cronometro, ripresa sullo stesso meeting.
-- **Blocchi dell'editor**: tabelle, riquadri in evidenza, sezioni richiudibili, colonne, immagini (incolla uno screenshot), allegati, anteprime dei link, formule LaTeX, indice sempre aggiornato, evidenziatore, menzioni `@persona` e date. Tutto resta salvato come Markdown leggibile:
+- **Blocchi dell'editor**: tabelle, riquadri in evidenza, sezioni richiudibili, colonne, immagini (incolla uno screenshot), allegati, anteprime dei link, formule LaTeX, indice sempre aggiornato, evidenziatore, menzioni `@persona` e date; più gli strumenti da riunione: sondaggi, lavagne a colonne, timeline, pro e contro, matrici di decisione, valutazioni a stelle, timer, barre di avanzamento, grafici, diagrammi Mermaid, una lavagna a mano libera e contenuti incorporati. Tutto resta salvato come Markdown leggibile:
 
   | Blocco | Scorciatoia | In Markdown |
   | --- | --- | --- |
@@ -22,6 +22,18 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
   | Evidenziatore | ⌘⇧H | `==testo==`, `==testo=={.green}` |
   | Persona | `@` | `@[Nome]` |
   | Data | menu `/` | `[[2026-11-26]]` |
+  | Sondaggio | menu `/` | `::: poll Domanda` con righe `- [3] Opzione` |
+  | Lavagna a colonne | menu `/` | `::: kanban` con righe `## Colonna` e `- scheda` |
+  | Timeline | menu `/` | `::: timeline` con righe `- 2026-11-26 Tappa` |
+  | Pro e contro | menu `/` | `::: pros-cons` con `+ pro`, `- contro`, `= verdetto` |
+  | Matrice di decisione | menu `/` | `::: matrix` attorno a una tabella (criterio, peso, un punteggio per opzione) |
+  | Valutazione | menu `/` | `[[rating:4]]` |
+  | Timer | menu `/` | `[[timer:05:00]]` |
+  | Avanzamento | menu `/` | `[[progress]]` (calcolato dalle checklist della sezione) |
+  | Grafico | menu `/` | `[[chart:bar]]`, `[[chart:line]]` (disegna la tabella che lo precede) |
+  | Diagramma | menu `/` | un blocco di codice `mermaid` |
+  | Lavagna | menu `/` | un blocco di codice `sketch`, una riga per tratto |
+  | Incorpora | menu `/` | `[Titolo](https://… "embed")` |
 - **Trascrizione locale**: whisper.cpp con Metal su Apple Silicon. L'audio viene tagliato sulle pause (6-20 s), ricampionato a 16 kHz e trascritto in un thread dedicato. Filtra le allucinazioni tipiche ("Sottotitoli a cura di QTSS", "[Musica]"...). Il titolo e i partecipanti vengono passati come prompt iniziale per migliorare nomi e termini.
 - **Due sorgenti**: microfono ("Tu") e un dispositivo di loopback per l'audio della call ("Altri").
 - **Carica una registrazione**: invece di registrare dal vivo, *Carica audio* trascrive un file esistente (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, o la traccia audio di un video MP4/MOV) con la stessa pipeline, in coda alla trascrizione del meeting. Il file viene letto dov'è, mai copiato. Opus non è supportato.
@@ -67,7 +79,7 @@ Nel frontend l'italiano è la lingua sorgente: `t("Testo italiano")` cerca la tr
 
 ## Privacy
 
-L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. Al provider AI scelto viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat; con un provider locale non esce nulla dal Mac. Le API key stanno nel Portachiavi; gli URL iCal stanno nel database locale. Le immagini incollate e i file allegati vengono copiati nella cartella dati dell'app (`attachments/`) ed eliminati quando viene cancellato l'ultimo meeting che li usa. Un'anteprima di link chiede il titolo alla pagina collegata una sola volta, quando la crei; le immagini da Internet non vengono mai caricate.
+L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. Al provider AI scelto viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat; con un provider locale non esce nulla dal Mac. Le API key stanno nel Portachiavi; gli URL iCal stanno nel database locale. Le immagini incollate e i file allegati vengono copiati nella cartella dati dell'app (`attachments/`) ed eliminati quando viene cancellato l'ultimo meeting che li usa. Un'anteprima di link chiede il titolo alla pagina collegata una sola volta, quando la crei; le immagini da Internet non vengono mai caricate. I contenuti incorporati (YouTube, Vimeo, Loom, Figma, mappe) si caricano solo quando premi *Carica*, e solo da quei servizi.
 
 ## Architettura
 

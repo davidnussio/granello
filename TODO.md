@@ -5,14 +5,13 @@ OAuth…) live in the "Next steps" section of the [README](README.md).
 
 ## Editor components
 
-Blocks that could be added to the notes editor. The classics are done; the other
-two groups are not started. The editor also has headings, lists, checklists, quote,
+Blocks that could be added to the notes editor. The classics and the cool ones are
+done; the last group is not started. The editor also has headings, lists, checklists, quote,
 code block, divider, links and snippets.
 
-**Storage:** notes are stored as Markdown, and every classic block has a readable
-Markdown form (see the table in the README). Polls, kanban boards and the
-transcript-linked blocks still need their own format inside the Markdown, or a
-different way of storing notes.
+**Storage:** notes are stored as Markdown, and every block has a readable Markdown
+form (see the table in the README). Blocks made of data rather than text share one
+base, `src/editor/dataBlock.ts`: the transcript-linked blocks can build on it.
 
 **Where to start:** transcript quote, decision and action item with an owner. They
 build on data Granello already has (timestamped segments, people directory,
@@ -35,18 +34,18 @@ attendees), and a generic editor can't copy them.
 
 ### Cool ones
 
-- [ ] **Poll**: a question with options and a vote count, to record a vote taken in the meeting.
-- [ ] **Diagram**: Mermaid written as text and drawn live (flows, sequences, Gantt).
-- [ ] **Whiteboard**: a freehand sketch inside the note.
-- [ ] **Kanban**: "to do / doing / done" columns with draggable cards.
-- [ ] **Timeline**: milestones with dates along a line.
-- [ ] **Chart**: bars or lines generated from a table in the note.
-- [ ] **Timer**: a countdown for an agenda item.
-- [ ] **Progress bar**: a percentage computed from the section's checklists.
-- [ ] **Pros and cons**: two columns side by side with a verdict at the bottom.
-- [ ] **Decision matrix**: options by criteria, with weights and a total score.
-- [ ] **Rating**: stars or a 1-to-5 score, handy in interviews.
-- [ ] **Embed**: Figma, Loom, YouTube or a map visible inside the note.
+- [x] **Poll**: a question with options and a vote count, to record a vote taken in the meeting.
+- [x] **Diagram**: Mermaid written as text and drawn live (flows, sequences, Gantt).
+- [x] **Whiteboard**: a freehand sketch inside the note.
+- [x] **Kanban**: "to do / doing / done" columns with draggable cards.
+- [x] **Timeline**: milestones with dates along a line.
+- [x] **Chart**: bars or lines generated from a table in the note.
+- [x] **Timer**: a countdown for an agenda item.
+- [x] **Progress bar**: a percentage computed from the section's checklists.
+- [x] **Pros and cons**: two columns side by side with a verdict at the bottom.
+- [x] **Decision matrix**: options by criteria, with weights and a total score.
+- [x] **Rating**: stars or a 1-to-5 score, handy in interviews.
+- [x] **Embed**: Figma, Loom, YouTube or a map visible inside the note.
 
 ### The ones nobody has, but we do
 
