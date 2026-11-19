@@ -241,6 +241,13 @@ struct ImportProgressEvent {
     total_ms: Option<i64>,
 }
 
+/// Comandi per il thread che produce l'audio di una sessione.
+enum Control {
+    Stop,
+    /// Cambia al volo il dispositivo degli altri partecipanti (`None` = solo microfono).
+    SystemDevice(Option<String>),
+}
+
 pub struct SessionConfig {
     pub meeting_id: String,
     pub mic_device: Option<String>,
@@ -253,7 +260,7 @@ pub struct SessionConfig {
 
 pub struct Session {
     pub meeting_id: String,
-    stop_tx: mpsc::Sender<()>,
+    stop_tx: mpsc::Sender<Control>,
     audio_thread: Option<JoinHandle<()>>,
     transcribe_thread: Option<JoinHandle<()>>,
     pub pending: Arc<AtomicUsize>,
@@ -353,7 +360,7 @@ impl Session {
         // Carica il modello subito: meglio fallire ora che a meeting in corso.
         cache.get(&cfg.model_path)?;
 
-        let (stop_tx, stop_rx) = mpsc::channel::<()>();
+        let (stop_tx, stop_rx) = mpsc::channel::<Control>();
         let (chunk_tx, chunk_rx) = mpsc::channel::<Chunk>();
         let (ready_tx, ready_rx) = mpsc::channel::<Result<()>>();
         let pending = Arc::new(AtomicUsize::new(0));
@@ -385,7 +392,7 @@ impl Session {
                             return;
                         }
                     };
-                    let sys = match sys_name.as_deref().filter(|n| !n.is_empty()) {
+                    let mut sys = match sys_name.as_deref().filter(|n| !n.is_empty()) {
                         Some(n) => match find_device(Some(n))
                             .and_then(|d| open_stream(&d, sys_buf.clone(), stream_error.clone()))
                         {
@@ -408,10 +415,48 @@ impl Session {
                     let mut mic_peak = 0.0f32;
                     let mut warned_dead_mic = false;
                     loop {
-                        let stop_requested = !matches!(
-                            stop_rx.recv_timeout(Duration::from_millis(200)),
-                            Err(mpsc::RecvTimeoutError::Timeout)
-                        );
+                        let mut switch_to = None;
+                        let stop_requested = match stop_rx.recv_timeout(Duration::from_millis(200)) {
+                            Err(mpsc::RecvTimeoutError::Timeout) => false,
+                            Ok(Control::SystemDevice(name)) => {
+                                switch_to = Some(name);
+                                false
+                            }
+                            Ok(Control::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => true,
+                        };
+                        if let Some(name) = switch_to {
+                            // chiude la sorgente attuale consegnando l'audio già catturato...
+                            if chunkers.len() > 1 {
+                                if let (_, Some(chunk)) = chunkers[1].poll(true) {
+                                    pending.fetch_add(1, Ordering::SeqCst);
+                                    if chunk_tx.send(chunk).is_err() {
+                                        pending.fetch_sub(1, Ordering::SeqCst);
+                                    }
+                                }
+                                chunkers.truncate(1);
+                            }
+                            sys = None;
+                            // ...e apre quella nuova, che parte dal punto in cui siamo arrivati
+                            if let Some(n) = name.as_deref().filter(|n| !n.is_empty()) {
+                                let buf = Arc::new(Mutex::new(Vec::<f32>::new()));
+                                match find_device(Some(n))
+                                    .and_then(|d| open_stream(&d, buf.clone(), stream_error.clone()))
+                                {
+                                    Ok(v) => {
+                                        let now_ms = base_ms + started.elapsed().as_millis() as i64;
+                                        chunkers.push(Chunker::new("them", v.1, buf, now_ms));
+                                        sys = Some(v);
+                                    }
+                                    Err(e) => {
+                                        log::warn!("cambio del dispositivo degli altri: {e}");
+                                        let _ = app.emit(
+                                            "recording-warning",
+                                            ErrorEvent { meeting_id: meeting_id.clone(), message: e.to_string() },
+                                        );
+                                    }
+                                }
+                            }
+                        }
                         // Un dispositivo scollegato a metà meeting chiude la sessione in modo
                         // pulito: l'audio già catturato viene comunque trascritto.
                         let fatal = stream_error.lock().take();
@@ -498,7 +543,7 @@ System Settings → Privacy & Security → Microphone and that the microphone is
         cache.get(&cfg.model_path)?;
         let mut file = AudioFile::open(path)?;
 
-        let (stop_tx, stop_rx) = mpsc::channel::<()>();
+        let (stop_tx, stop_rx) = mpsc::channel::<Control>();
         let (chunk_tx, chunk_rx) = mpsc::sync_channel::<Chunk>(IMPORT_QUEUE);
         let pending = Arc::new(AtomicUsize::new(0));
         let import = ImportInfo { total_ms: file.total_ms };
@@ -545,8 +590,16 @@ System Settings → Privacy & Security → Microphone and that the microphone is
         self.stop_capture();
     }
 
+    /// Cambia il dispositivo degli altri partecipanti a registrazione in corso.
+    /// Non ha effetto mentre si trascrive un file.
+    pub fn set_system_device(&self, name: Option<String>) {
+        if !self.importing {
+            let _ = self.stop_tx.send(Control::SystemDevice(name));
+        }
+    }
+
     fn stop_capture(&mut self) {
-        let _ = self.stop_tx.send(());
+        let _ = self.stop_tx.send(Control::Stop);
         if let Some(h) = self.audio_thread.take() {
             let _ = h.join();
         }

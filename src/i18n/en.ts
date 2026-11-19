@@ -126,6 +126,10 @@ const en: Record<string, string> = {
   "Completo la trascrizione…": "Finishing the transcript…",
   "Registrazione in corso altrove": "Recording in progress elsewhere",
   "Carica audio": "Upload audio",
+  "Da dove arriva l'audio degli altri partecipanti. Si può cambiare anche mentre registri.":
+    "Where the other participants' audio comes from. You can change it while recording too.",
+  "Altri: nessuno": "Others: none",
+  "Altri: {device}": "Others: {device}",
   "Trascrive un file audio o video invece di registrare dal vivo": "Transcribes an audio or video file instead of recording live",
   "Trascrivo il file… {pct}%": "Transcribing the file… {pct}%",
   "Trascrivo il file… {time}": "Transcribing the file… {time}",

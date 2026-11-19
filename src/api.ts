@@ -48,6 +48,8 @@ export const api = {
   stopRecording: () => invoke<void>("stop_recording"),
   /** Fa scegliere un file audio e lo trascrive nel meeting. false se la scelta viene annullata. */
   importAudio: (meetingId: string) => invoke<boolean>("import_audio", { meetingId }),
+  /** Dispositivo per l'audio degli altri (null = solo microfono); vale anche a registrazione in corso. */
+  setSystemDevice: (device: string | null) => invoke<void>("set_system_device", { device }),
   recordingStatus: () => invoke<RecordingStatus>("recording_status"),
 
   enhanceNotes: (meetingId: string, streamId: string) =>

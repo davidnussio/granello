@@ -91,6 +91,7 @@ pub fn run() {
             commands::start_recording,
             commands::stop_recording,
             commands::import_audio,
+            commands::set_system_device,
             commands::recording_status,
             commands::enhance_notes,
             commands::cancel_stream,

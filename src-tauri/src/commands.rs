@@ -367,6 +367,23 @@ pub async fn import_audio(app: AppHandle, state: State<'_, AppState>, meeting_id
     Ok(true)
 }
 
+/// Sceglie il dispositivo da cui arriva l'audio degli altri partecipanti (`None` = solo
+/// microfono). Vale da subito anche per la registrazione in corso.
+#[tauri::command]
+pub fn set_system_device(state: State<AppState>, device: Option<String>) -> CmdResult<()> {
+    let device = device.filter(|d| !d.is_empty());
+    {
+        let db = state.db.lock();
+        let mut settings = db.get_settings().map_err(err)?;
+        settings.system_device = device.clone();
+        db.save_settings(&settings).map_err(err)?;
+    }
+    if let Some(s) = state.session.lock().as_ref() {
+        s.set_system_device(device);
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn stop_recording(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
     let s = state.session.lock().take();

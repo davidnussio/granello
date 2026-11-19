@@ -80,6 +80,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const [finishing, setFinishing] = useState(false);
   const [enhVersion, setEnhVersion] = useState(0);
   const streamRef = useRef<string | null>(null);
+  const [devices, setDevices] = useState<string[]>([]);
+  const [systemDevice, setSystemDevice] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<{ doneMs: number; totalMs: number | null } | null>(null);
 
   // la sessione su questo meeting è una registrazione dal vivo oppure un file in trascrizione
@@ -105,6 +107,23 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     // evento di calendario alla stessa ora: da lì si possono importare i partecipanti
     api.calendarMatch(id).then(setCalEvent).catch(() => {});
   }, [load, id]);
+
+  const loadDevices = useCallback(() => {
+    api.listAudioDevices().then(setDevices).catch(() => {});
+    api.getSettings().then((s) => setSystemDevice(s.systemDevice)).catch(() => {});
+  }, []);
+  useEffect(loadDevices, [loadDevices, id]);
+
+  const changeSystemDevice = async (device: string | null) => {
+    const previous = systemDevice;
+    setSystemDevice(device);
+    try {
+      await api.setSystemDevice(device);
+    } catch (e) {
+      setSystemDevice(previous);
+      toast(errorText(e));
+    }
+  };
 
   useEffect(() => {
     const offs = [
@@ -458,6 +477,25 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             >
               {t("Carica audio")}
             </button>
+          )}
+          {!isImporting && (
+            <select
+              className="chip select others-device"
+              value={systemDevice ?? ""}
+              // i dispositivi collegati possono essere cambiati dall'ultima volta
+              onFocus={loadDevices}
+              onChange={(e) => changeSystemDevice(e.target.value || null)}
+              aria-label={t("Audio degli altri partecipanti")}
+              title={t("Da dove arriva l'audio degli altri partecipanti. Si può cambiare anche mentre registri.")}
+            >
+              <option value="">{t("Altri: nessuno")}</option>
+              {/* un dispositivo salvato ma ora scollegato resta visibile */}
+              {[...new Set([...(systemDevice ? [systemDevice] : []), ...devices])].map((d) => (
+                <option key={d} value={d}>
+                  {t("Altri: {device}", { device: d })}
+                </option>
+              ))}
+            </select>
           )}
           {isImporting && !finishing && (
             <span className="muted small">
