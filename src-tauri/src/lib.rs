@@ -58,7 +58,8 @@ pub fn run() {
                 session: Mutex::new(None),
                 calendar: tokio::sync::Mutex::new(Default::default()),
                 downloading: Mutex::new(Default::default()),
-                http: commands::http_client(),
+                http: commands::http_client(Duration::from_secs(120)),
+                llm_http: commands::http_client(Duration::from_secs(600)),
                 streams: Mutex::new(Default::default()),
             });
             spawn_calendar_watcher(app.handle().clone());
@@ -87,6 +88,8 @@ pub fn run() {
             commands::app_info,
             commands::log_frontend_error,
             commands::has_api_key,
+            commands::ai_ready,
+            commands::list_provider_models,
             commands::set_api_key,
             commands::list_whisper_models,
             commands::download_whisper_model,

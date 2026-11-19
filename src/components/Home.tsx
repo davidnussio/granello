@@ -42,9 +42,11 @@ export default function Home({ events, onNew, onOpenEvent, onRefresh, setup, onO
               </span>
             </li>
             <li className={setup.hasKey ? "done" : ""}>
-              <strong>API key di Claude</strong>
+              <strong>Modello AI</strong>
               <span className="muted small">
-                {setup.hasKey ? "Configurata" : "Serve per generare le note AI e per la chat."}
+                {setup.hasKey
+                  ? "Configurato"
+                  : "Serve per le note AI e la chat: una API key di Claude oppure un modello locale."}
               </span>
             </li>
             <li className={setup.hasCalendar ? "done" : "optional"}>

@@ -57,7 +57,7 @@ export default function App() {
   }, []);
 
   const refreshSetup = useCallback(() => {
-    Promise.all([api.hasApiKey(), api.listWhisperModels(), api.getSettings()])
+    Promise.all([api.aiReady(), api.listWhisperModels(), api.getSettings()])
       .then(([hasKey, models, settings]) =>
         setSetup({
           hasKey,

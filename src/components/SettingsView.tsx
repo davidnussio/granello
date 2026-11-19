@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { api, errorText, on, type AppInfo, type ModelDownload } from "../api";
 import type { Settings, WhisperModelInfo } from "../types";
+import AiSettings from "./AiSettings";
 
 interface Props {
   toast: (t: string) => void;
@@ -20,8 +21,6 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
   const [s, setS] = useState<Settings | null>(null);
   const [devices, setDevices] = useState<string[]>([]);
   const [models, setModels] = useState<WhisperModelInfo[]>([]);
-  const [hasKey, setHasKey] = useState(false);
-  const [key, setKey] = useState("");
   const [dl, setDl] = useState<Record<string, ModelDownload>>({});
   const [info, setInfo] = useState<AppInfo | null>(null);
 
@@ -30,7 +29,6 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
   useEffect(() => {
     api.getSettings().then(setS).catch((e) => toast(errorText(e)));
     api.listAudioDevices().then(setDevices).catch(() => {});
-    api.hasApiKey().then(setHasKey).catch(() => {});
     api.appInfo().then(setInfo).catch(() => {});
     loadModels().catch(() => {});
     return on("model-download", (d) => {
@@ -42,16 +40,18 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
 
   if (!s) return <div className="page muted">Caricamento…</div>;
 
-  const save = async (patch: Partial<Settings>) => {
+  const save = async (patch: Partial<Settings>): Promise<boolean> => {
     const next = { ...s, ...patch };
     setS(next);
     try {
       setS(await api.saveSettings(next));
       if ("icsUrl" in patch) onCalendarChanged();
+      return true;
     } catch (e) {
       toast(errorText(e));
       // valore rifiutato: si torna a quello realmente salvato
       api.getSettings().then(setS).catch(() => {});
+      return false;
     }
   };
 
@@ -63,17 +63,6 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
       toast(errorText(e));
     } finally {
       loadModels().catch(() => {});
-    }
-  };
-
-  const saveKey = async () => {
-    try {
-      await api.setApiKey(key);
-      setKey("");
-      setHasKey(await api.hasApiKey());
-      toast(key ? "API key salvata" : "API key rimossa");
-    } catch (e) {
-      toast(errorText(e));
     }
   };
 
@@ -97,27 +86,10 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
     <div className="page settings">
       <h1 className="page-title">Impostazioni</h1>
 
+      <AiSettings s={s} setS={setS} save={save} toast={toast} />
+
       <section className="card">
-        <h3>Claude</h3>
-        <label className="field">
-          <span>API key</span>
-          <div className="row gap">
-            <input
-              type="password"
-              value={key}
-              placeholder={hasKey ? "•••••••••• salvata nel Portachiavi" : "sk-ant-…"}
-              onChange={(e) => setKey(e.target.value)}
-            />
-            <button className="btn" onClick={saveKey} disabled={!key && !hasKey}>
-              {key ? "Salva" : "Rimuovi"}
-            </button>
-          </div>
-        </label>
-        <label className="field">
-          <span>Modello</span>
-          <input value={s.claudeModel} onChange={(e) => setS({ ...s, claudeModel: e.target.value })} onBlur={() => save({})} />
-          <small className="muted">Es. claude-sonnet-5-5 (default) o claude-opus-5-5 per note più curate.</small>
-        </label>
+        <h3>Profilo</h3>
         <label className="field">
           <span>Il tuo nome</span>
           <input
@@ -250,7 +222,7 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
           <h3>Dati e privacy</h3>
           <p className="muted small">
             Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e
-            scartato. A Claude vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o
+            scartato. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o
             usi la chat.
           </p>
           <div className="row gap">

@@ -1,3 +1,4 @@
+use crate::secrets::ANTHROPIC_ID;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,11 +66,52 @@ pub struct ChatMessage {
     pub created_at: i64,
 }
 
+/// Protocollo parlato da un provider AI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ProviderKind {
+    /// Messages API di Anthropic.
+    #[default]
+    Anthropic,
+    /// Chat Completions compatibile con OpenAI: LM Studio, Ollama, OpenAI, OpenRouter...
+    Openai,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Provider {
+    /// Identificatore stabile: lega il provider alla sua API key e ai modelli scelti.
+    pub id: String,
+    pub name: String,
+    pub kind: ProviderKind,
+    /// Per i provider compatibili OpenAI comprende `/v1` (es. `http://localhost:1234/v1`).
+    /// Vuoto per Anthropic = endpoint ufficiale.
+    pub base_url: String,
+    /// Finestra di contesto del modello, se nota: serve a bloccare richieste che il server
+    /// locale troncherebbe in silenzio.
+    pub context_tokens: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ModelRef {
+    pub provider_id: String,
+    pub model: String,
+}
+
+pub const DEFAULT_CLAUDE_MODEL: &str = "claude-sonnet-5-5";
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub user_name: String,
+    /// Solo per leggere le impostazioni salvate prima dei provider multipli.
     pub claude_model: String,
+    pub providers: Vec<Provider>,
+    /// Modello che scrive le note AI.
+    pub notes_model: ModelRef,
+    /// Modello della chat.
+    pub chat_model: ModelRef,
     pub language: String,
     pub whisper_model: String,
     pub mic_device: Option<String>,
@@ -80,8 +122,25 @@ pub struct Settings {
 
 impl Settings {
     pub fn with_defaults(mut self) -> Self {
-        if self.claude_model.is_empty() {
-            self.claude_model = "claude-sonnet-5-5".into();
+        // Claude c'è sempre: è il provider di partenza e non si può eliminare
+        if !self.providers.iter().any(|p| p.id == ANTHROPIC_ID) {
+            self.providers.insert(
+                0,
+                Provider {
+                    id: ANTHROPIC_ID.into(),
+                    name: "Claude".into(),
+                    kind: ProviderKind::Anthropic,
+                    ..Default::default()
+                },
+            );
+        }
+        if self.notes_model.provider_id.is_empty() {
+            // migrazione dal vecchio campo unico
+            let model = if self.claude_model.is_empty() { DEFAULT_CLAUDE_MODEL } else { &self.claude_model };
+            self.notes_model = ModelRef { provider_id: ANTHROPIC_ID.into(), model: model.to_string() };
+        }
+        if self.chat_model.provider_id.is_empty() {
+            self.chat_model = self.notes_model.clone();
         }
         if self.language.is_empty() {
             self.language = "it".into();
@@ -100,9 +159,42 @@ impl Settings {
     /// Normalizza e valida le impostazioni in arrivo dall'interfaccia.
     pub fn validated(mut self) -> Result<Self, String> {
         self.user_name = self.user_name.trim().chars().take(80).collect();
-        self.claude_model = self.claude_model.trim().to_string();
-        if !self.claude_model.chars().all(|c| c.is_ascii_alphanumeric() || "-._:@".contains(c)) {
-            return Err("Nome del modello Claude non valido".into());
+        self = self.with_defaults();
+        let mut seen = std::collections::HashSet::new();
+        for p in self.providers.iter_mut() {
+            p.id = p.id.trim().to_string();
+            let id_ok = !p.id.is_empty()
+                && p.id.len() <= 40
+                && p.id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+            if !id_ok || !seen.insert(p.id.clone()) {
+                return Err("Identificatore del provider non valido o duplicato".into());
+            }
+            p.name = p.name.trim().chars().take(40).collect();
+            if p.name.is_empty() {
+                return Err("Ogni provider deve avere un nome".into());
+            }
+            p.base_url = p.base_url.trim().trim_end_matches('/').to_string();
+            let url_ok = (p.base_url.starts_with("http://") || p.base_url.starts_with("https://"))
+                && !p.base_url.chars().any(char::is_whitespace);
+            match p.kind {
+                ProviderKind::Anthropic if p.base_url.is_empty() => {}
+                _ if url_ok => {}
+                _ => return Err(format!("{}: l'indirizzo deve iniziare con http:// o https://", p.name)),
+            }
+            p.context_tokens = p.context_tokens.filter(|n| *n > 0);
+        }
+        for (label, m) in [("le note AI", &mut self.notes_model), ("la chat", &mut self.chat_model)] {
+            m.model = m.model.trim().to_string();
+            if !seen.contains(&m.provider_id) {
+                return Err(format!("Il provider scelto per {label} non esiste più"));
+            }
+            // i nomi dei modelli locali contengono "/" e ":" (es. qwen/qwen3-8b, llama3.2:3b)
+            let model_ok = !m.model.is_empty()
+                && m.model.len() <= 200
+                && m.model.chars().all(|c| c.is_ascii_alphanumeric() || "-._:@/+".contains(c));
+            if !model_ok {
+                return Err(format!("Scegli un modello valido per {label}"));
+            }
         }
         self.language = self.language.trim().to_ascii_lowercase();
         if !(self.language.is_empty() || self.language == "auto" || is_lang_code(&self.language)) {
@@ -136,7 +228,7 @@ mod tests {
     #[test]
     fn validates_settings() {
         let s = Settings {
-            claude_model: "  claude-opus-5-5 ".into(),
+            claude_model: "claude-opus-5-5".into(),
             ics_url: Some("  ".into()),
             notify_before_min: 999,
             language: "IT".into(),
@@ -145,7 +237,11 @@ mod tests {
         }
         .validated()
         .unwrap();
-        assert_eq!(s.claude_model, "claude-opus-5-5");
+        // migrazione dal vecchio campo: Claude come provider, stesso modello per note e chat
+        assert_eq!(s.providers.len(), 1);
+        assert_eq!(s.providers[0].id, "anthropic");
+        assert_eq!(s.notes_model, ModelRef { provider_id: "anthropic".into(), model: "claude-opus-5-5".into() });
+        assert_eq!(s.chat_model, s.notes_model);
         assert_eq!(s.ics_url, None);
         assert_eq!(s.notify_before_min, 60);
         assert_eq!(s.language, "it");
@@ -157,7 +253,26 @@ mod tests {
             f(&mut s);
             s.validated().is_err()
         };
-        assert!(bad(|s| s.claude_model = "claude sonnet\n".into()));
+        assert!(bad(|s| s.notes_model = ModelRef { provider_id: "anthropic".into(), model: "claude sonnet\n".into() }));
+        assert!(bad(|s| s.chat_model = ModelRef { provider_id: "sparito".into(), model: "x".into() }));
+        let local = |url: &str| Provider {
+            id: "lmstudio".into(),
+            name: "LM Studio".into(),
+            kind: ProviderKind::Openai,
+            base_url: url.into(),
+            context_tokens: Some(0),
+        };
+        assert!(bad(|s| s.providers.push(Provider { id: "LM Studio".into(), ..Default::default() })));
+        let mut s = Settings { providers: vec![local("localhost:1234/v1")], ..Default::default() };
+        assert!(s.clone().validated().is_err(), "serve lo schema http(s)");
+        s.providers = vec![local(" http://localhost:1234/v1/ ")];
+        s.chat_model = ModelRef { provider_id: "lmstudio".into(), model: "qwen/qwen3-8b:q4".into() };
+        let s = s.validated().unwrap();
+        assert_eq!(s.providers[0].id, "anthropic", "Claude resta sempre disponibile");
+        assert_eq!(s.providers[1].base_url, "http://localhost:1234/v1");
+        assert_eq!(s.providers[1].context_tokens, None);
+        assert_eq!(s.chat_model.provider_id, "lmstudio");
+        assert_eq!(s.notes_model.provider_id, "anthropic");
         assert!(bad(|s| s.ics_url = Some("file:///etc/passwd".into())));
         assert!(bad(|s| s.language = "italiano!".into()));
         assert!(bad(|s| {

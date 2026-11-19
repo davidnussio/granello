@@ -38,16 +38,19 @@ pub struct AppState {
     pub downloading: Mutex<HashSet<String>>,
     /// Client HTTP condiviso (pool di connessioni, timeout di connessione e di lettura).
     pub http: reqwest::Client,
+    /// Client per i modelli AI: un modello locale può impiegare minuti a leggere una
+    /// trascrizione lunga prima di emettere il primo token.
+    pub llm_http: reqwest::Client,
     /// Generazioni AI in corso, per poterle annullare: stream_id -> flag di annullamento.
     pub streams: Mutex<HashMap<String, Arc<AtomicBool>>>,
 }
 
-pub fn http_client() -> reqwest::Client {
+/// `idle`: tempo massimo senza ricevere dati prima di considerare morta la connessione.
+pub fn http_client(idle: Duration) -> reqwest::Client {
     reqwest::Client::builder()
         .user_agent(concat!("Granello/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(15))
-        // tempo massimo senza ricevere dati: copre streaming, download e calendario
-        .read_timeout(Duration::from_secs(120))
+        .read_timeout(idle)
         .build()
         .expect("client HTTP")
 }
@@ -228,10 +231,62 @@ pub fn recording_status(state: State<AppState>) -> RecordingStatus {
 
 // ---------------- AI ----------------
 
-fn api_key(state: &AppState) -> CmdResult<String> {
-    secrets::get_api_key(&state.data_dir)
-        .map_err(err)?
-        .ok_or_else(|| "Configura la API key di Claude nelle Impostazioni".into())
+/// Un modello pronto all'uso: provider, indirizzo, chiave e nome del modello.
+struct ResolvedModel {
+    provider: Provider,
+    api_key: Option<String>,
+    model: String,
+}
+
+fn resolve_model(state: &AppState, settings: &Settings, which: &ModelRef) -> CmdResult<ResolvedModel> {
+    let provider = settings
+        .providers
+        .iter()
+        .find(|p| p.id == which.provider_id)
+        .cloned()
+        .ok_or("Il provider AI scelto non esiste più: controlla le Impostazioni")?;
+    let api_key = secrets::get_api_key(&state.data_dir, &provider.id).map_err(err)?;
+    if provider.kind == ProviderKind::Anthropic && api_key.is_none() {
+        return Err(format!("Configura la API key di {} nelle Impostazioni", provider.name));
+    }
+    Ok(ResolvedModel { provider, api_key, model: which.model.clone() })
+}
+
+impl ResolvedModel {
+    fn request<'a>(&'a self, system: &'a str, messages: &'a [llm::Msg], max_tokens: u32, cache: bool) -> llm::Request<'a> {
+        llm::Request {
+            kind: self.provider.kind,
+            provider_name: &self.provider.name,
+            base_url: &self.provider.base_url,
+            api_key: self.api_key.as_deref(),
+            model: &self.model,
+            system,
+            messages,
+            max_tokens,
+            cache_system: cache,
+        }
+    }
+
+    /// I server locali troncano in silenzio i prompt più lunghi del contesto: se l'utente
+    /// ha indicato la finestra del modello, meglio un errore chiaro di note inventate a metà.
+    fn check_context(&self, system: &str, messages: &[llm::Msg]) -> CmdResult<()> {
+        let Some(limit) = self.provider.context_tokens else { return Ok(()) };
+        let chars: usize = system.chars().count() + messages.iter().map(|m| m.content.chars().count()).sum::<usize>();
+        let estimated = estimate_tokens(chars);
+        if estimated > limit as usize {
+            return Err(format!(
+                "Il testo da inviare (circa {estimated} token) supera il contesto di {} ({limit} token). \
+Aumenta il contesto del modello o scegline uno più capiente.",
+                self.provider.name
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Stima prudente: l'italiano sta intorno a 3 caratteri per token.
+fn estimate_tokens(chars: usize) -> usize {
+    chars.div_ceil(3)
 }
 
 #[tauri::command]
@@ -241,8 +296,7 @@ pub async fn enhance_notes(
     meeting_id: String,
     stream_id: String,
 ) -> CmdResult<String> {
-    let key = api_key(&state)?;
-    let (settings, system, user) = {
+    let (model, system, user) = {
         let db = state.db.lock();
         let settings = db.get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or("Meeting non trovato")?;
@@ -257,20 +311,14 @@ pub async fn enhance_notes(
             .or_else(|| db.get_template("generale").ok().flatten());
         let system = prompts::enhance_system(&settings.language);
         let user = prompts::enhance_user(&meeting, template.as_ref(), &segments, &settings.user_name);
-        (settings, system, user)
+        (resolve_model(&state, &settings, &settings.notes_model)?, system, user)
     };
-    let guard = StreamGuard::new(&state, &stream_id);
     let messages = [llm::Msg::user(user)];
+    model.check_context(&system, &messages)?;
+    let guard = StreamGuard::new(&state, &stream_id);
     let done = llm::stream_message(
-        &state.http,
-        &llm::Request {
-            api_key: &key,
-            model: &settings.claude_model,
-            system: &system,
-            messages: &messages,
-            max_tokens: ENHANCE_MAX_TOKENS,
-            cache_system: false,
-        },
+        &state.llm_http,
+        &model.request(&system, &messages, ENHANCE_MAX_TOKENS, false),
         &guard.cancel,
         |d| {
             let _ = app.emit("llm-delta", DeltaEvent { stream_id: &stream_id, delta: d });
@@ -341,10 +389,10 @@ pub async fn chat(
     if question.is_empty() {
         return Err("Scrivi una domanda".into());
     }
-    let key = api_key(&state)?;
     let (model, system, mut history, user_msg_id) = {
         let db = state.db.lock();
         let settings = db.get_settings().map_err(err)?;
+        let model = resolve_model(&state, &settings, &settings.chat_model)?;
         let system = if scope == "global" {
             let meetings = db.relevant_meetings(&question, 8).map_err(err)?;
             let with_tr = meetings
@@ -367,7 +415,7 @@ pub async fn chat(
         };
         let history = db.chat_history(&scope).map_err(err)?;
         let user_msg = db.add_chat_message(&scope, "user", &question).map_err(err)?;
-        (settings.claude_model, system, history, user_msg.id)
+        (model, system, history, user_msg.id)
     };
     // ultimi 20 messaggi come contesto conversazionale
     let skip = history.len().saturating_sub(20);
@@ -381,19 +429,16 @@ pub async fn chat(
     }
     msgs.push(llm::Msg::user(question));
 
+    if let Err(e) = model.check_context(&system, &msgs) {
+        let _ = state.db.lock().delete_chat_message(user_msg_id);
+        return Err(e);
+    }
     let guard = StreamGuard::new(&state, &stream_id);
     let answer = llm::stream_message(
-        &state.http,
-        &llm::Request {
-            api_key: &key,
-            model: &model,
-            system: &system,
-            messages: &msgs,
-            max_tokens: CHAT_MAX_TOKENS,
-            // sul singolo meeting il contesto resta identico tra una domanda e l'altra:
-            // con la cache le domande successive costano e aspettano molto meno
-            cache_system: scope != "global",
-        },
+        &state.llm_http,
+        // sul singolo meeting il contesto resta identico tra una domanda e l'altra:
+        // con la cache le domande successive costano e aspettano molto meno
+        &model.request(&system, &msgs, CHAT_MAX_TOKENS, scope != "global"),
         &guard.cancel,
         |d| {
             let _ = app.emit("llm-delta", DeltaEvent { stream_id: &stream_id, delta: d });
@@ -455,8 +500,71 @@ pub fn save_settings(state: State<AppState>, settings: Settings) -> CmdResult<Se
     if !transcribe::is_known_model(&s.whisper_model) {
         return Err("Modello Whisper sconosciuto".into());
     }
-    state.db.lock().save_settings(&s).map_err(err)?;
+    let db = state.db.lock();
+    let old = db.get_settings().map_err(err)?;
+    db.save_settings(&s).map_err(err)?;
+    drop(db);
+    // un provider eliminato non lascia la sua chiave nel Portachiavi
+    for gone in old.providers.iter().filter(|o| !s.providers.iter().any(|p| p.id == o.id)) {
+        let _ = secrets::set_api_key(&state.data_dir, &gone.id, "");
+    }
     Ok(s)
+}
+
+/// Le note AI sono utilizzabili? (provider esistente e, se serve, chiave presente)
+#[tauri::command]
+pub fn ai_ready(state: State<AppState>) -> bool {
+    let Ok(settings) = state.db.lock().get_settings() else { return false };
+    resolve_model(&state, &settings, &settings.notes_model).is_ok()
+}
+
+/// Modelli offerti da un provider, per compilare i menu nelle Impostazioni.
+/// Riceve il provider così com'è nel form, anche se non ancora salvato.
+#[tauri::command]
+pub async fn list_provider_models(state: State<'_, AppState>, provider: Provider) -> CmdResult<Vec<String>> {
+    let key = secrets::get_api_key(&state.data_dir, &provider.id).map_err(err)?;
+    let base = provider.base_url.trim().trim_end_matches('/');
+    let req = match provider.kind {
+        ProviderKind::Anthropic => {
+            let base = if base.is_empty() { "https://api.anthropic.com" } else { base };
+            state
+                .http
+                .get(format!("{base}/v1/models?limit=100"))
+                .header("x-api-key", key.ok_or("Salva prima la API key")?)
+                .header("anthropic-version", "2023-06-01")
+        }
+        ProviderKind::Openai => {
+            if !(base.starts_with("http://") || base.starts_with("https://")) {
+                return Err("L'indirizzo deve iniziare con http:// o https://".into());
+            }
+            let r = state.http.get(format!("{base}/models"));
+            match key {
+                Some(k) => r.bearer_auth(k),
+                None => r,
+            }
+        }
+    };
+    let resp = req.timeout(Duration::from_secs(10)).send().await.map_err(|e| {
+        if e.is_connect() {
+            format!("Impossibile raggiungere {}: il server è avviato?", provider.name)
+        } else {
+            format!("Errore di rete: {}", e.without_url())
+        }
+    })?;
+    if !resp.status().is_success() {
+        return Err(match resp.status().as_u16() {
+            401 | 403 => "API key non valida o mancante".into(),
+            code => format!("Il server ha risposto {code}"),
+        });
+    }
+    let body: serde_json::Value = resp.json().await.map_err(|_| "Risposta non valida dal server".to_string())?;
+    let mut models: Vec<String> = body["data"]
+        .as_array()
+        .map(|a| a.iter().filter_map(|m| m["id"].as_str().map(String::from)).collect())
+        .unwrap_or_default();
+    models.sort();
+    models.dedup();
+    Ok(models)
 }
 
 /// Errori dell'interfaccia nel log dell'app (troncati: non devono portarsi dietro le note).
@@ -484,13 +592,17 @@ pub fn app_info(app: AppHandle, state: State<AppState>) -> AppInfo {
 }
 
 #[tauri::command]
-pub fn has_api_key(state: State<AppState>) -> bool {
-    secrets::get_api_key(&state.data_dir).ok().flatten().is_some()
+pub fn has_api_key(state: State<AppState>, provider_id: String) -> bool {
+    secrets::get_api_key(&state.data_dir, &provider_id).ok().flatten().is_some()
 }
 
 #[tauri::command]
-pub fn set_api_key(state: State<AppState>, key: String) -> CmdResult<()> {
-    secrets::set_api_key(&state.data_dir, key.trim()).map_err(err)
+pub fn set_api_key(state: State<AppState>, provider_id: String, key: String) -> CmdResult<()> {
+    let known = state.db.lock().get_settings().map_err(err)?.providers.iter().any(|p| p.id == provider_id);
+    if !known {
+        return Err("Salva il provider prima di impostare la chiave".into());
+    }
+    secrets::set_api_key(&state.data_dir, &provider_id, key.trim()).map_err(err)
 }
 
 // ---------------- modelli whisper ----------------

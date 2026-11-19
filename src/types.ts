@@ -50,9 +50,24 @@ export interface ChatMessage {
   createdAt: number;
 }
 
+export interface Provider {
+  id: string;
+  name: string;
+  kind: "anthropic" | "openai";
+  baseUrl: string;
+  contextTokens: number | null;
+}
+
+export interface ModelRef {
+  providerId: string;
+  model: string;
+}
+
 export interface Settings {
   userName: string;
-  claudeModel: string;
+  providers: Provider[];
+  notesModel: ModelRef;
+  chatModel: ModelRef;
   language: string;
   whisperModel: string;
   micDevice: string | null;

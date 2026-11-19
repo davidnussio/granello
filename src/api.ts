@@ -6,6 +6,7 @@ import type {
   Meeting,
   MeetingDetail,
   MeetingSummary,
+  Provider,
   RecordingStatus,
   Settings,
   Template,
@@ -50,8 +51,10 @@ export const api = {
 
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
-  hasApiKey: () => invoke<boolean>("has_api_key"),
-  setApiKey: (key: string) => invoke<void>("set_api_key", { key }),
+  hasApiKey: (providerId: string) => invoke<boolean>("has_api_key", { providerId }),
+  setApiKey: (providerId: string, key: string) => invoke<void>("set_api_key", { providerId, key }),
+  aiReady: () => invoke<boolean>("ai_ready"),
+  listProviderModels: (provider: Provider) => invoke<string[]>("list_provider_models", { provider }),
   appInfo: () => invoke<AppInfo>("app_info"),
   /** Scrive un errore dell'interfaccia nel file di log dell'app. Non fallisce mai. */
   logError: (message: string) => {

@@ -14,6 +14,21 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
 - **Ricerca** nella sidebar su titoli, note, note AI e trascrizioni.
 - **Scorciatoie**: ⌘N nuove note, ⌘K cerca, ⌘, impostazioni.
 
+## Modelli AI
+
+Le note AI e la chat possono usare modelli diversi, anche di provider diversi (Impostazioni → Modelli AI). Due protocolli coprono tutto:
+
+| Tipo di provider | Per cosa |
+|---|---|
+| Anthropic | Claude (provider predefinito, sempre presente) |
+| Compatibile OpenAI | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, OpenRouter e qualsiasi server che esponga `/chat/completions` |
+
+- L'elenco dei modelli viene letto dal server (`/models`); "Verifica" controlla che il provider risponda.
+- Ogni provider ha la sua API key nel Portachiavi; i server locali di solito non ne vogliono una.
+- **Contesto dei modelli locali**: un'ora di meeting sono decine di migliaia di token e i server locali troncano in silenzio quello che non ci sta (Ollama parte con un contesto ridotto). Indicando il contesto del provider, Granello stima la dimensione della richiesta e si ferma con un errore chiaro invece di produrre note su mezza trascrizione.
+- Il ragionamento dei modelli "thinking" locali (`<think>…</think>`) viene tolto dalla risposta.
+- Con un provider locale per note e chat non esce nulla dal Mac.
+
 ## Affidabilità
 
 - **Niente meeting persi**: se chiudi l'app mentre registri, la cattura si ferma e l'audio già registrato viene trascritto prima dell'uscita (fino a 2 minuti). Dopo un crash, i meeting rimasti "in registrazione" vengono chiusi e reindicizzati al riavvio.
@@ -26,7 +41,7 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
 
 ## Privacy
 
-L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. A Claude viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat. La API key sta nel Portachiavi; l'URL iCal sta nel database locale.
+L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. Al provider AI scelto viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat; con un provider locale non esce nulla dal Mac. Le API key stanno nel Portachiavi; l'URL iCal sta nel database locale.
 
 ## Architettura
 
@@ -36,11 +51,11 @@ src-tauri/src
 ├── commands.rs    comandi Tauri (meeting, registrazione, AI, template, impostazioni, modelli, calendario)
 ├── audio.rs       cattura cpal (thread audio) + Chunker sulle pause + thread di trascrizione
 ├── transcribe.rs  whisper-rs, catalogo modelli, resampling, filtro allucinazioni
-├── llm.rs         client Claude Messages API: streaming SSE, retry, annullamento, prompt caching
+├── llm.rs         streaming dai modelli AI (Anthropic e compatibili OpenAI): retry, annullamento, prompt caching
 ├── prompts.rs     prompt di enhance/chat e template di sistema
 ├── calendar.rs    parser iCal + espansione ricorrenze
 ├── db.rs          SQLite (rusqlite bundled) + FTS5, migrazioni versionate, recupero dopo crash
-└── secrets.rs     API key nel Portachiavi macOS
+└── secrets.rs     API key dei provider nel Portachiavi macOS
 src/               React + TypeScript (Vite)
 └── editor/        editor delle note, composto da plugin
 ```
@@ -96,7 +111,7 @@ pnpm check              # tsc + clippy (warning = errore) + cargo test
 
 Primo avvio (la Home mostra cosa manca):
 
-1. **Impostazioni → Claude**: incolla la API key (finisce nel Portachiavi). In alternativa esporta `ANTHROPIC_API_KEY`.
+1. **Impostazioni → Modelli AI**: incolla la API key di Claude (finisce nel Portachiavi; in alternativa esporta `ANTHROPIC_API_KEY`), oppure aggiungi un provider locale come LM Studio o Ollama.
 2. **Impostazioni → Trascrizione**: scarica `large-v3-turbo-q5_0` (547 MB, consigliato su Apple Silicon) oppure `base` per una prova veloce.
 3. **Impostazioni → Calendario**: incolla l'indirizzo segreto iCal.
 4. Al primo Registra macOS chiede il permesso per il microfono.
