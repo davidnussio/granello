@@ -11,10 +11,11 @@ fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }
 
-const SCHEMA: &str = r#"
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
+/// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
+/// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
+const MIGRATIONS: &[&str] = &[SCHEMA_V1];
 
+const SCHEMA_V1: &str = r#"
 CREATE TABLE IF NOT EXISTS meetings (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -68,20 +69,54 @@ CREATE VIRTUAL TABLE IF NOT EXISTS meetings_fts USING fts5(
 
 impl Db {
     pub fn open(path: &Path) -> Result<Self> {
-        let conn = Connection::open(path)?;
-        conn.execute_batch(SCHEMA)?;
-        let db = Db { conn };
-        db.seed_templates()?;
-        Ok(db)
+        Self::init(Connection::open(path)?)
     }
 
     #[cfg(test)]
     pub fn open_in_memory() -> Result<Self> {
-        let conn = Connection::open_in_memory()?;
-        conn.execute_batch(SCHEMA)?;
+        Self::init(Connection::open_in_memory()?)
+    }
+
+    fn init(conn: Connection) -> Result<Self> {
+        conn.busy_timeout(std::time::Duration::from_secs(5))?;
+        conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;")?;
         let db = Db { conn };
+        db.migrate()?;
         db.seed_templates()?;
         Ok(db)
+    }
+
+    fn migrate(&self) -> Result<()> {
+        let current: usize = self.conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        if current > MIGRATIONS.len() {
+            anyhow::bail!(
+                "Il database è stato creato da una versione più recente di Granello (schema {current}). Aggiorna l'app."
+            );
+        }
+        for (i, sql) in MIGRATIONS.iter().enumerate().skip(current) {
+            let tx = self.conn.unchecked_transaction()?;
+            tx.execute_batch(sql)?;
+            tx.pragma_update(None, "user_version", i + 1)?;
+            tx.commit()?;
+            log::info!("database migrato allo schema {}", i + 1);
+        }
+        Ok(())
+    }
+
+    /// Chiude i meeting rimasti "in registrazione" dopo un crash o una chiusura forzata
+    /// e ne reindicizza la trascrizione. Ritorna quanti ne ha sistemati.
+    pub fn recover_interrupted(&self) -> Result<usize> {
+        let ids: Vec<String> = {
+            let mut stmt = self
+                .conn
+                .prepare("SELECT id FROM meetings WHERE started_at IS NOT NULL AND ended_at IS NULL")?;
+            let rows = stmt.query_map([], |r| r.get(0))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        for id in &ids {
+            self.mark_ended(id)?;
+        }
+        Ok(ids.len())
     }
 
     fn seed_templates(&self) -> Result<()> {
@@ -165,6 +200,7 @@ impl Db {
         enhanced_md: Option<&str>,
         template_id: Option<&str>,
     ) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
         if let Some(t) = title {
             self.conn.execute("UPDATE meetings SET title = ?1 WHERE id = ?2", params![t, id])?;
         }
@@ -179,6 +215,7 @@ impl Db {
             self.conn.execute("UPDATE meetings SET template_id = ?1 WHERE id = ?2", params![t, id])?;
         }
         self.reindex(id)?;
+        tx.commit()?;
         Ok(())
     }
 
@@ -198,9 +235,11 @@ impl Db {
     }
 
     pub fn delete_meeting(&self, id: &str) -> Result<()> {
-        self.conn.execute("DELETE FROM meetings WHERE id = ?1", [id])?;
-        self.conn.execute("DELETE FROM meetings_fts WHERE meeting_id = ?1", [id])?;
-        self.conn.execute("DELETE FROM chat_messages WHERE scope = ?1", [id])?;
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM meetings WHERE id = ?1", [id])?;
+        tx.execute("DELETE FROM meetings_fts WHERE meeting_id = ?1", [id])?;
+        tx.execute("DELETE FROM chat_messages WHERE scope = ?1", [id])?;
+        tx.commit()?;
         Ok(())
     }
 
@@ -477,6 +516,11 @@ impl Db {
         })
     }
 
+    pub fn delete_chat_message(&self, id: i64) -> Result<()> {
+        self.conn.execute("DELETE FROM chat_messages WHERE id = ?1", [id])?;
+        Ok(())
+    }
+
     pub fn clear_chat(&self, scope: &str) -> Result<()> {
         self.conn.execute("DELETE FROM chat_messages WHERE scope = ?1", [scope])?;
         Ok(())
@@ -539,6 +583,54 @@ mod tests {
         db.delete_meeting(&m.id).unwrap();
         assert!(db.list_meetings(None).unwrap().is_empty());
         assert!(db.chat_history(&m.id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn migrations_are_versioned_and_idempotent() {
+        let dir = std::env::temp_dir().join(format!("granello-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("db.sqlite");
+        let id = {
+            let db = Db::open(&path).unwrap();
+            let v: usize = db.conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+            assert_eq!(v, MIGRATIONS.len());
+            db.create_meeting("Persistente", None, &[], None).unwrap().id
+        };
+        // riapertura: nessuna migrazione rieseguita, dati intatti
+        let db = Db::open(&path).unwrap();
+        assert_eq!(db.get_meeting(&id).unwrap().unwrap().title, "Persistente");
+        // un database "dal futuro" non viene toccato
+        db.conn.pragma_update(None, "user_version", MIGRATIONS.len() + 1).unwrap();
+        drop(db);
+        assert!(Db::open(&path).is_err());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn recovers_meetings_left_recording() {
+        let db = Db::open_in_memory().unwrap();
+        let m = db.create_meeting("Crash", None, &[], None).unwrap();
+        let other = db.create_meeting("Mai registrato", None, &[], None).unwrap();
+        db.mark_started(&m.id).unwrap();
+        db.add_segment(&m.id, "me", 0, 1000, "parola irripetibile xilofono").unwrap();
+        // prima del recupero la trascrizione non è ancora indicizzata
+        assert!(db.list_meetings(Some("xilofono")).unwrap().is_empty());
+        assert_eq!(db.recover_interrupted().unwrap(), 1);
+        assert!(db.get_meeting(&m.id).unwrap().unwrap().ended_at.is_some());
+        assert!(db.get_meeting(&other.id).unwrap().unwrap().ended_at.is_none());
+        assert_eq!(db.list_meetings(Some("xilofono")).unwrap().len(), 1);
+        assert_eq!(db.recover_interrupted().unwrap(), 0);
+    }
+
+    #[test]
+    fn chat_message_can_be_removed() {
+        let db = Db::open_in_memory().unwrap();
+        let a = db.add_chat_message("global", "user", "uno").unwrap();
+        db.add_chat_message("global", "user", "due").unwrap();
+        db.delete_chat_message(a.id).unwrap();
+        let h = db.chat_history("global").unwrap();
+        assert_eq!(h.len(), 1);
+        assert_eq!(h[0].content, "due");
     }
 
     #[test]

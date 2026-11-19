@@ -37,6 +37,11 @@ pub fn model_path(dir: &Path, name: &str) -> PathBuf {
     dir.join(format!("ggml-{name}.bin"))
 }
 
+/// I file ggml di whisper.cpp iniziano con il magic 0x67676d6c (little endian).
+pub fn looks_like_ggml(head: &[u8]) -> bool {
+    head.starts_with(b"lmgg")
+}
+
 pub fn model_url(name: &str) -> String {
     format!("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{name}.bin")
 }
@@ -147,6 +152,13 @@ impl TranscriberCache {
     }
 }
 
+impl TranscriberCache {
+    /// Scarica il modello dalla memoria (verrà ricaricato alla prossima registrazione).
+    pub fn clear(&self) {
+        *self.inner.lock() = None;
+    }
+}
+
 fn clean_text(t: &str) -> String {
     t.split_whitespace().collect::<Vec<_>>().join(" ")
 }
@@ -230,6 +242,9 @@ mod tests {
         assert!(is_hallucination(" [Musica] "));
         assert!(is_hallucination("..."));
         assert!(!is_hallucination("Il deploy è previsto per giovedì."));
+        assert!(looks_like_ggml(b"lmgg\x01\x00"));
+        assert!(!looks_like_ggml(b"<!DOCTYPE html>"));
+        assert!(!looks_like_ggml(b"lm"));
     }
 
     #[test]

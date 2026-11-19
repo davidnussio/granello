@@ -40,6 +40,23 @@ function useDebounced<T>(fn: (v: T) => void, ms: number) {
     [flush, ms],
   );
   useEffect(() => flush, [flush]); // salva all'uscita
+  // salva subito anche quando la finestra perde il fuoco o sta per chiudersi,
+  // senza aspettare il debounce: chiudendo l'app non si perde l'ultima frase
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("blur", flush);
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("blur", flush);
+      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", flush);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [flush]);
   return call;
 }
 
@@ -147,6 +164,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
       onChanged();
     } catch (e) {
       toast(errorText(e));
+      // generazione fallita o annullata: senza note AI precedenti si torna alle proprie note
+      if (!meeting.enhancedMd) setTab("notes");
     } finally {
       streamRef.current = null;
       setStreaming(null);
@@ -190,6 +209,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         <header className="meeting-header">
           <input
             className="title-input"
+            aria-label="Titolo del meeting"
             defaultValue={meeting.title}
             placeholder="Titolo del meeting"
             onChange={(e) => saveTitle(e.target.value)}
@@ -238,9 +258,24 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               Copia
             </button>
           )}
-          <button className={"btn small" + (canEnhance && !meeting.enhancedMd ? " primary" : "")} disabled={!canEnhance} onClick={enhance}>
-            {streaming !== null ? "Sto scrivendo…" : meeting.enhancedMd ? "↻ Rigenera note AI" : "✦ Genera note AI"}
-          </button>
+          {streaming !== null ? (
+            <button
+              className="btn small"
+              onClick={() => streamRef.current && api.cancelStream(streamRef.current).catch(() => {})}
+              title="Interrompe la generazione: le note AI precedenti restano invariate"
+            >
+              ◼ Interrompi
+            </button>
+          ) : (
+            <button
+              className={"btn small" + (canEnhance && !meeting.enhancedMd ? " primary" : "")}
+              disabled={!canEnhance}
+              onClick={enhance}
+              title={isRecording ? "Ferma la registrazione per generare le note" : ""}
+            >
+              {meeting.enhancedMd ? "↻ Rigenera note AI" : "✦ Genera note AI"}
+            </button>
+          )}
         </div>
 
         <div className="doc">
@@ -308,7 +343,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         <aside className="side-panel">
           <div className="side-panel-head">
             <strong>{side === "transcript" ? "Trascrizione" : "Chiedi su questo meeting"}</strong>
-            <button className="toast-x" onClick={() => setSide("none")}>
+            <button className="toast-x" aria-label="Chiudi pannello" onClick={() => setSide("none")}>
               ×
             </button>
           </div>

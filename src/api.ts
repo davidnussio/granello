@@ -42,6 +42,7 @@ export const api = {
   clearChat: (scope: string) => invoke<void>("clear_chat", { scope }),
   chat: (scope: string, question: string, streamId: string) =>
     invoke<ChatMessage>("chat", { scope, question, streamId }),
+  cancelStream: (streamId: string) => invoke<void>("cancel_stream", { streamId }),
 
   listTemplates: () => invoke<Template[]>("list_templates"),
   saveTemplate: (template: Template) => invoke<Template>("save_template", { template }),
@@ -51,13 +52,24 @@ export const api = {
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
   hasApiKey: () => invoke<boolean>("has_api_key"),
   setApiKey: (key: string) => invoke<void>("set_api_key", { key }),
+  appInfo: () => invoke<AppInfo>("app_info"),
+  /** Scrive un errore dell'interfaccia nel file di log dell'app. Non fallisce mai. */
+  logError: (message: string) => {
+    invoke<void>("log_frontend_error", { message }).catch(() => {});
+  },
 
   listWhisperModels: () => invoke<WhisperModelInfo[]>("list_whisper_models"),
   downloadWhisperModel: (name: string) => invoke<void>("download_whisper_model", { name }),
+  deleteWhisperModel: (name: string) => invoke<void>("delete_whisper_model", { name }),
 
   upcomingEvents: (force = false) => invoke<CalendarEvent[]>("upcoming_events", { force }),
 };
 
+export interface AppInfo {
+  version: string;
+  dataDir: string;
+  logDir: string;
+}
 export interface AudioLevel {
   meetingId: string;
   mic: number;
@@ -77,6 +89,8 @@ export interface ModelDownload {
 type Events = {
   "transcript-segment": TranscriptSegment;
   "transcription-error": { meetingId: string; message: string };
+  "recording-error": { meetingId: string; message: string };
+  "recording-warning": { meetingId: string; message: string };
   "audio-level": AudioLevel;
   "recording-started": string;
   "recording-stopped": string;
@@ -104,7 +118,7 @@ export function on<K extends keyof Events>(
 }
 
 export function newStreamId() {
-  return Math.random().toString(36).slice(2);
+  return crypto.randomUUID();
 }
 
 export function errorText(e: unknown): string {

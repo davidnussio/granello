@@ -12,13 +12,18 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
 const MIN_CHUNK_SECS: f32 = 6.0;
 const MAX_CHUNK_SECS: f32 = 20.0;
 const TAIL_SECS: f32 = 0.5;
 const SILENCE_RMS: f32 = 0.0025;
+/// Dopo quanto tempo di silenzio digitale assoluto si avvisa l'utente (permessi, mute hardware).
+const DEAD_MIC_SECS: u64 = 8;
+
+/// Primo errore segnalato da uno stream cpal (es. dispositivo scollegato).
+type StreamError = Arc<Mutex<Option<String>>>;
 
 pub fn list_input_devices() -> Vec<String> {
     let host = cpal::default_host();
@@ -49,12 +54,26 @@ fn find_device(name: Option<&str>) -> Result<cpal::Device> {
 }
 
 /// Apre uno stream di input che scrive campioni mono f32 in `buf`.
-fn open_stream(device: &cpal::Device, buf: Arc<Mutex<Vec<f32>>>) -> Result<(cpal::Stream, u32)> {
+fn open_stream(
+    device: &cpal::Device,
+    buf: Arc<Mutex<Vec<f32>>>,
+    error: StreamError,
+) -> Result<(cpal::Stream, u32)> {
     let supported = device.default_input_config().context("config input")?;
     let rate = supported.sample_rate().0;
     let channels = supported.channels() as usize;
     let config: cpal::StreamConfig = supported.clone().into();
-    let err_fn = |e| log::error!("errore stream audio: {e}");
+    let label = device.name().unwrap_or_else(|_| "dispositivo audio".into());
+    let err_fn = move |e: cpal::StreamError| {
+        log::error!("errore stream audio ({label}): {e}");
+        let mut slot = error.lock();
+        if slot.is_none() {
+            *slot = Some(match e {
+                cpal::StreamError::DeviceNotAvailable => format!("\"{label}\" non è più disponibile"),
+                other => format!("{label}: {other}"),
+            });
+        }
+    };
 
     fn push_mono<T: Copy>(data: &[T], channels: usize, buf: &Mutex<Vec<f32>>, conv: impl Fn(T) -> f32) {
         let mut b = buf.lock();
@@ -70,7 +89,7 @@ fn open_stream(device: &cpal::Device, buf: Arc<Mutex<Vec<f32>>>) -> Result<(cpal
             device.build_input_stream(
                 &config,
                 move |d: &[f32], _: &_| push_mono(d, channels, &b, |s| s),
-                err_fn,
+                err_fn.clone(),
                 None,
             )?
         }
@@ -79,7 +98,7 @@ fn open_stream(device: &cpal::Device, buf: Arc<Mutex<Vec<f32>>>) -> Result<(cpal
             device.build_input_stream(
                 &config,
                 move |d: &[i16], _: &_| push_mono(d, channels, &b, |s| s as f32 / i16::MAX as f32),
-                err_fn,
+                err_fn.clone(),
                 None,
             )?
         }
@@ -88,7 +107,7 @@ fn open_stream(device: &cpal::Device, buf: Arc<Mutex<Vec<f32>>>) -> Result<(cpal
             device.build_input_stream(
                 &config,
                 move |d: &[i32], _: &_| push_mono(d, channels, &b, |s| s as f32 / i32::MAX as f32),
-                err_fn,
+                err_fn.clone(),
                 None,
             )?
         }
@@ -99,7 +118,7 @@ fn open_stream(device: &cpal::Device, buf: Arc<Mutex<Vec<f32>>>) -> Result<(cpal
                 move |d: &[u16], _: &_| {
                     push_mono(d, channels, &b, |s| (s as f32 - 32768.0) / 32768.0)
                 },
-                err_fn,
+                err_fn.clone(),
                 None,
             )?
         }
@@ -220,6 +239,7 @@ pub struct Session {
     pub meeting_id: String,
     stop_tx: mpsc::Sender<()>,
     audio_thread: Option<JoinHandle<()>>,
+    transcribe_thread: Option<JoinHandle<()>>,
     pub pending: Arc<AtomicUsize>,
 }
 
@@ -239,7 +259,7 @@ impl Session {
         let pending = Arc::new(AtomicUsize::new(0));
 
         // ---- thread di trascrizione ----
-        {
+        let transcribe_thread = {
             let app = app.clone();
             let db = db.clone();
             let cache = cache.clone();
@@ -283,10 +303,12 @@ impl Session {
                         pending.fetch_sub(1, Ordering::SeqCst);
                     }
                     // canale chiuso: registrazione terminata e coda svuotata
-                    let _ = db.lock().mark_ended(&meeting_id);
+                    if let Err(e) = db.lock().mark_ended(&meeting_id) {
+                        log::error!("chiusura meeting {meeting_id}: {e}");
+                    }
                     let _ = app.emit("recording-finished", meeting_id.clone());
-                })?;
-        }
+                })?
+        };
 
         // ---- thread audio (gli stream cpal non sono Send: vivono qui) ----
         let audio_thread = {
@@ -301,9 +323,10 @@ impl Session {
                 .spawn(move || {
                     let mic_buf = Arc::new(Mutex::new(Vec::<f32>::new()));
                     let sys_buf = Arc::new(Mutex::new(Vec::<f32>::new()));
+                    let stream_error: StreamError = Arc::new(Mutex::new(None));
 
                     let mic = find_device(mic_name.as_deref())
-                        .and_then(|d| open_stream(&d, mic_buf.clone()));
+                        .and_then(|d| open_stream(&d, mic_buf.clone(), stream_error.clone()));
                     let (mic_stream, mic_rate) = match mic {
                         Ok(v) => v,
                         Err(e) => {
@@ -312,7 +335,9 @@ impl Session {
                         }
                     };
                     let sys = match sys_name.as_deref().filter(|n| !n.is_empty()) {
-                        Some(n) => match find_device(Some(n)).and_then(|d| open_stream(&d, sys_buf.clone())) {
+                        Some(n) => match find_device(Some(n))
+                            .and_then(|d| open_stream(&d, sys_buf.clone(), stream_error.clone()))
+                        {
                             Ok(v) => Some(v),
                             Err(e) => {
                                 let _ = ready_tx.send(Err(e));
@@ -328,11 +353,18 @@ impl Session {
                         chunkers.push(Chunker::new("them", *rate, sys_buf, base_ms));
                     }
 
+                    let started = Instant::now();
+                    let mut mic_peak = 0.0f32;
+                    let mut warned_dead_mic = false;
                     loop {
-                        let stop = !matches!(
+                        let stop_requested = !matches!(
                             stop_rx.recv_timeout(Duration::from_millis(200)),
                             Err(mpsc::RecvTimeoutError::Timeout)
                         );
+                        // Un dispositivo scollegato a metà meeting chiude la sessione in modo
+                        // pulito: l'audio già catturato viene comunque trascritto.
+                        let fatal = stream_error.lock().take();
+                        let stop = stop_requested || fatal.is_some();
                         let mut levels = Vec::new();
                         for c in chunkers.iter_mut() {
                             let (level, chunk) = c.poll(stop);
@@ -352,6 +384,26 @@ impl Session {
                                 system: levels.get(1).copied(),
                             },
                         );
+                        mic_peak = mic_peak.max(levels[0]);
+                        if !warned_dead_mic && mic_peak == 0.0 && started.elapsed().as_secs() >= DEAD_MIC_SECS {
+                            warned_dead_mic = true;
+                            log::warn!("nessun segnale dal microfono dopo {DEAD_MIC_SECS}s");
+                            let _ = app.emit(
+                                "recording-warning",
+                                ErrorEvent {
+                                    meeting_id: meeting_id.clone(),
+                                    message: "Nessun segnale dal microfono. Controlla che Granello abbia il permesso \
+in Impostazioni di Sistema → Privacy e sicurezza → Microfono e che il microfono non sia disattivato."
+                                        .into(),
+                                },
+                            );
+                        }
+                        if let Some(message) = fatal {
+                            let _ = app.emit(
+                                "recording-error",
+                                ErrorEvent { meeting_id: meeting_id.clone(), message },
+                            );
+                        }
                         if stop {
                             break;
                         }
@@ -372,6 +424,7 @@ impl Session {
             meeting_id: cfg.meeting_id,
             stop_tx,
             audio_thread: Some(audio_thread),
+            transcribe_thread: Some(transcribe_thread),
             pending,
         })
     }
@@ -379,10 +432,31 @@ impl Session {
     /// Ferma la cattura. La trascrizione dei blocchi in coda continua in background
     /// e termina con l'evento `recording-finished`.
     pub fn stop(mut self) {
+        self.stop_capture();
+    }
+
+    fn stop_capture(&mut self) {
         let _ = self.stop_tx.send(());
         if let Some(h) = self.audio_thread.take() {
             let _ = h.join();
         }
+    }
+
+    /// Ferma la cattura e aspetta (al massimo `timeout`) che la coda di trascrizione
+    /// si svuoti. Usato alla chiusura dell'app per non perdere l'ultima parte del meeting.
+    /// Ritorna false se il tempo è scaduto con blocchi ancora da trascrivere.
+    pub fn finish(mut self, timeout: Duration) -> bool {
+        self.stop_capture();
+        let Some(h) = self.transcribe_thread.take() else { return true };
+        let deadline = Instant::now() + timeout;
+        while !h.is_finished() {
+            if Instant::now() >= deadline {
+                return false;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let _ = h.join();
+        true
     }
 }
 

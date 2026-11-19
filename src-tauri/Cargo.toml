@@ -31,6 +31,8 @@ thiserror = "1"
 log = "0.4"
 cpal = "0.15"
 parking_lot = "0.12"
+tauri-plugin-log = "2"
+tauri-plugin-single-instance = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 whisper-rs = { version = "0.14", features = ["metal"] }

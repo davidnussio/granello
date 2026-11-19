@@ -45,6 +45,8 @@ export default function ChatPanel({ scope, toast, suggestions = [], big }: Props
       await api.chat(scope, question, sid);
     } catch (e) {
       toast(errorText(e));
+      // la domanda non è stata salvata: la si rimette nel campo per riprovare
+      setInput((cur) => cur || question);
     } finally {
       streamRef.current = null;
       setStreaming(null);
@@ -92,6 +94,7 @@ export default function ChatPanel({ scope, toast, suggestions = [], big }: Props
           rows={big ? 2 : 1}
           value={input}
           placeholder="Fai una domanda…"
+          aria-label="Domanda"
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -100,11 +103,28 @@ export default function ChatPanel({ scope, toast, suggestions = [], big }: Props
             }
           }}
         />
-        <button className="btn primary small" disabled={!input.trim() || streaming !== null}>
-          Invia
-        </button>
+        {streaming !== null ? (
+          <button
+            type="button"
+            className="btn small"
+            onClick={() => streamRef.current && api.cancelStream(streamRef.current).catch(() => {})}
+          >
+            Stop
+          </button>
+        ) : (
+          <button className="btn primary small" disabled={!input.trim()}>
+            Invia
+          </button>
+        )}
         {messages.length > 0 && (
-          <button type="button" className="btn ghost small" onClick={clear} title="Svuota conversazione">
+          <button
+            type="button"
+            className="btn ghost small"
+            onClick={clear}
+            disabled={streaming !== null}
+            title="Svuota conversazione"
+            aria-label="Svuota conversazione"
+          >
             ⌫
           </button>
         )}

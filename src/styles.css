@@ -318,3 +318,36 @@ h3 { margin: 0 0 12px; font-size: 15px; }
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 .toast-x { background: none; border: none; font-size: 18px; color: inherit; opacity: 0.6; line-height: 1; }
+
+/* ---------- onboarding / stato ---------- */
+.warn { color: #b26a00; }
+@media (prefers-color-scheme: dark) { .warn { color: #e0a84a; } }
+.setup { margin: 0 0 28px; }
+.checklist { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
+.checklist li { display: flex; flex-direction: column; padding-left: 26px; position: relative; }
+.checklist li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid var(--rec);
+}
+.checklist li.optional::before { border-color: var(--line); }
+.checklist li.done::before { content: "✓"; border-color: var(--accent); background: var(--accent); color: #fff; font-size: 11px; line-height: 15px; text-align: center; }
+
+.crash { padding: 80px 56px; max-width: 640px; }
+.crash pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; white-space: pre-wrap; font-size: 12px; margin: 16px 0; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.title-input:focus-visible, .ProseMirror:focus-visible, .search:focus-visible, .field :focus-visible, .chat-input textarea:focus-visible { outline: none; }
+.md a { color: var(--accent); }
+
+/* in fondo: deve vincere sulle regole base */
+@media (prefers-color-scheme: dark) {
+  .nav-item:hover, .side-item:hover, .btn.ghost:hover:not(:disabled), .btn.ghost.on { background: rgba(255, 255, 255, 0.07); }
+  .btn:hover:not(:disabled) { border-color: #55564d; }
+  .side-snippet mark { background: #6b5a1e; }
+}

@@ -12,19 +12,34 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
 - **Calendario**: URL iCal (Google, Outlook), eventi ricorrenti con RRULE, EXDATE e override, notifica prima dell'inizio, un click per aprire le note del meeting.
 - **Chat**: domande su un meeting o su tutti (ricerca full-text SQLite FTS5 per trovare i meeting pertinenti, con citazione di titolo e data).
 - **Ricerca** nella sidebar su titoli, note, note AI e trascrizioni.
+- **Scorciatoie**: ⌘N nuove note, ⌘K cerca, ⌘, impostazioni.
+
+## Affidabilità
+
+- **Niente meeting persi**: se chiudi l'app mentre registri, la cattura si ferma e l'audio già registrato viene trascritto prima dell'uscita (fino a 2 minuti). Dopo un crash, i meeting rimasti "in registrazione" vengono chiusi e reindicizzati al riavvio.
+- **Dispositivo audio scollegato** (es. AirPods): la sessione si chiude in modo pulito con un avviso, tenendo quello che è stato registrato. Se il microfono non dà alcun segnale per 8 secondi compare un avviso sui permessi.
+- **Claude**: riprova automatica su errori transitori (429, 5xx, sovraccarico, rete), generazione annullabile, risposte troncate o interrotte segnalate invece che salvate in silenzio. Una rigenerazione fallita non tocca le note AI esistenti. Nella chat sul singolo meeting il contesto è in prompt cache.
+- **Database**: migrazioni versionate (`PRAGMA user_version`), scritture in transazione, WAL. Un database creato da una versione più recente non viene aperto.
+- **Download dei modelli**: file parziali rimossi in caso di errore, controllo di dimensione e formato, modelli eliminabili dalle Impostazioni.
+- **Istanza singola**: aprire l'app una seconda volta porta in primo piano la finestra esistente.
+- **Log** in `~/Library/Logs/ch.dambox.granello/Granello.log` (con rotazione). Non contengono note, trascrizioni, API key né l'URL del calendario.
+
+## Privacy
+
+L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. A Claude viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat. La API key sta nel Portachiavi; l'URL iCal sta nel database locale.
 
 ## Architettura
 
 ```
 src-tauri/src
-├── lib.rs         setup, stato, watcher calendario + notifiche
+├── lib.rs         setup, stato, log, istanza singola, uscita pulita, watcher calendario + notifiche
 ├── commands.rs    comandi Tauri (meeting, registrazione, AI, template, impostazioni, modelli, calendario)
 ├── audio.rs       cattura cpal (thread audio) + Chunker sulle pause + thread di trascrizione
 ├── transcribe.rs  whisper-rs, catalogo modelli, resampling, filtro allucinazioni
-├── llm.rs         client Claude Messages API con streaming SSE
+├── llm.rs         client Claude Messages API: streaming SSE, retry, annullamento, prompt caching
 ├── prompts.rs     prompt di enhance/chat e template di sistema
 ├── calendar.rs    parser iCal + espansione ricorrenze
-├── db.rs          SQLite (rusqlite bundled) + FTS5
+├── db.rs          SQLite (rusqlite bundled) + FTS5, migrazioni versionate, recupero dopo crash
 └── secrets.rs     API key nel Portachiavi macOS
 src/               React + TypeScript (Vite)
 ```
@@ -33,15 +48,25 @@ Dati in `~/Library/Application Support/ch.dambox.granello/` (database `granello.
 
 ## Avvio
 
-Requisiti: macOS 13+, Rust stable, Node 20+, Xcode Command Line Tools, `cmake` (`brew install cmake`).
+Requisiti: macOS 13+, Rust stable, Node 20+, pnpm, Xcode Command Line Tools, `cmake` (`brew install cmake`).
 
 ```bash
-npm install
-npm run tauri dev      # sviluppo
-npm run tauri build    # .app e .dmg in src-tauri/target/release/bundle
+pnpm install
+pnpm tauri dev          # sviluppo
+pnpm tauri build      # .app e .dmg in src-tauri/target/release/bundle
 ```
 
-Primo avvio:
+Controlli prima di un rilascio:
+
+```bash
+pnpm check              # tsc + clippy (warning = errore) + cargo test
+```
+
+### Distribuzione
+
+`pnpm tauri build` produce un'app **non firmata**: su un altro Mac Gatekeeper la blocca. Per distribuirla servono un certificato *Developer ID Application* e la notarizzazione Apple: imposta `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (password specifica per l'app) e `APPLE_TEAM_ID` prima del build, Tauri firma e notarizza da solo. Le entitlement per microfono e rete sono già in `src-tauri/entitlements.plist`.
+
+Primo avvio (la Home mostra cosa manca):
 
 1. **Impostazioni → Claude**: incolla la API key (finisce nel Portachiavi). In alternativa esporta `ANTHROPIC_API_KEY`.
 2. **Impostazioni → Trascrizione**: scarica `large-v3-turbo-q5_0` (547 MB, consigliato su Apple Silicon) oppure `base` per una prova veloce.
@@ -65,6 +90,8 @@ Usa le cuffie: senza cancellazione dell'eco il microfono riprende anche gli altr
 - Cancellazione dell'eco tra microfono e audio di sistema.
 - OAuth Google Calendar al posto dell'URL iCal.
 - Esportazione verso Notion / Google Docs, condivisione delle note.
+- Aggiornamenti automatici (tauri-plugin-updater) una volta attiva la firma.
+- Salvataggio opzionale dell'audio per ritrascrivere con un modello migliore.
 
 ## Test
 
@@ -72,4 +99,4 @@ Usa le cuffie: senza cancellazione dell'eco il microfono riprende anche gli altr
 cd src-tauri && cargo test
 ```
 
-Coprono chunking audio, resampling, filtro allucinazioni, parser iCal con ricorrenze, SSE di Claude, database e ricerca.
+Coprono chunking audio, resampling, filtro allucinazioni, parser iCal con ricorrenze, SSE/retry/annullamento di Claude, validazione delle impostazioni, database, migrazioni, recupero dopo crash e ricerca.

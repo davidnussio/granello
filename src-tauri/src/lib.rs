@@ -15,9 +15,28 @@ use std::time::Duration;
 use tauri::{Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
+/// Tempo massimo concesso alla chiusura per finire di trascrivere l'audio in coda.
+const QUIT_DRAIN_TIMEOUT: Duration = Duration::from_secs(120);
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
+        // deve essere il primo plugin: una seconda istanza aprirebbe lo stesso database
+        // e contenderebbe il microfono
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }))
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Info)
+                .max_file_size(2_000_000)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
+                .build(),
+        )
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
@@ -25,6 +44,12 @@ pub fn run() {
             let models_dir = data_dir.join("models");
             std::fs::create_dir_all(&models_dir)?;
             let db = db::Db::open(&data_dir.join("granello.sqlite"))?;
+            match db.recover_interrupted() {
+                Ok(0) => {}
+                Ok(n) => log::warn!("{n} meeting erano rimasti in registrazione: chiusi e reindicizzati"),
+                Err(e) => log::error!("recupero dei meeting interrotti: {e}"),
+            }
+            log::info!("Granello {} avviato", env!("CARGO_PKG_VERSION"));
             app.manage(AppState {
                 db: Arc::new(Mutex::new(db)),
                 data_dir,
@@ -33,6 +58,8 @@ pub fn run() {
                 session: Mutex::new(None),
                 calendar: tokio::sync::Mutex::new(Default::default()),
                 downloading: Mutex::new(Default::default()),
+                http: commands::http_client(),
+                streams: Mutex::new(Default::default()),
             });
             spawn_calendar_watcher(app.handle().clone());
             Ok(())
@@ -48,6 +75,7 @@ pub fn run() {
             commands::stop_recording,
             commands::recording_status,
             commands::enhance_notes,
+            commands::cancel_stream,
             commands::get_chat,
             commands::clear_chat,
             commands::chat,
@@ -56,14 +84,39 @@ pub fn run() {
             commands::delete_template,
             commands::get_settings,
             commands::save_settings,
+            commands::app_info,
+            commands::log_frontend_error,
             commands::has_api_key,
             commands::set_api_key,
             commands::list_whisper_models,
             commands::download_whisper_model,
+            commands::delete_whisper_model,
             commands::upcoming_events,
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("errore nell'avvio di Granello");
+
+    app.run(|app, event| {
+        if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
+            finish_recording_before_exit(app);
+        }
+    });
+}
+
+/// Se si esce a registrazione in corso, ferma la cattura e finisce di trascrivere
+/// quello che è già stato registrato, così il meeting non perde la coda.
+fn finish_recording_before_exit(app: &tauri::AppHandle) {
+    let Some(state) = app.try_state::<AppState>() else { return };
+    let Some(session) = state.session.lock().take() else { return };
+    let id = session.meeting_id.clone();
+    log::info!("uscita con registrazione in corso ({id}): completo la trascrizione");
+    if !session.finish(QUIT_DRAIN_TIMEOUT) {
+        log::warn!("trascrizione di {id} non completata entro il tempo limite");
+        // il thread di trascrizione non ha potuto chiudere il meeting: lo si fa qui
+        if let Err(e) = state.db.lock().mark_ended(&id) {
+            log::error!("chiusura meeting {id}: {e}");
+        }
+    }
 }
 
 /// Ogni 30s: aggiorna il calendario (cache 10 min) e notifica i meeting in partenza.

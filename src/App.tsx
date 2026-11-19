@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorText, on } from "./api";
 import type { CalendarEvent, MeetingSummary, RecordingStatus, View } from "./types";
 import Sidebar from "./components/Sidebar";
@@ -7,6 +7,12 @@ import ChatPanel from "./components/ChatPanel";
 import SettingsView from "./components/SettingsView";
 import TemplatesView from "./components/TemplatesView";
 import Home from "./components/Home";
+
+export interface SetupStatus {
+  hasKey: boolean;
+  hasModel: boolean;
+  hasCalendar: boolean;
+}
 
 export interface Toast {
   id: number;
@@ -21,6 +27,8 @@ export default function App() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [rec, setRec] = useState<RecordingStatus>({ meetingId: null, recording: false, pendingChunks: 0 });
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [setup, setSetup] = useState<SetupStatus | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const toast = useCallback((text: string, action?: Toast["action"]) => {
     const id = Date.now() + Math.random();
@@ -48,6 +56,23 @@ export default function App() {
     api.recordingStatus().then(setRec).catch(() => {});
   }, []);
 
+  const refreshSetup = useCallback(() => {
+    Promise.all([api.hasApiKey(), api.listWhisperModels(), api.getSettings()])
+      .then(([hasKey, models, settings]) =>
+        setSetup({
+          hasKey,
+          hasModel: models.some((m) => m.name === settings.whisperModel && m.downloaded),
+          hasCalendar: !!settings.icsUrl,
+        }),
+      )
+      .catch(() => {});
+  }, []);
+
+  // ricontrolla la configurazione quando si torna dalle impostazioni
+  useEffect(() => {
+    if (view.kind === "home") refreshSetup();
+  }, [view.kind, refreshSetup]);
+
   useEffect(() => {
     const t = setTimeout(refreshMeetings, 150);
     return () => clearTimeout(t);
@@ -66,6 +91,12 @@ export default function App() {
         refreshMeetings();
       }),
       on("transcription-error", (e) => toast(`Trascrizione: ${e.message}`)),
+      on("recording-warning", (e) => toast(e.message)),
+      on("recording-error", (e) => {
+        // il dispositivo audio è sparito: la cattura si è già fermata, si chiude la sessione
+        toast(`Registrazione interrotta: ${e.message}. La parte già registrata viene trascritta.`);
+        api.stopRecording().catch(() => {}).finally(refreshRec);
+      }),
       on("meeting-starting", (e) =>
         toast(`Sta per iniziare: ${e.title}`, { label: "Prendi note", run: () => openEvent(e) }),
       ),
@@ -77,6 +108,26 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const newMeetingRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (e.key === "n") {
+        e.preventDefault();
+        newMeetingRef.current();
+      } else if (e.key === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      } else if (e.key === ",") {
+        e.preventDefault();
+        setView({ kind: "settings" });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const newMeeting = async () => {
     try {
       const m = await api.createMeeting({ title: "" });
@@ -86,6 +137,8 @@ export default function App() {
       toast(errorText(e));
     }
   };
+
+  newMeetingRef.current = newMeeting;
 
   const openEvent = async (e: CalendarEvent) => {
     try {
@@ -113,10 +166,18 @@ export default function App() {
         rec={rec}
         onNew={newMeeting}
         onOpenEvent={openEvent}
+        searchRef={searchRef}
       />
       <main className="main">
         {view.kind === "home" && (
-          <Home events={events} onNew={newMeeting} onOpenEvent={openEvent} onRefresh={() => refreshEvents(true)} />
+          <Home
+            events={events}
+            setup={setup}
+            onNew={newMeeting}
+            onOpenEvent={openEvent}
+            onRefresh={() => refreshEvents(true)}
+            onOpenSettings={() => setView({ kind: "settings" })}
+          />
         )}
         {view.kind === "meeting" && (
           <MeetingView
@@ -152,7 +213,7 @@ export default function App() {
       </main>
       <div className="toasts">
         {toasts.map((t) => (
-          <div key={t.id} className="toast">
+          <div key={t.id} className="toast" role="status">
             <span>{t.text}</span>
             {t.action && (
               <button
@@ -165,7 +226,11 @@ export default function App() {
                 {t.action.label}
               </button>
             )}
-            <button className="toast-x" onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))}>
+            <button
+              className="toast-x"
+              aria-label="Chiudi notifica"
+              onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))}
+            >
               ×
             </button>
           </div>

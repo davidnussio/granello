@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import type { CalendarEvent, MeetingSummary, RecordingStatus, View } from "../types";
 import { groupByDay, time } from "../format";
 
@@ -11,6 +12,7 @@ interface Props {
   rec: RecordingStatus;
   onNew: () => void;
   onOpenEvent: (e: CalendarEvent) => void;
+  searchRef: RefObject<HTMLInputElement>;
 }
 
 export default function Sidebar(p: Props) {
@@ -21,12 +23,15 @@ export default function Sidebar(p: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-top">
-        <button className="btn primary wide" onClick={p.onNew}>
+        <button className="btn primary wide" onClick={p.onNew} title="Nuove note (⌘N)">
           + Nuove note
         </button>
         <input
           className="search"
-          placeholder="Cerca nei meeting…"
+          ref={p.searchRef}
+          type="search"
+          aria-label="Cerca nei meeting"
+          placeholder="Cerca nei meeting…  ⌘K"
           value={p.query}
           onChange={(e) => p.setQuery(e.target.value)}
         />

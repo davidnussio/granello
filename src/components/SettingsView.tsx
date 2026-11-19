@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { api, errorText, on, type ModelDownload } from "../api";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { api, errorText, on, type AppInfo, type ModelDownload } from "../api";
 import type { Settings, WhisperModelInfo } from "../types";
 
 interface Props {
@@ -22,17 +23,19 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
   const [hasKey, setHasKey] = useState(false);
   const [key, setKey] = useState("");
   const [dl, setDl] = useState<Record<string, ModelDownload>>({});
+  const [info, setInfo] = useState<AppInfo | null>(null);
 
   const loadModels = () => api.listWhisperModels().then(setModels);
 
   useEffect(() => {
     api.getSettings().then(setS).catch((e) => toast(errorText(e)));
     api.listAudioDevices().then(setDevices).catch(() => {});
-    api.hasApiKey().then(setHasKey);
-    loadModels();
+    api.hasApiKey().then(setHasKey).catch(() => {});
+    api.appInfo().then(setInfo).catch(() => {});
+    loadModels().catch(() => {});
     return on("model-download", (d) => {
       setDl((x) => ({ ...x, [d.name]: d }));
-      if (d.done) loadModels();
+      if (d.done) loadModels().catch(() => {});
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -47,6 +50,19 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
       if ("icsUrl" in patch) onCalendarChanged();
     } catch (e) {
       toast(errorText(e));
+      // valore rifiutato: si torna a quello realmente salvato
+      api.getSettings().then(setS).catch(() => {});
+    }
+  };
+
+  const removeModel = async (name: string) => {
+    try {
+      await api.deleteWhisperModel(name);
+      toast(`Modello ${name} eliminato`);
+    } catch (e) {
+      toast(errorText(e));
+    } finally {
+      loadModels().catch(() => {});
     }
   };
 
@@ -73,7 +89,7 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
         const { [name]: _, ...rest } = x;
         return rest;
       });
-      loadModels();
+      loadModels().catch(() => {});
     }
   };
 
@@ -115,6 +131,9 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
 
       <section className="card">
         <h3>Trascrizione locale</h3>
+        {!models.some((m) => m.name === s.whisperModel && m.downloaded) && (
+          <p className="warn small">Il modello selezionato non è ancora scaricato: senza non si può registrare.</p>
+        )}
         <label className="field">
           <span>Lingua del meeting</span>
           <select value={s.language} onChange={(e) => save({ language: e.target.value })}>
@@ -147,7 +166,16 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
                     </span>
                   </label>
                   {m.downloaded ? (
-                    <span className="ok small">✓ scaricato</span>
+                    <span className="row gap">
+                      <span className="ok small">✓ scaricato</span>
+                      <button
+                        className="btn small ghost danger"
+                        onClick={() => removeModel(m.name)}
+                        title="Elimina il file del modello per liberare spazio"
+                      >
+                        Elimina
+                      </button>
+                    </span>
                   ) : d ? (
                     <span className="small mono">{pct !== null ? `${pct}%` : "…"}</span>
                   ) : (
@@ -209,13 +237,36 @@ export default function SettingsView({ toast, onCalendarChanged }: Props) {
           <input
             type="number"
             min={1}
-            max={30}
+            max={60}
             value={s.notifyBeforeMin}
             onChange={(e) => setS({ ...s, notifyBeforeMin: Number(e.target.value) })}
             onBlur={() => save({})}
           />
         </label>
       </section>
+
+      {info && (
+        <section className="card">
+          <h3>Dati e privacy</h3>
+          <p className="muted small">
+            Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e
+            scartato. A Claude vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o
+            usi la chat.
+          </p>
+          <div className="row gap">
+            <button className="btn small" onClick={() => revealItemInDir(info.dataDir).catch((e) => toast(errorText(e)))}>
+              Mostra i dati nel Finder
+            </button>
+            {info.logDir && (
+              <button className="btn small" onClick={() => revealItemInDir(info.logDir).catch((e) => toast(errorText(e)))}>
+                Mostra i log
+              </button>
+            )}
+            <div className="spacer" />
+            <span className="muted small">Granello {info.version}</span>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

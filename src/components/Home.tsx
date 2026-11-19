@@ -1,4 +1,5 @@
 import type { CalendarEvent } from "../types";
+import type { SetupStatus } from "../App";
 import { groupByDay, time } from "../format";
 
 interface Props {
@@ -6,9 +7,11 @@ interface Props {
   onNew: () => void;
   onOpenEvent: (e: CalendarEvent) => void;
   onRefresh: () => void;
+  setup: SetupStatus | null;
+  onOpenSettings: () => void;
 }
 
-export default function Home({ events, onNew, onOpenEvent, onRefresh }: Props) {
+export default function Home({ events, onNew, onOpenEvent, onRefresh, setup, onOpenSettings }: Props) {
   const now = Date.now();
   const upcoming = events.filter((e) => e.end > now);
 
@@ -27,6 +30,35 @@ export default function Home({ events, onNew, onOpenEvent, onRefresh }: Props) {
           ↻ Aggiorna calendario
         </button>
       </div>
+
+      {setup && (!setup.hasKey || !setup.hasModel) && (
+        <section className="card setup">
+          <h3>Completa la configurazione</h3>
+          <ul className="checklist">
+            <li className={setup.hasModel ? "done" : ""}>
+              <strong>Modello di trascrizione</strong>
+              <span className="muted small">
+                {setup.hasModel ? "Scaricato" : "Serve per registrare: scaricalo una volta, poi funziona offline."}
+              </span>
+            </li>
+            <li className={setup.hasKey ? "done" : ""}>
+              <strong>API key di Claude</strong>
+              <span className="muted small">
+                {setup.hasKey ? "Configurata" : "Serve per generare le note AI e per la chat."}
+              </span>
+            </li>
+            <li className={setup.hasCalendar ? "done" : "optional"}>
+              <strong>Calendario</strong>
+              <span className="muted small">
+                {setup.hasCalendar ? "Collegato" : "Facoltativo: mostra qui i prossimi meeting."}
+              </span>
+            </li>
+          </ul>
+          <button className="btn primary small" onClick={onOpenSettings}>
+            Apri le impostazioni
+          </button>
+        </section>
+      )}
 
       <h3>Prossimi meeting</h3>
       {upcoming.length === 0 && (

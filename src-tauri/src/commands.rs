@@ -6,9 +6,9 @@ use crate::{calendar, llm, prompts, secrets};
 use futures_util::StreamExt;
 use parking_lot::Mutex;
 use serde::Serialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, State};
@@ -36,6 +36,48 @@ pub struct AppState {
     pub session: Mutex<Option<Session>>,
     pub calendar: tokio::sync::Mutex<CalendarCache>,
     pub downloading: Mutex<HashSet<String>>,
+    /// Client HTTP condiviso (pool di connessioni, timeout di connessione e di lettura).
+    pub http: reqwest::Client,
+    /// Generazioni AI in corso, per poterle annullare: stream_id -> flag di annullamento.
+    pub streams: Mutex<HashMap<String, Arc<AtomicBool>>>,
+}
+
+pub fn http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .user_agent(concat!("Granello/", env!("CARGO_PKG_VERSION")))
+        .connect_timeout(Duration::from_secs(15))
+        // tempo massimo senza ricevere dati: copre streaming, download e calendario
+        .read_timeout(Duration::from_secs(120))
+        .build()
+        .expect("client HTTP")
+}
+
+/// Registra una generazione annullabile e la rimuove quando esce dallo scope.
+struct StreamGuard<'a> {
+    state: &'a AppState,
+    id: String,
+    cancel: Arc<AtomicBool>,
+}
+
+impl<'a> StreamGuard<'a> {
+    fn new(state: &'a AppState, id: &str) -> Self {
+        let cancel = Arc::new(AtomicBool::new(false));
+        state.streams.lock().insert(id.to_string(), cancel.clone());
+        Self { state, id: id.to_string(), cancel }
+    }
+}
+
+impl Drop for StreamGuard<'_> {
+    fn drop(&mut self) {
+        self.state.streams.lock().remove(&self.id);
+    }
+}
+
+#[tauri::command]
+pub fn cancel_stream(state: State<AppState>, stream_id: String) {
+    if let Some(flag) = state.streams.lock().get(&stream_id) {
+        flag.store(true, Ordering::SeqCst);
+    }
 }
 
 #[derive(Clone, Serialize)]
@@ -217,19 +259,34 @@ pub async fn enhance_notes(
         let user = prompts::enhance_user(&meeting, template.as_ref(), &segments, &settings.user_name);
         (settings, system, user)
     };
-    let text = llm::stream_message(
-        &key,
-        &settings.claude_model,
-        &system,
-        &[llm::Msg::user(user)],
-        8000,
+    let guard = StreamGuard::new(&state, &stream_id);
+    let messages = [llm::Msg::user(user)];
+    let done = llm::stream_message(
+        &state.http,
+        &llm::Request {
+            api_key: &key,
+            model: &settings.claude_model,
+            system: &system,
+            messages: &messages,
+            max_tokens: ENHANCE_MAX_TOKENS,
+            cache_system: false,
+        },
+        &guard.cancel,
         |d| {
             let _ = app.emit("llm-delta", DeltaEvent { stream_id: &stream_id, delta: d });
         },
     )
     .await
     .map_err(err)?;
-    let text = strip_code_fence(&text);
+    drop(guard);
+    let mut text = strip_code_fence(&done.text);
+    if text.trim().is_empty() {
+        // non sovrascrivere note esistenti con una risposta vuota
+        return Err("Claude non ha prodotto note. Riprova.".into());
+    }
+    if done.truncated {
+        text.push_str("\n\n*[Note troncate: la risposta ha raggiunto il limite di lunghezza. Rigenera per riprovare.]*");
+    }
     state
         .db
         .lock()
@@ -237,6 +294,10 @@ pub async fn enhance_notes(
         .map_err(err)?;
     Ok(text)
 }
+
+/// Il limite comprende anche il ragionamento del modello, quindi va tenuto largo.
+const ENHANCE_MAX_TOKENS: u32 = 16_000;
+const CHAT_MAX_TOKENS: u32 = 8_000;
 
 fn strip_code_fence(s: &str) -> String {
     let t = s.trim();
@@ -276,8 +337,12 @@ pub async fn chat(
     question: String,
     stream_id: String,
 ) -> CmdResult<ChatMessage> {
+    let question = question.trim().to_string();
+    if question.is_empty() {
+        return Err("Scrivi una domanda".into());
+    }
     let key = api_key(&state)?;
-    let (model, system, mut history) = {
+    let (model, system, mut history, user_msg_id) = {
         let db = state.db.lock();
         let settings = db.get_settings().map_err(err)?;
         let system = if scope == "global" {
@@ -301,8 +366,8 @@ pub async fn chat(
             prompts::chat_system_meeting(&m, &segs, &settings.user_name)
         };
         let history = db.chat_history(&scope).map_err(err)?;
-        db.add_chat_message(&scope, "user", &question).map_err(err)?;
-        (settings.claude_model, system, history)
+        let user_msg = db.add_chat_message(&scope, "user", &question).map_err(err)?;
+        (settings.claude_model, system, history, user_msg.id)
     };
     // ultimi 20 messaggi come contesto conversazionale
     let skip = history.len().saturating_sub(20);
@@ -316,15 +381,42 @@ pub async fn chat(
     }
     msgs.push(llm::Msg::user(question));
 
-    let answer = llm::stream_message(&key, &model, &system, &msgs, 4000, |d| {
-        let _ = app.emit("llm-delta", DeltaEvent { stream_id: &stream_id, delta: d });
-    })
+    let guard = StreamGuard::new(&state, &stream_id);
+    let answer = llm::stream_message(
+        &state.http,
+        &llm::Request {
+            api_key: &key,
+            model: &model,
+            system: &system,
+            messages: &msgs,
+            max_tokens: CHAT_MAX_TOKENS,
+            // sul singolo meeting il contesto resta identico tra una domanda e l'altra:
+            // con la cache le domande successive costano e aspettano molto meno
+            cache_system: scope != "global",
+        },
+        &guard.cancel,
+        |d| {
+            let _ = app.emit("llm-delta", DeltaEvent { stream_id: &stream_id, delta: d });
+        },
+    )
     .await;
+    drop(guard);
     let db = state.db.lock();
     match answer {
-        Ok(a) => db.add_chat_message(&scope, "assistant", &a).map_err(err),
+        Ok(done) if !done.text.trim().is_empty() => {
+            let mut text = done.text;
+            if done.truncated {
+                text.push_str(" […]");
+            }
+            db.add_chat_message(&scope, "assistant", &text).map_err(err)
+        }
+        Ok(_) => {
+            let _ = db.delete_chat_message(user_msg_id);
+            Err("Claude non ha risposto. Riprova.".into())
+        }
         Err(e) => {
-            let _ = db.add_chat_message(&scope, "assistant", &format!("⚠️ {e}"));
+            // la domanda senza risposta non resta nello storico: l'interfaccia la rimette nel campo di testo
+            let _ = db.delete_chat_message(user_msg_id);
             Err(err(e))
         }
     }
@@ -359,9 +451,36 @@ pub fn get_settings(state: State<AppState>) -> CmdResult<Settings> {
 
 #[tauri::command]
 pub fn save_settings(state: State<AppState>, settings: Settings) -> CmdResult<Settings> {
-    let s = settings.with_defaults();
+    let s = settings.validated()?;
+    if !transcribe::is_known_model(&s.whisper_model) {
+        return Err("Modello Whisper sconosciuto".into());
+    }
     state.db.lock().save_settings(&s).map_err(err)?;
     Ok(s)
+}
+
+/// Errori dell'interfaccia nel log dell'app (troncati: non devono portarsi dietro le note).
+#[tauri::command]
+pub fn log_frontend_error(message: String) {
+    log::error!("UI: {}", truncate_chars(&message, 2000));
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfo {
+    version: &'static str,
+    data_dir: String,
+    log_dir: String,
+}
+
+#[tauri::command]
+pub fn app_info(app: AppHandle, state: State<AppState>) -> AppInfo {
+    use tauri::Manager;
+    AppInfo {
+        version: env!("CARGO_PKG_VERSION"),
+        data_dir: state.data_dir.display().to_string(),
+        log_dir: app.path().app_log_dir().map(|p| p.display().to_string()).unwrap_or_default(),
+    }
 }
 
 #[tauri::command]
@@ -403,21 +522,68 @@ pub async fn download_whisper_model(app: AppHandle, state: State<'_, AppState>, 
     res
 }
 
+#[tauri::command]
+pub fn delete_whisper_model(state: State<AppState>, name: String) -> CmdResult<()> {
+    if !transcribe::is_known_model(&name) {
+        return Err("Modello sconosciuto".into());
+    }
+    if state.session.lock().is_some() {
+        return Err("Ferma la registrazione prima di eliminare un modello".into());
+    }
+    state.transcribers.clear(); // rilascia il file e la memoria
+    match std::fs::remove_file(transcribe::model_path(&state.models_dir, &name)) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(err(e)),
+    }
+}
+
 async fn download(app: &AppHandle, state: &AppState, name: &str) -> CmdResult<()> {
-    use tokio::io::AsyncWriteExt;
     let target = transcribe::model_path(&state.models_dir, name);
     let part = target.with_extension("bin.part");
-    let resp = reqwest::get(transcribe::model_url(name)).await.map_err(err)?;
+    let res = download_to(app, state, name, &part).await;
+    match res {
+        Ok(()) => {
+            tokio::fs::rename(&part, &target).await.map_err(err)?;
+            let _ = app.emit("model-download", DownloadEvent { name: name.into(), downloaded: 0, total: None, done: true });
+            log::info!("modello whisper {name} scaricato");
+            Ok(())
+        }
+        Err(e) => {
+            // niente file parziali lasciati in giro
+            let _ = tokio::fs::remove_file(&part).await;
+            log::warn!("download modello {name} fallito: {e}");
+            Err(e)
+        }
+    }
+}
+
+async fn download_to(app: &AppHandle, state: &AppState, name: &str, part: &std::path::Path) -> CmdResult<()> {
+    use tokio::io::AsyncWriteExt;
+    let resp = state
+        .http
+        .get(transcribe::model_url(name))
+        .send()
+        .await
+        .map_err(|e| format!("Download fallito: {e}"))?;
     if !resp.status().is_success() {
         return Err(format!("Download fallito: {}", resp.status()));
     }
     let total = resp.content_length();
-    let mut file = tokio::fs::File::create(&part).await.map_err(err)?;
+    let mut file = tokio::fs::File::create(part).await.map_err(err)?;
+    let mut checked_magic = false;
     let mut stream = resp.bytes_stream();
     let mut downloaded: u64 = 0;
     let mut last_emit = Instant::now();
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(err)?;
+        let chunk = chunk.map_err(|e| format!("Download interrotto: {e}"))?;
+        if !checked_magic && !chunk.is_empty() {
+            // un captive portal o una pagina di errore non sono un modello
+            if !transcribe::looks_like_ggml(&chunk) {
+                return Err("Il file scaricato non è un modello Whisper valido".into());
+            }
+            checked_magic = true;
+        }
         file.write_all(&chunk).await.map_err(err)?;
         downloaded += chunk.len() as u64;
         if last_emit.elapsed() > Duration::from_millis(250) {
@@ -429,15 +595,11 @@ async fn download(app: &AppHandle, state: &AppState, name: &str) -> CmdResult<()
         }
     }
     file.flush().await.map_err(err)?;
+    file.sync_all().await.map_err(err)?;
     drop(file);
-    if let Some(t) = total {
-        if downloaded != t {
-            let _ = tokio::fs::remove_file(&part).await;
-            return Err("Download incompleto, riprova".into());
-        }
+    if !checked_magic || total.map(|t| downloaded != t).unwrap_or(false) {
+        return Err("Download incompleto, riprova".into());
     }
-    tokio::fs::rename(&part, &target).await.map_err(err)?;
-    let _ = app.emit("model-download", DownloadEvent { name: name.into(), downloaded, total, done: true });
     Ok(())
 }
 
@@ -458,7 +620,7 @@ pub async fn refresh_calendar(state: &AppState, force: bool) -> CmdResult<bool> 
     if !stale && !force {
         return Ok(false);
     }
-    match calendar::fetch_ics(&url).await {
+    match calendar::fetch_ics(&state.http, &url).await {
         Ok(ics) => {
             cache.ics = Some(ics);
             cache.url = Some(url);

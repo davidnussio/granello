@@ -26,18 +26,37 @@ impl RawEvent {
     }
 }
 
-pub async fn fetch_ics(url: &str) -> Result<String> {
+/// Un feed iCal più grande di così è quasi certamente un errore (o un abuso).
+const MAX_ICS_BYTES: usize = 20 * 1024 * 1024;
+
+pub async fn fetch_ics(client: &reqwest::Client, url: &str) -> Result<String> {
+    use futures_util::StreamExt;
     // webcal:// è solo https:// con un altro nome
     let url = url.trim().replacen("webcal://", "https://", 1);
-    let resp = reqwest::Client::new()
+    let resp = client
         .get(&url)
-        .timeout(std::time::Duration::from_secs(20))
+        .timeout(std::time::Duration::from_secs(30))
         .send()
-        .await?;
+        .await
+        // l'URL iCal è segreto: non deve finire nei messaggi di errore né nei log
+        .map_err(|e| anyhow!("download calendario fallito: {}", e.without_url()))?;
     if !resp.status().is_success() {
         return Err(anyhow!("download calendario fallito: {}", resp.status()));
     }
-    Ok(resp.text().await?)
+    let mut body: Vec<u8> = Vec::new();
+    let mut stream = resp.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| anyhow!("download calendario interrotto: {}", e.without_url()))?;
+        if body.len() + chunk.len() > MAX_ICS_BYTES {
+            return Err(anyhow!("il calendario supera i 20 MB"));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    let text = String::from_utf8_lossy(&body).into_owned();
+    if !text.contains("BEGIN:VCALENDAR") {
+        return Err(anyhow!("l'URL non restituisce un calendario iCal"));
+    }
+    Ok(text)
 }
 
 fn unfold(ics: &str) -> Vec<String> {
