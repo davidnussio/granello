@@ -3,6 +3,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { api, errorText, on, type AppInfo, type ModelDownload } from "../api";
 import type { Person, Settings, WhisperModelInfo } from "../types";
 import AiSettings from "./AiSettings";
+import CalendarSettings from "./CalendarSettings";
 import { t } from "../i18n";
 
 interface Props {
@@ -51,7 +52,7 @@ export default function SettingsView({ toast, onCalendarChanged, onLangChanged }
     setS(next);
     try {
       setS(await api.saveSettings(next));
-      if ("icsUrl" in patch) onCalendarChanged();
+      if ("calendars" in patch) onCalendarChanged();
       if ("uiLanguage" in patch) onLangChanged(next.uiLanguage);
       // conferma discreta: le impostazioni si salvano da sole, senza un pulsante
       const stamp = Date.now();
@@ -216,21 +217,7 @@ export default function SettingsView({ toast, onCalendarChanged, onLangChanged }
 
       <section className="card">
         <h3>{t("Calendario")}</h3>
-        <label className="field">
-          <span>{t("URL iCal")}</span>
-          <input
-            // l'indirizzo iCal è un segreto: resta nascosto, come una password
-            type="password"
-            autoComplete="off"
-            value={s.icsUrl ?? ""}
-            placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"
-            onChange={(e) => setS({ ...s, icsUrl: e.target.value })}
-            onBlur={() => save({ icsUrl: s.icsUrl?.trim() || null })}
-          />
-          <small className="muted">
-            {t("Google Calendar: Impostazioni del calendario → \"Indirizzo segreto in formato iCal\". Outlook: Calendario → Pubblica calendario → link ICS.")}
-          </small>
-        </label>
+        <CalendarSettings calendars={s.calendars} onSave={(calendars) => save({ calendars })} />
         <label className="field">
           <span>{t("Notifica prima dell'inizio (minuti)")}</span>
           <input

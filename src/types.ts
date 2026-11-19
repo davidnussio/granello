@@ -95,8 +95,29 @@ export interface Settings {
   whisperModel: string;
   micDevice: string | null;
   systemDevice: string | null;
-  icsUrl: string | null;
+  calendars: Calendar[];
   notifyBeforeMin: number;
+}
+
+/** Un calendario configurato. L'indirizzo iCal è un segreto. */
+export interface Calendar {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+}
+
+/** Stato di un calendario per la home, senza l'indirizzo. */
+export interface CalendarInfo {
+  id: string;
+  name: string;
+  enabled: boolean;
+  error: string | null;
+}
+
+export interface CalendarOverview {
+  calendars: CalendarInfo[];
+  events: CalendarEvent[];
 }
 
 export interface CalendarEvent {
@@ -107,6 +128,7 @@ export interface CalendarEvent {
   attendees: string[];
   location: string | null;
   meetingId: string | null;
+  calendarId: string;
 }
 
 export interface WhisperModelInfo {

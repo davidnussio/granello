@@ -169,6 +169,25 @@ pub struct ModelRef {
 
 pub const DEFAULT_CLAUDE_MODEL: &str = "claude-sonnet-5-5";
 
+pub const MAX_CALENDARS: usize = 12;
+
+/// Un calendario da cui leggere i prossimi meeting, tramite il suo indirizzo iCal.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Calendar {
+    pub id: String,
+    pub name: String,
+    /// Indirizzo iCal: è un segreto, chi lo conosce legge il calendario.
+    pub url: String,
+    /// Un calendario disattivato resta configurato ma non mostra eventi né notifiche.
+    #[serde(default = "enabled_by_default")]
+    pub enabled: bool,
+}
+
+fn enabled_by_default() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -186,7 +205,10 @@ pub struct Settings {
     pub whisper_model: String,
     pub mic_device: Option<String>,
     pub system_device: Option<String>,
+    /// Solo per leggere le impostazioni salvate prima dei calendari multipli.
+    #[serde(skip_serializing)]
     pub ics_url: Option<String>,
+    pub calendars: Vec<Calendar>,
     pub notify_before_min: i64,
 }
 
@@ -223,6 +245,17 @@ impl Settings {
         }
         if self.notify_before_min <= 0 {
             self.notify_before_min = 1;
+        }
+        // migrazione dal vecchio URL unico
+        if let Some(url) = self.ics_url.take().map(|u| u.trim().to_string()).filter(|u| !u.is_empty()) {
+            if self.calendars.is_empty() {
+                self.calendars.push(Calendar {
+                    id: "default".into(),
+                    name: tr("Calendario", "Calendar").into(),
+                    url,
+                    enabled: true,
+                });
+            }
         }
         self
     }
@@ -273,11 +306,26 @@ impl Settings {
         if !(self.language.is_empty() || self.language == "auto" || is_lang_code(&self.language)) {
             return Err(tr("Lingua non valida", "Invalid language").into());
         }
-        self.ics_url = self.ics_url.map(|u| u.trim().to_string()).filter(|u| !u.is_empty());
-        if let Some(u) = &self.ics_url {
-            let ok = ["https://", "http://", "webcal://"].iter().any(|p| u.starts_with(p));
-            if !ok || u.chars().any(char::is_whitespace) {
-                return Err(tr("L'URL del calendario deve iniziare con https:// o webcal://", "The calendar URL must start with https:// or webcal://").into());
+        if self.calendars.len() > MAX_CALENDARS {
+            return Err(trf!("Al massimo {MAX_CALENDARS} calendari", "At most {MAX_CALENDARS} calendars"));
+        }
+        let mut calendar_ids = std::collections::HashSet::new();
+        for (i, c) in self.calendars.iter_mut().enumerate() {
+            c.id = c.id.trim().to_string();
+            let id_ok = !c.id.is_empty()
+                && c.id.len() <= 40
+                && c.id.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '-');
+            if !id_ok || !calendar_ids.insert(c.id.clone()) {
+                return Err(tr("Identificatore del calendario non valido o duplicato", "Invalid or duplicate calendar identifier").into());
+            }
+            c.name = c.name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(40).collect();
+            if c.name.is_empty() {
+                c.name = trf!("Calendario {}", "Calendar {}", i + 1);
+            }
+            c.url = c.url.trim().to_string();
+            let ok = ["https://", "http://", "webcal://"].iter().any(|p| c.url.starts_with(p));
+            if !ok || c.url.chars().any(char::is_whitespace) {
+                return Err(trf!("{}: l'URL del calendario deve iniziare con https:// o webcal://", "{}: the calendar URL must start with https:// or webcal://", c.name));
             }
         }
         self.mic_device = self.mic_device.filter(|d| !d.is_empty());
@@ -367,6 +415,39 @@ mod tests {
         }));
         assert!(!bad(|s| s.ics_url = Some("webcal://example.com/cal.ics".into())));
     }
+
+    #[test]
+    fn calendars_migrate_and_validate() {
+        // il vecchio URL unico diventa il primo calendario, attivo
+        let s = Settings { ics_url: Some(" https://example.com/a.ics ".into()), ..Default::default() }
+            .validated()
+            .unwrap();
+        assert_eq!(s.ics_url, None);
+        assert_eq!(s.calendars.len(), 1);
+        assert_eq!((s.calendars[0].id.as_str(), s.calendars[0].enabled), ("default", true));
+        assert_eq!(s.calendars[0].url, "https://example.com/a.ics");
+        // una volta salvato, il vecchio campo non torna più
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(!json.contains("icsUrl"));
+        let back: Settings = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.with_defaults().calendars.len(), 1);
+
+        let cal = |id: &str, name: &str, url: &str| Calendar { id: id.into(), name: name.into(), url: url.into(), enabled: false };
+        let with = |calendars: Vec<Calendar>| Settings { calendars, ..Default::default() }.validated();
+        let s = with(vec![cal("a", "  Lavoro  ", " webcal://example.com/w.ics "), cal("b", "", "https://example.com/p.ics")]).unwrap();
+        assert_eq!(s.calendars[0].name, "Lavoro");
+        assert_eq!(s.calendars[0].url, "webcal://example.com/w.ics");
+        assert!(!s.calendars[0].enabled, "resta disattivato");
+        assert!(!s.calendars[1].name.is_empty(), "nome predefinito");
+        assert!(with(vec![cal("a", "x", "https://e.com/1"), cal("a", "y", "https://e.com/2")]).is_err(), "id duplicato");
+        assert!(with(vec![cal("a", "x", "file:///etc/passwd")]).is_err());
+        assert!(with(vec![cal("a", "x", "")]).is_err());
+        assert!(with(vec![cal("a b", "x", "https://e.com/1")]).is_err());
+        assert!(with((0..=MAX_CALENDARS).map(|i| cal(&format!("c{i}"), "x", "https://e.com/1")).collect()).is_err());
+        // senza il campo `enabled` (JSON scritto a mano) un calendario è attivo
+        let c: Calendar = serde_json::from_str(r#"{"id":"a","name":"x","url":"https://e.com/1"}"#).unwrap();
+        assert!(c.enabled);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -379,6 +460,26 @@ pub struct CalendarEvent {
     pub attendees: Vec<String>,
     pub location: Option<String>,
     pub meeting_id: Option<String>,
+    /// Il calendario da cui arriva l'evento.
+    pub calendar_id: String,
+}
+
+/// Stato di un calendario per la home: senza l'indirizzo, che è un segreto.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CalendarInfo {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    /// Perché l'ultimo aggiornamento non è riuscito, se non è riuscito.
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CalendarOverview {
+    pub calendars: Vec<CalendarInfo>,
+    pub events: Vec<CalendarEvent>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

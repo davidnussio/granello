@@ -113,6 +113,7 @@ pub fn run() {
             commands::download_whisper_model,
             commands::delete_whisper_model,
             commands::upcoming_events,
+            commands::set_calendar_enabled,
         ])
         .build(tauri::generate_context!())
         .expect("errore nell'avvio di Granello");

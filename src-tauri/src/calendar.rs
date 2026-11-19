@@ -312,6 +312,7 @@ pub fn events_between(ics: &str, from: DateTime<Utc>, to: DateTime<Utc>) -> Vec<
                 attendees: people.clone(),
                 location: location.clone(),
                 meeting_id: None,
+                calendar_id: String::new(),
             });
         }
     }

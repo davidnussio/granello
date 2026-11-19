@@ -12,7 +12,7 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
 - **Carica una registrazione**: invece di registrare dal vivo, *Carica audio* trascrive un file esistente (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, o la traccia audio di un video MP4/MOV) con la stessa pipeline, in coda alla trascrizione del meeting. Il file viene letto dov'è, mai copiato. Opus non è supportato.
 - **Note AI**: Claude (streaming) arricchisce le tue note seguendo il template scelto. Le note AI restano modificabili.
 - **Template**: Generale, 1:1, Standup, Colloquio, Meeting cliente + template personalizzati.
-- **Calendario**: URL iCal (Google, Outlook), eventi ricorrenti con RRULE, EXDATE e override, notifica prima dell'inizio, un click per aprire le note del meeting.
+- **Calendario**: uno o più URL iCal (Google, Outlook), ognuno attivabile o disattivabile dalla home, eventi ricorrenti con RRULE, EXDATE e override, notifica prima dell'inizio, un click per aprire le note del meeting.
 - **Chat**: domande su un meeting o su tutti (ricerca full-text SQLite FTS5 per trovare i meeting pertinenti, con citazione di titolo e data).
 - **Tag e partecipanti**: tag sui meeting (la sidebar ne mostra al massimo due per meeting) e partecipanti modificabili. Granello tiene una rubrica delle persone e completa i nomi da lì e dal calendario; se il meeting coincide con un evento del calendario propone di importarne i partecipanti.
 - **Ricerca** nella sidebar su titoli, tag, partecipanti, note, note AI e trascrizioni.
@@ -52,7 +52,7 @@ Nel frontend l'italiano è la lingua sorgente: `t("Testo italiano")` cerca la tr
 
 ## Privacy
 
-L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. Al provider AI scelto viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat; con un provider locale non esce nulla dal Mac. Le API key stanno nel Portachiavi; l'URL iCal sta nel database locale.
+L'audio non viene mai salvato: viene trascritto in locale e scartato. Note e trascrizioni restano nel database locale. Al provider AI scelto viene inviato solo testo (note e trascrizione) quando generi le note AI o usi la chat; con un provider locale non esce nulla dal Mac. Le API key stanno nel Portachiavi; gli URL iCal stanno nel database locale.
 
 ## Architettura
 
@@ -127,7 +127,7 @@ Primo avvio (la Home mostra cosa manca):
 
 1. **Impostazioni → Modelli AI**: incolla la API key di Claude (finisce nel Portachiavi; in alternativa esporta `ANTHROPIC_API_KEY`), oppure aggiungi un provider locale come LM Studio o Ollama.
 2. **Impostazioni → Trascrizione**: scarica `large-v3-turbo-q5_0` (547 MB, consigliato su Apple Silicon) oppure `base` per una prova veloce.
-3. **Impostazioni → Calendario**: incolla l'indirizzo segreto iCal.
+3. **Impostazioni → Calendario**: aggiungi un calendario e incolla il suo indirizzo segreto iCal. Puoi aggiungerne più di uno.
 4. Al primo Registra macOS chiede il permesso per il microfono.
 
 ## Audio degli altri partecipanti

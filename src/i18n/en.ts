@@ -95,6 +95,12 @@ const en: Record<string, string> = {
   "Facoltativo: mostra qui i prossimi meeting.": "Optional: shows your upcoming meetings here.",
   "Apri le impostazioni": "Open settings",
   "Prossimi meeting": "Upcoming meetings",
+  Calendari: "Calendars",
+  "Aggiornamento non riuscito: {error}": "Update failed: {error}",
+  "Nascondi gli eventi di questo calendario": "Hide this calendar's events",
+  "Mostra gli eventi di questo calendario": "Show this calendar's events",
+  "Tutti i calendari sono disattivati.": "All calendars are turned off.",
+  "Nessun evento nei prossimi giorni.": "No events in the next few days.",
   "Nessun evento. Aggiungi l'URL iCal del tuo calendario nelle Impostazioni per vedere qui i meeting.":
     "No events. Add your calendar's iCal URL in Settings to see your meetings here.",
   "Apri note": "Open notes",
@@ -194,6 +200,12 @@ const en: Record<string, string> = {
   "Per catturare l'audio della call installa un dispositivo di loopback (es. BlackHole 2ch), crea in \"Configurazione MIDI Audio\" un dispositivo multi-uscita con cuffie + BlackHole e selezionalo come uscita di Teams/Zoom. Poi scegli BlackHole qui. Con le cuffie eviti che il microfono riprenda anche gli altri.":
     "To capture the call audio, install a loopback device (e.g. BlackHole 2ch), create a multi-output device with your headphones + BlackHole in \"Audio MIDI Setup\", and select it as the output in Teams/Zoom. Then choose BlackHole here. Wearing headphones keeps your microphone from picking up the others too.",
   "URL iCal": "iCal URL",
+  "Calendari (URL iCal)": "Calendars (iCal URLs)",
+  "Nome del calendario": "Calendar name",
+  Attivo: "Enabled",
+  "Un calendario disattivato resta configurato ma non mostra eventi né notifiche.":
+    "A disabled calendar stays configured but shows no events and sends no notifications.",
+  "+ Aggiungi calendario": "+ Add calendar",
   "Google Calendar: Impostazioni del calendario → \"Indirizzo segreto in formato iCal\". Outlook: Calendario → Pubblica calendario → link ICS.":
     "Google Calendar: calendar settings → \"Secret address in iCal format\". Outlook: Calendar → Publish calendar → ICS link.",
   "Notifica prima dell'inizio (minuti)": "Notify before the start (minutes)",

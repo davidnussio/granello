@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   CalendarEvent,
+  CalendarOverview,
   ChatMessage,
   Meeting,
   MeetingDetail,
@@ -80,7 +81,8 @@ export const api = {
   downloadWhisperModel: (name: string) => invoke<void>("download_whisper_model", { name }),
   deleteWhisperModel: (name: string) => invoke<void>("delete_whisper_model", { name }),
 
-  upcomingEvents: (force = false) => invoke<CalendarEvent[]>("upcoming_events", { force }),
+  upcomingEvents: (force = false) => invoke<CalendarOverview>("upcoming_events", { force }),
+  setCalendarEnabled: (id: string, enabled: boolean) => invoke<void>("set_calendar_enabled", { id, enabled }),
 };
 
 export interface AppInfo {

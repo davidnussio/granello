@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorText, on } from "./api";
-import type { CalendarEvent, MeetingSummary, RecordingStatus, View } from "./types";
+import type { CalendarEvent, CalendarInfo, MeetingSummary, RecordingStatus, View } from "./types";
 import Sidebar from "./components/Sidebar";
 import MeetingView from "./components/MeetingView";
 import ChatPanel from "./components/ChatPanel";
@@ -26,6 +26,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [calendars, setCalendars] = useState<CalendarInfo[]>([]);
   const [rec, setRec] = useState<RecordingStatus>({ meetingId: null, recording: false, importing: false, pendingChunks: 0 });
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [setup, setSetup] = useState<SetupStatus | null>(null);
@@ -54,12 +55,35 @@ export default function App() {
     (force = false) => {
       api
         .upcomingEvents(force)
-        .then(setEvents)
+        .then((overview) => {
+          setEvents(overview.events);
+          setCalendars(overview.calendars);
+          // un calendario che non risponde non nasconde gli altri: lo si segnala solo quando
+          // l'aggiornamento l'ha chiesto l'utente
+          const failed = overview.calendars.filter((c) => c.error);
+          if (force && failed.length) {
+            toast(t("Calendario: {error}", { error: failed.map((c) => `${c.name}: ${c.error}`).join(" · ") }));
+          }
+        })
         .catch((e) => {
           if (force) toast(t("Calendario: {error}", { error: errorText(e) }));
         });
     },
     [toast],
+  );
+
+  const toggleCalendar = useCallback(
+    async (id: string, enabled: boolean) => {
+      // risposta immediata; eventi e stato reale arrivano con l'aggiornamento
+      setCalendars((cs) => cs.map((c) => (c.id === id ? { ...c, enabled } : c)));
+      try {
+        await api.setCalendarEnabled(id, enabled);
+      } catch (e) {
+        toast(errorText(e));
+      }
+      refreshEvents();
+    },
+    [toast, refreshEvents],
   );
 
   const refreshRec = useCallback(() => {
@@ -72,7 +96,7 @@ export default function App() {
         setSetup({
           hasKey,
           hasModel: models.some((m) => m.name === settings.whisperModel && m.downloaded),
-          hasCalendar: !!settings.icsUrl,
+          hasCalendar: settings.calendars.length > 0,
         }),
       )
       .catch(() => {});
@@ -182,6 +206,8 @@ export default function App() {
         {view.kind === "home" && (
           <Home
             events={events}
+            calendars={calendars}
+            onToggleCalendar={toggleCalendar}
             setup={setup}
             onNew={newMeeting}
             onOpenEvent={openEvent}

@@ -20,13 +20,62 @@ fn err<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
 }
 
+/// Un calendario configurato, con l'ultimo ICS scaricato.
 #[derive(Default)]
-pub struct CalendarCache {
-    pub url: Option<String>,
+pub struct CalendarFeed {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+    pub enabled: bool,
     pub fetched_at: Option<Instant>,
     pub ics: Option<String>,
-    pub notified: HashSet<String>,
     pub last_error: Option<String>,
+}
+
+#[derive(Default)]
+pub struct CalendarCache {
+    /// Nell'ordine delle impostazioni.
+    pub feeds: Vec<CalendarFeed>,
+    pub notified: HashSet<String>,
+}
+
+impl CalendarCache {
+    /// Allinea i feed ai calendari configurati, tenendo quanto già scaricato per quelli
+    /// che non hanno cambiato indirizzo.
+    fn sync(&mut self, calendars: &[Calendar]) {
+        let mut old = std::mem::take(&mut self.feeds);
+        self.feeds = calendars
+            .iter()
+            .map(|c| {
+                let kept = old.iter().position(|f| f.id == c.id && f.url == c.url).map(|i| old.swap_remove(i));
+                CalendarFeed {
+                    id: c.id.clone(),
+                    name: c.name.clone(),
+                    url: c.url.clone(),
+                    enabled: c.enabled,
+                    ..kept.unwrap_or_default()
+                }
+            })
+            .collect();
+    }
+
+    /// Gli eventi dei calendari attivi, in ordine di inizio. Lo stesso evento presente in
+    /// più calendari compare una volta sola, dal primo che lo contiene.
+    fn events_between(&self, from: chrono::DateTime<chrono::Utc>, to: chrono::DateTime<chrono::Utc>) -> Vec<CalendarEvent> {
+        let mut seen = HashSet::new();
+        let mut events = Vec::new();
+        for f in self.feeds.iter().filter(|f| f.enabled) {
+            let Some(ics) = &f.ics else { continue };
+            for mut e in calendar::events_between(ics, from, to) {
+                if seen.insert(e.id.clone()) {
+                    e.calendar_id = f.id.clone();
+                    events.push(e);
+                }
+            }
+        }
+        events.sort_by_key(|e| e.start);
+        events
+    }
 }
 
 pub struct AppState {
@@ -182,7 +231,17 @@ fn calendar_people(state: &AppState) -> Vec<(String, Option<String>)> {
         .calendar
         .try_lock()
         .ok()
-        .and_then(|c| c.ics.as_deref().map(calendar::all_attendees))
+        .map(|c| {
+            let mut people: Vec<(String, Option<String>)> = Vec::new();
+            for ics in c.feeds.iter().filter(|f| f.enabled).filter_map(|f| f.ics.as_deref()) {
+                for (name, email) in calendar::all_attendees(ics) {
+                    if !people.iter().any(|(n, _)| n.eq_ignore_ascii_case(&name)) {
+                        people.push((name, email));
+                    }
+                }
+            }
+            people
+        })
         .unwrap_or_default()
 }
 
@@ -906,46 +965,50 @@ async fn download_to(app: &AppHandle, state: &AppState, name: &str, part: &std::
 
 const CAL_TTL: Duration = Duration::from_secs(10 * 60);
 
-/// Aggiorna la cache ICS se scaduta o se l'URL è cambiato. Ritorna true se ha scaricato.
+/// Scarica i calendari attivi la cui copia è scaduta (tutti, con `force`). Ritorna true se
+/// ne ha scaricato almeno uno. Un calendario che non risponde non blocca gli altri: tiene i
+/// dati vecchi, ricorda l'errore e viene ritentato dopo un minuto.
 pub async fn refresh_calendar(state: &AppState, force: bool) -> CmdResult<bool> {
-    let url = state.db.lock().get_settings().map_err(err)?.ics_url.filter(|u| !u.trim().is_empty());
+    let calendars = state.db.lock().get_settings().map_err(err)?.calendars;
     let mut cache = state.calendar.lock().await;
-    let Some(url) = url else {
-        *cache = CalendarCache::default();
-        return Ok(false);
-    };
-    let stale = cache.url.as_deref() != Some(url.as_str())
-        || cache.fetched_at.map(|t| t.elapsed() > CAL_TTL).unwrap_or(true);
-    if !stale && !force {
-        return Ok(false);
-    }
-    match calendar::fetch_ics(&state.http, &url).await {
-        Ok(ics) => {
-            cache.ics = Some(ics);
-            cache.url = Some(url);
-            cache.fetched_at = Some(Instant::now());
-            cache.last_error = None;
-            Ok(true)
-        }
-        Err(e) => {
-            // riprova al prossimo giro, ma tieni i dati vecchi se l'URL è lo stesso
-            if cache.url.as_deref() != Some(url.as_str()) {
-                cache.ics = None;
-                cache.url = Some(url);
+    cache.sync(&calendars);
+    let stale: Vec<(usize, String)> = cache
+        .feeds
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| f.enabled && (force || f.fetched_at.map(|t| t.elapsed() > CAL_TTL).unwrap_or(true)))
+        .map(|(i, f)| (i, f.url.clone()))
+        .collect();
+    let results =
+        futures_util::future::join_all(stale.iter().map(|(_, url)| calendar::fetch_ics(&state.http, url))).await;
+    let mut downloaded = false;
+    for ((i, _), result) in stale.into_iter().zip(results) {
+        let feed = &mut cache.feeds[i];
+        match result {
+            Ok(ics) => {
+                feed.ics = Some(ics);
+                feed.fetched_at = Some(Instant::now());
+                feed.last_error = None;
+                downloaded = true;
             }
-            cache.fetched_at = Some(Instant::now() - CAL_TTL + Duration::from_secs(60));
-            cache.last_error = Some(e.to_string());
-            Err(e.to_string())
+            Err(e) => {
+                log::warn!("calendario \"{}\": {e}", feed.name);
+                let retry_in = Duration::from_secs(60);
+                feed.fetched_at = Some(Instant::now().checked_sub(CAL_TTL - retry_in).unwrap_or_else(Instant::now));
+                feed.last_error = Some(e.to_string());
+            }
         }
     }
+    Ok(downloaded)
 }
 
 pub async fn current_events(state: &AppState) -> Vec<CalendarEvent> {
-    let ics = state.calendar.lock().await.ics.clone();
-    let Some(ics) = ics else { return vec![] };
     let now = chrono::Utc::now();
-    let mut events =
-        calendar::events_between(&ics, now - chrono::Duration::hours(12), now + chrono::Duration::days(7));
+    let mut events = state
+        .calendar
+        .lock()
+        .await
+        .events_between(now - chrono::Duration::hours(12), now + chrono::Duration::days(7));
     let db = state.db.lock();
     for e in events.iter_mut() {
         e.meeting_id = db.meeting_for_event(&e.id).ok().flatten();
@@ -953,8 +1016,85 @@ pub async fn current_events(state: &AppState) -> Vec<CalendarEvent> {
     events
 }
 
+/// I calendari configurati con il loro stato e i prossimi eventi di quelli attivi.
 #[tauri::command]
-pub async fn upcoming_events(state: State<'_, AppState>, force: Option<bool>) -> CmdResult<Vec<CalendarEvent>> {
+pub async fn upcoming_events(state: State<'_, AppState>, force: Option<bool>) -> CmdResult<CalendarOverview> {
     refresh_calendar(&state, force.unwrap_or(false)).await?;
-    Ok(current_events(&state).await)
+    let calendars = state
+        .calendar
+        .lock()
+        .await
+        .feeds
+        .iter()
+        .map(|f| CalendarInfo {
+            id: f.id.clone(),
+            name: f.name.clone(),
+            enabled: f.enabled,
+            error: f.last_error.clone().filter(|_| f.enabled),
+        })
+        .collect();
+    Ok(CalendarOverview { calendars, events: current_events(&state).await })
+}
+
+/// Attiva o disattiva un calendario senza toccare le altre impostazioni.
+#[tauri::command]
+pub fn set_calendar_enabled(state: State<AppState>, id: String, enabled: bool) -> CmdResult<()> {
+    let db = state.db.lock();
+    let mut settings = db.get_settings().map_err(err)?;
+    let calendar = settings
+        .calendars
+        .iter_mut()
+        .find(|c| c.id == id)
+        .ok_or(tr("Calendario non trovato", "Calendar not found"))?;
+    calendar.enabled = enabled;
+    db.save_settings(&settings).map_err(err)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    fn ics(events: &[(&str, &str, &str)]) -> String {
+        let mut s = String::from("BEGIN:VCALENDAR\r\nVERSION:2.0\r\n");
+        for (uid, title, start) in events {
+            s.push_str(&format!(
+                "BEGIN:VEVENT\r\nUID:{uid}\r\nSUMMARY:{title}\r\nDTSTART:{start}\r\nDURATION:PT30M\r\nEND:VEVENT\r\n"
+            ));
+        }
+        s.push_str("END:VCALENDAR\r\n");
+        s
+    }
+
+    fn cal(id: &str, url: &str, enabled: bool) -> Calendar {
+        Calendar { id: id.into(), name: id.to_uppercase(), url: url.into(), enabled }
+    }
+
+    #[test]
+    fn merges_enabled_calendars() {
+        let mut cache = CalendarCache::default();
+        cache.sync(&[cal("lavoro", "https://e.com/l", true), cal("casa", "https://e.com/c", true)]);
+        cache.feeds[0].ics = Some(ics(&[("a", "Standup", "20261118T100000Z"), ("comune", "Pranzo", "20261118T120000Z")]));
+        cache.feeds[1].ics = Some(ics(&[("b", "Dentista", "20261118T080000Z"), ("comune", "Pranzo", "20261118T120000Z")]));
+        let from = chrono::Utc.with_ymd_and_hms(2026, 11, 18, 0, 0, 0).unwrap();
+        let to = from + chrono::Duration::days(1);
+
+        let events = cache.events_between(from, to);
+        let got: Vec<(&str, &str)> = events.iter().map(|e| (e.title.as_str(), e.calendar_id.as_str())).collect();
+        // in ordine di inizio; l'evento presente in entrambi compare una volta, dal primo calendario
+        assert_eq!(got, [("Dentista", "casa"), ("Standup", "lavoro"), ("Pranzo", "lavoro")]);
+
+        // disattivare un calendario toglie i suoi eventi ma non butta quanto scaricato
+        cache.sync(&[cal("lavoro", "https://e.com/l", false), cal("casa", "https://e.com/c", true)]);
+        let events = cache.events_between(from, to);
+        assert!(events.iter().all(|e| e.calendar_id == "casa"));
+        assert_eq!(events.len(), 2);
+        assert!(cache.feeds[0].ics.is_some());
+
+        // un indirizzo cambiato riparte da zero; un calendario tolto sparisce
+        cache.sync(&[cal("casa", "https://e.com/altro", true)]);
+        assert_eq!(cache.feeds.len(), 1);
+        assert!(cache.feeds[0].ics.is_none());
+        assert!(cache.events_between(from, to).is_empty());
+    }
 }
