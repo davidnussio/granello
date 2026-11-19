@@ -435,6 +435,12 @@ const en: Record<string, string> = {
   "Sintassi Mermaid · ⌘Invio per chiudere": "Mermaid syntax · ⌘Enter to close",
   "Diagramma": "Diagram",
   "Flussi e sequenze scritti come testo": "Flows and sequences written as text",
+  "Schizzo": "Sketch",
+  "Colore del tratto": "Stroke colour",
+  "Annulla tratto": "Undo stroke",
+  "Pulisci": "Clear",
+  "Lavagna": "Whiteboard",
+  "Uno schizzo a mano libera": "A freehand sketch",
 };
 
 export default en;
