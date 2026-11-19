@@ -147,6 +147,7 @@ Usa le cuffie: senza cancellazione dell'eco il microfono riprende anche gli altr
 - Cancellazione dell'eco tra microfono e audio di sistema.
 - OAuth Google Calendar al posto dell'URL iCal.
 - Esportazione verso Notion / Google Docs, condivisione delle note.
+- Firma con certificato Developer ID. Finché manca, il permesso "Consenti sempre" del Portachiavi si perde a ogni build: per questo le API key vengono lette una sola volta per avvio e tenute in memoria (`secrets.rs`). Con la firma attiva, rivalutare se quella cache serve ancora.
 - Aggiornamenti automatici (tauri-plugin-updater) una volta attiva la firma.
 - Salvataggio opzionale dell'audio per ritrascrivere con un modello migliore.
 

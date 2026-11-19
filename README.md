@@ -150,6 +150,7 @@ Use headphones: without echo cancellation the microphone also picks up the other
 - Echo cancellation between the microphone and system audio.
 - Google Calendar OAuth instead of the iCal URL.
 - Export to Notion / Google Docs, sharing notes.
+- Sign with a Developer ID certificate. Until then the Keychain's "Always Allow" is lost on every build, which is why API keys are read once per launch and kept in memory (`secrets.rs`). Once signing is in place, reconsider whether that cache is still needed.
 - Automatic updates (tauri-plugin-updater) once signing is in place.
 - Optionally saving audio to re-transcribe with a better model.
 
