@@ -755,3 +755,10 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .timer-bar > span { display: block; height: 100%; background: var(--accent); transition: width 0.25s linear; }
 .block-timer.done .timer-time { color: var(--rec); }
 .block-timer.done .timer-bar > span { background: var(--rec); }
+
+/* avanzamento */
+.ProseMirror .data-block.block-progress { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
+.progress-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.progress-bar > span { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
+.progress-label { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.block-progress.complete .progress-label { color: var(--accent); font-weight: 600; }

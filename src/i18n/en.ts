@@ -418,6 +418,10 @@ const en: Record<string, string> = {
   "Azzera": "Reset",
   "Timer": "Timer",
   "Conto alla rovescia di 5 minuti": "A 5-minute countdown",
+  "{done} di {total} · {pct}%": "{done} of {total} · {pct}%",
+  "Nessuna azione in questa sezione": "No action items in this section",
+  "Avanzamento": "Progress",
+  "Quante azioni della sezione sono fatte": "How many of the section's action items are done",
 };
 
 export default en;
