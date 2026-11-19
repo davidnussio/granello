@@ -371,6 +371,18 @@ const en: Record<string, string> = {
   "Sondaggio": "Poll",
   "Una domanda, le opzioni, i voti": "A question, the options, the votes",
   "Strumenti": "Tools",
+  "Colonna": "Column",
+  "Nome della colonna": "Column name",
+  "Scheda": "Card",
+  "Sposta a sinistra": "Move left",
+  "Sposta a destra": "Move right",
+  "Elimina la scheda": "Delete the card",
+  "+ Scheda": "+ Card",
+  "Nuova scheda": "New card",
+  "Lavagna a colonne": "Kanban board",
+  "Da fare, in corso, fatto": "To do, doing, done",
+  "Da fare": "To do",
+  "Fatto": "Done",
 };
 
 export default en;

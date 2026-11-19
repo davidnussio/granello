@@ -680,3 +680,17 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .poll-option input { flex: 1; }
 .poll-share { width: 38px; text-align: right; color: var(--muted); font-size: 12px; }
 .poll-votes { min-width: 18px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* lavagna a colonne */
+.kanban { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
+.kanban-column { display: flex; flex-direction: column; gap: 5px; background: var(--panel); border-radius: 8px; padding: 8px; min-height: 80px; }
+.kanban-head { display: flex; align-items: center; gap: 4px; }
+.data-block .kanban-title { flex: 1; font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.kanban-count { font-size: 11px; color: var(--muted); padding-right: 4px; }
+.kanban-card { display: flex; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 3px 2px 3px 4px; cursor: grab; }
+.kanban-card:hover { border-color: var(--accent); }
+.kanban-card input { flex: 1; }
+.data-block .kanban-new { color: var(--muted); font-size: 13px; }
+/* le schede sono strette: i pulsanti occupano spazio solo quando servono */
+.kanban-card .block-btn.remove { display: none; }
+.kanban-card:hover .block-btn.remove { display: inline-block; }
