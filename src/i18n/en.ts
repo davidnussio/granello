@@ -422,6 +422,12 @@ const en: Record<string, string> = {
   "Nessuna azione in questa sezione": "No action items in this section",
   "Avanzamento": "Progress",
   "Quante azioni della sezione sono fatte": "How many of the section's action items are done",
+  "Il grafico disegna la tabella che lo precede: prima colonna le voci, le altre i numeri.": "The chart draws the table above it: first column the labels, the others the numbers.",
+  "Cambia tipo di grafico": "Change chart type",
+  "Linee": "Lines",
+  "Barre": "Bars",
+  "Grafico": "Chart",
+  "Disegna la tabella qui sopra": "Draws the table above",
 };
 
 export default en;

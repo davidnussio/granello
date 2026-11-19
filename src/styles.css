@@ -762,3 +762,13 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .progress-bar > span { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
 .progress-label { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .block-progress.complete .progress-label { color: var(--accent); font-weight: 600; }
+
+/* grafico */
+.chart-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 4px; }
+.chart-legend { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; }
+.chart-swatch { width: 10px; height: 10px; border-radius: 3px; }
+.chart-kind { margin-left: auto; }
+.chart-svg { display: block; width: 100%; height: auto; }
+.chart-grid { stroke: var(--line); stroke-width: 1; }
+.chart-tick { fill: var(--muted); font-size: 11px; }
+.chart-empty { color: var(--muted); font-size: 13px; }
