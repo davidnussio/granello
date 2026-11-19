@@ -407,6 +407,9 @@ const en: Record<string, string> = {
   "Totale = somma di peso × punteggio": "Total = sum of weight × score",
   "Matrice di decisione": "Decision matrix",
   "Opzioni, criteri pesati, totale": "Options, weighted criteria, total",
+  "Valutazione": "Rating",
+  "{n} su 5": "{n} out of 5",
+  "Da 1 a 5 stelle": "From 1 to 5 stars",
 };
 
 export default en;

@@ -737,3 +737,11 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .matrix tfoot td { font-weight: 600; background: var(--panel); padding: 4px 9px; }
 .matrix .matrix-total { text-align: right; font-variant-numeric: tabular-nums; }
 .matrix .matrix-total.best { background: var(--accent-soft); color: var(--accent); }
+
+/* valutazione a stelle */
+.ProseMirror .rating { display: inline-flex; vertical-align: baseline; white-space: nowrap; border-radius: 5px; }
+.ProseMirror .rating.ProseMirror-selectednode { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rating-star { border: none; background: none; padding: 0 1px; font-size: 1.05em; line-height: 1; color: var(--line); cursor: pointer; }
+.rating-star.on { color: #e0a81c; }
+.rating:hover .rating-star { color: #e0a81c; }
+.rating .rating-star:hover ~ .rating-star { color: var(--line); }
