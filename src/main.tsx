@@ -12,6 +12,8 @@ document.addEventListener("click", (e) => {
   const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
   if (!a) return;
   e.preventDefault();
+  // dentro l'editor il click serve a posizionare il cursore: il link si apre con ⌘+click
+  if (a.closest(".ProseMirror[contenteditable='true']") && !e.metaKey && !e.ctrlKey) return;
   const href = a.getAttribute("href") ?? "";
   if (/^(https?:|mailto:)/i.test(href)) openUrl(href).catch(() => {});
 });

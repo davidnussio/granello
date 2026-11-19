@@ -4,7 +4,7 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
 
 ## Funzioni
 
-- **Note + registrazione**: editor Markdown (TipTap) con salvataggio automatico, registrazione con livelli audio e cronometro, ripresa sullo stesso meeting.
+- **Note + registrazione**: editor Markdown (TipTap) con menu `/` dei comandi, barra di formattazione sulla selezione, link e checklist, salvataggio automatico, registrazione con livelli audio e cronometro, ripresa sullo stesso meeting.
 - **Trascrizione locale**: whisper.cpp con Metal su Apple Silicon. L'audio viene tagliato sulle pause (6-20 s), ricampionato a 16 kHz e trascritto in un thread dedicato. Filtra le allucinazioni tipiche ("Sottotitoli a cura di QTSS", "[Musica]"...). Il titolo e i partecipanti vengono passati come prompt iniziale per migliorare nomi e termini.
 - **Due sorgenti**: microfono ("Tu") e un dispositivo di loopback per l'audio della call ("Altri").
 - **Note AI**: Claude (streaming) arricchisce le tue note seguendo il template scelto. Le note AI restano modificabili.
@@ -42,7 +42,35 @@ src-tauri/src
 ├── db.rs          SQLite (rusqlite bundled) + FTS5, migrazioni versionate, recupero dopo crash
 └── secrets.rs     API key nel Portachiavi macOS
 src/               React + TypeScript (Vite)
+└── editor/        editor delle note, composto da plugin
 ```
+
+### Editor a plugin
+
+L'editor (`src/editor`) è un guscio TipTap che non conosce le singole funzioni: le ricava da una lista di plugin. Un plugin può contribuire estensioni TipTap, comandi per il menu `/` e pulsanti per la barra che compare sul testo selezionato.
+
+```ts
+// src/editor/plugins/esempio.ts
+import type { EditorPlugin } from "../types";
+
+export const esempio: EditorPlugin = {
+  name: "esempio",
+  extensions: () => [/* nodi, mark o scorciatoie TipTap */],
+  commands: [
+    {
+      id: "rischio",
+      title: "Rischio",
+      icon: "!",
+      group: "Meeting",
+      keywords: ["rischio", "risk"],
+      run: (e) => e.chain().focus().insertContent("**Rischio:** ").run(),
+    },
+  ],
+  toolbar: [/* pulsanti, anche con un pannello proprio (vedi plugins/links.tsx) */],
+};
+```
+
+Per attivarlo si aggiunge a `defaultPlugins` in `src/editor/index.ts`, oppure si passa una lista propria a `<NoteEditor plugins={...} />`. Un plugin con lo stesso `name` di uno esistente lo sostituisce. I plugin inclusi: `base`, `formatting`, `headings`, `lists`, `tasks`, `blocks`, `links`, `snippets`.
 
 Dati in `~/Library/Application Support/ch.dambox.granello/` (database `granello.sqlite`, modelli in `models/`).
 

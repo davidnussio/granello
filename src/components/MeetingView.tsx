@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorText, newStreamId, on } from "../api";
 import type { Meeting, RecordingStatus, Template, TranscriptSegment } from "../types";
-import NoteEditor from "./NoteEditor";
+import NoteEditor from "../editor/NoteEditor";
 import Markdown from "./Markdown";
 import TranscriptPanel from "./TranscriptPanel";
 import ChatPanel from "./ChatPanel";
@@ -283,7 +283,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             <NoteEditor
               docKey={id + ":notes"}
               value={meeting.notesMd}
-              placeholder="Scrivi qui i punti importanti. Bastano poche parole: al resto pensa la trascrizione."
+              placeholder="Scrivi i punti importanti, al resto pensa la trascrizione. Digita / per i comandi."
               onChange={(md) => {
                 setMeeting((m) => (m ? { ...m, notesMd: md } : m));
                 saveNotes(md);
