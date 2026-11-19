@@ -383,6 +383,13 @@ const en: Record<string, string> = {
   "Da fare, in corso, fatto": "To do, doing, done",
   "Da fare": "To do",
   "Fatto": "Done",
+  "Tappa": "Milestone",
+  "Togli la tappa": "Remove the milestone",
+  "Data della nuova tappa": "Date of the new milestone",
+  "+ Tappa, poi Invio": "+ Milestone, then Enter",
+  "Nuova tappa": "New milestone",
+  "Timeline": "Timeline",
+  "Tappe con le loro date": "Milestones with their dates",
 };
 
 export default en;
