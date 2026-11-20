@@ -199,7 +199,9 @@ const Embed = Node.create({
                     src: source.src,
                     title: title || source.provider,
                     loading: "lazy",
-                    referrerPolicy: "no-referrer",
+                    // YouTube rifiuta il player senza Referer (errore 153); così parte solo
+                    // l'origine dell'app, mai l'indirizzo della nota
+                    referrerPolicy: "strict-origin-when-cross-origin",
                     allow: "fullscreen; picture-in-picture",
                     attrs: { sandbox: "allow-scripts allow-same-origin allow-popups allow-presentation" },
                   }),
