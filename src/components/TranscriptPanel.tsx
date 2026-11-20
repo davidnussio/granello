@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Privacy, TranscriptPart, TranscriptSegment } from "../types";
 import { mmss } from "../format";
 import { t } from "../i18n";
@@ -18,7 +18,10 @@ interface Picked {
   parts: TranscriptPart[];
   /** Presente se la selezione sta in una sola bolla: solo così ha un autore, e si può citare. */
   quote: { ms: number; source: Source; text: string } | null;
+  /** Dove sta la selezione dentro l'elenco che scorre: bordo alto, bordo basso, centro. */
   top: number;
+  bottom: number;
+  center: number;
 }
 
 /** Posizione in caratteri (non in unità UTF-16, che per le emoji sono due): è così che conta il backend. */
@@ -67,6 +70,9 @@ export default function TranscriptPanel({
   const end = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   const box = useRef<HTMLDivElement>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  /** Dove sta la barra della selezione, calcolato dopo averla misurata. */
+  const [place, setPlace] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     if (stick.current) end.current?.scrollIntoView({ block: "end" });
@@ -115,13 +121,16 @@ export default function TranscriptPanel({
     if (!parts.length || !first || !text) return setPicked(null);
     const bubble = [...bubbles][0];
     const rect = range.getBoundingClientRect();
+    const host = el.getBoundingClientRect();
     setPicked({
       parts,
       quote:
         bubbles.size === 1
           ? { ms: Number(first.dataset.ms ?? 0), source: bubble.dataset.source as Source, text }
           : null,
-      top: rect.bottom - el.getBoundingClientRect().top + el.scrollTop + 4,
+      top: rect.top - host.top + el.scrollTop,
+      bottom: rect.bottom - host.top + el.scrollTop,
+      center: rect.left + rect.width / 2 - host.left,
     });
   };
   useEffect(() => {
@@ -129,6 +138,29 @@ export default function TranscriptPanel({
     return () => document.removeEventListener("selectionchange", readSelection);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // La barra sta sotto la selezione, centrata su di essa e sempre dentro il pannello; se sotto
+  // non c'è spazio visibile (ultime righe della trascrizione) va sopra.
+  useLayoutEffect(() => {
+    const el = box.current;
+    const b = bar.current;
+    if (!picked || !el || !b) return setPlace(null);
+    const gap = 6;
+    const height = b.offsetHeight;
+    const viewTop = el.scrollTop;
+    const viewBottom = el.scrollTop + el.clientHeight;
+    const below = picked.bottom + gap;
+    const above = picked.top - height - gap;
+    const top =
+      below + height <= viewBottom - gap
+        ? below
+        : above >= viewTop + gap
+          ? above
+          : // la selezione è più alta del pannello: in basso, sopra il testo
+            viewBottom - height - gap;
+    const left = Math.max(8, Math.min(picked.center - b.offsetWidth / 2, el.clientWidth - b.offsetWidth - 8));
+    setPlace({ top, left });
+  }, [picked, asking, confirm]);
 
   const done = () => {
     window.getSelection()?.removeAllRanges();
@@ -283,19 +315,22 @@ export default function TranscriptPanel({
       {picked && (
         <div
           className="pick-actions"
-          style={{ top: picked.top }}
+          ref={bar}
+          // finché non è misurata resta invisibile, così non la si vede saltare
+          style={place ? place : { top: picked.bottom, left: 8, visibility: "hidden" }}
           // il click non deve togliere la selezione prima di averla letta
           onMouseDown={(e) => e.preventDefault()}
         >
           {picked.quote && onQuote && !asking && (
             <button
               className="btn small primary"
+              title={t("Cita nelle note: la frase, chi l'ha detta e il minuto")}
               onClick={() => {
                 onQuote(picked.quote!);
                 done();
               }}
             >
-              {t("❝ Cita nelle note")}
+              {t("❝ Cita")}
             </button>
           )}
           {onAssign && !asking && (

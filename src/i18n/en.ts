@@ -477,7 +477,9 @@ const en: Record<string, string> = {
   "Chi l'ha detto": "Who said it",
   "Citazione dalla trascrizione": "Transcript quote",
   "Una frase detta, con chi e a che minuto": "Something that was said, with who and when",
-  "❝ Cita nelle note": "❝ Quote in notes",
+  "❝ Cita": "❝ Quote",
+  "Cita nelle note: la frase, chi l'ha detta e il minuto":
+    "Quote in the notes: the sentence, who said it and the minute",
   Io: "Me",
   "Citazione aggiunta alle note AI": "Quote added to the AI notes",
   "Citazione aggiunta alle tue note": "Quote added to your notes",
