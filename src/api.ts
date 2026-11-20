@@ -84,6 +84,8 @@ export const api = {
   listProjects: () => invoke<Project[]>("list_projects"),
   /** Promuove un tag a progetto (false), lo archivia (true) o lo riporta a tag normale (null). */
   setProject: (tag: string, archived: boolean | null) => invoke<Project[]>("set_project", { tag, archived }),
+  /** Apre la stampa di sistema sulla finestra (da lì si salva anche in PDF). */
+  printWindow: () => invoke<void>("print_window"),
   /** Aggiunge e toglie tag a più meeting insieme. */
   tagMeetings: (ids: string[], add: string[], remove: string[]) =>
     invoke<void>("tag_meetings", { ids, add, remove }),

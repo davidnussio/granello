@@ -114,6 +114,7 @@ pub fn run() {
             commands::assign_speaker,
             commands::list_tags,
             commands::tag_meetings,
+            commands::print_window,
             commands::list_items,
             commands::demo_status,
             commands::load_demo,

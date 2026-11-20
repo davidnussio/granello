@@ -67,6 +67,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   list_people: () => data.people,
   list_projects: () => data.projects,
   list_items: () => data.items,
+  print_window: () => window.print(),
   // l'unica scrittura che l'anteprima esegue davvero: serve a provare i tag su più meeting
   tag_meetings: (a) => {
     const ids = a.ids as string[];

@@ -291,6 +291,13 @@ pub fn set_project(state: State<AppState>, tag: String, archived: Option<bool>) 
     db.list_projects().map_err(err)
 }
 
+/// Apre la stampa di sistema sulla finestra: da lì si stampa o si salva in PDF. Dal
+/// JavaScript `window.print()` non è affidabile nella webview di macOS.
+#[tauri::command]
+pub fn print_window(window: tauri::WebviewWindow) -> CmdResult<()> {
+    window.print().map_err(err)
+}
+
 /// Aggiunge e toglie tag a più meeting insieme (la selezione multipla della Libreria).
 #[tauri::command]
 pub fn tag_meetings(state: State<AppState>, ids: Vec<String>, add: Vec<String>, remove: Vec<String>) -> CmdResult<()> {

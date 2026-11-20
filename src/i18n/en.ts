@@ -691,6 +691,16 @@ const en: Record<string, string> = {
   "Sostituisce tutte le corrispondenze; un solo Annulla le riporta":
     "Replaces every match; a single Undo brings them back",
   Tutti: "All",
+
+  // meeting: copy, print, delete
+  "Meeting blindato: così il testo esce da Granello. Premi di nuovo per procedere.":
+    "Hardened meeting: this takes the text out of Granello. Press again to go ahead.",
+  "Ci sono parti da verificare: così il testo esce da Granello. Premi di nuovo per procedere.":
+    "Some parts are still to review: this takes the text out of Granello. Press again to go ahead.",
+  "Copia la nota come Markdown": "Copy the note as Markdown",
+  "Stampa o salva in PDF": "Print or save as PDF",
+  "Stampa o salva in PDF la nota che stai guardando": "Print or save as PDF the note you are looking at",
+  "Elimina il meeting": "Delete the meeting",
 };
 
 export default en;

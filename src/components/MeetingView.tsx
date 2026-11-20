@@ -99,6 +99,30 @@ const suggestTags = async (query: string): Promise<ChipSuggestion[]> => {
     .map((tag) => ({ value: tag.name, hint: t("{n} meeting", { n: tag.count }) }));
 };
 
+const ICONS = {
+  copy: "M9 9h10v11H9zM5 15V4h10",
+  print: "M7 9V4h10v5M7 17H4v-7h16v7h-3M7 14h10v6H7z",
+  trash: "M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v5M14 11v5",
+} as const;
+
+/** Icona di un'azione dell'intestazione, nello stesso tratto dell'occhio della privacy. */
+function ActionIcon({ name }: { name: keyof typeof ICONS }) {
+  return (
+    <svg
+      className="action-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={ICONS[name]} />
+    </svg>
+  );
+}
+
 export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, onDeleted }: Props) {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
@@ -110,6 +134,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const [elapsed, setElapsed] = useState(0);
   const [busyRec, setBusyRec] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** Stampa o copia in attesa di conferma: il meeting è riservato e il testo sta per uscire dall'app. */
+  const [confirmOut, setConfirmOut] = useState<"print" | "copy" | null>(null);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [calEvent, setCalEvent] = useState<CalendarEvent | null>(null);
   const enhanceRef = useRef<() => void>(() => {});
@@ -562,10 +588,42 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     await api.updateMeeting({ id, templateId }).catch((e) => toast(errorText(e)));
   };
 
-  const copyEnhanced = async () => {
-    const text = meeting?.enhancedMd ?? "";
-    await navigator.clipboard.writeText(`# ${meeting?.title}\n\n${text}`);
-    toast(t("Note copiate negli appunti"));
+  /**
+   * Stampa e copia portano il testo fuori da Granello. Per un meeting blindato, o con parti
+   * della trascrizione ancora da verificare, il primo clic avvisa e il secondo procede.
+   */
+  const leaving = (action: "print" | "copy"): boolean => {
+    const reserved = meeting?.privacy === "hardened" || segments.some((s) => s.review);
+    if (!reserved || confirmOut === action) {
+      setConfirmOut(null);
+      return true;
+    }
+    setConfirmOut(action);
+    setTimeout(() => setConfirmOut((c) => (c === action ? null : c)), 5000);
+    toast(
+      meeting?.privacy === "hardened"
+        ? t("Meeting blindato: così il testo esce da Granello. Premi di nuovo per procedere.")
+        : t("Ci sono parti da verificare: così il testo esce da Granello. Premi di nuovo per procedere."),
+    );
+    return false;
+  };
+
+  /** La nota che si sta guardando, in Markdown con il titolo in testa. */
+  const copyNote = async () => {
+    if (!meeting || !leaving("copy")) return;
+    const text = tab === "enhanced" ? (meeting.enhancedMd ?? "") : meeting.notesMd;
+    try {
+      await navigator.clipboard.writeText(`# ${meeting.title}\n\n${text}`);
+      toast(t("Note copiate negli appunti"));
+    } catch (e) {
+      toast(errorText(e));
+    }
+  };
+
+  /** Apre la stampa di sistema sulla nota che si sta guardando: da lì si salva anche in PDF. */
+  const printNote = () => {
+    if (!leaving("print")) return;
+    api.printWindow().catch((e) => toast(errorText(e)));
   };
 
   const remove = async () => {
@@ -683,20 +741,41 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               <option value="hardened">{t("Privacy: blindata")}</option>
             </select>
             {/* lontano dalle azioni di tutti i giorni (registra, trascrizione, chiedi) */}
-            <button
-              className={"chip delete-meeting" + (confirmDelete ? " confirm" : "")}
-              onClick={remove}
-              disabled={inSession}
-              title={
-                isImporting
-                  ? t("Annulla la trascrizione del file prima di eliminare il meeting")
-                  : isRecording
-                    ? t("Ferma la registrazione prima di eliminare il meeting")
-                    : ""
-              }
-            >
-              {confirmDelete ? t("Confermi?") : t("Elimina")}
-            </button>
+            <span className="meeting-actions">
+              <button
+                className={"chip icon-action" + (confirmOut === "copy" ? " confirm" : "")}
+                onClick={copyNote}
+                disabled={streaming !== null}
+                aria-label={t("Copia la nota come Markdown")}
+                title={t("Copia la nota come Markdown")}
+              >
+                {confirmOut === "copy" ? t("Confermi?") : <ActionIcon name="copy" />}
+              </button>
+              <button
+                className={"chip icon-action" + (confirmOut === "print" ? " confirm" : "")}
+                onClick={printNote}
+                disabled={streaming !== null}
+                aria-label={t("Stampa o salva in PDF")}
+                title={t("Stampa o salva in PDF la nota che stai guardando")}
+              >
+                {confirmOut === "print" ? t("Confermi?") : <ActionIcon name="print" />}
+              </button>
+              <button
+                className={"chip icon-action delete-meeting" + (confirmDelete ? " confirm" : "")}
+                onClick={remove}
+                disabled={inSession}
+                aria-label={t("Elimina il meeting")}
+                title={
+                  isImporting
+                    ? t("Annulla la trascrizione del file prima di eliminare il meeting")
+                    : isRecording
+                      ? t("Ferma la registrazione prima di eliminare il meeting")
+                      : t("Elimina il meeting")
+                }
+              >
+                {confirmDelete ? t("Confermi?") : <ActionIcon name="trash" />}
+              </button>
+            </span>
           </div>
           <div className="meta-row people-row">
             <ChipInput
@@ -751,11 +830,6 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             </button>
           </div>
           <div className="spacer" />
-          {tab === "enhanced" && meeting.enhancedMd && streaming === null && (
-            <button className="btn small ghost" onClick={copyEnhanced}>
-              {t("Copia")}
-            </button>
-          )}
           {streaming !== null ? (
             <button
               className="btn small"

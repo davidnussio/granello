@@ -1982,25 +1982,45 @@ h4.sub {
   opacity: 1;
 }
 
-/* elimina meeting: in alto a destra nell'intestazione, discreto finché non serve */
-.chip.delete-meeting {
+/* azioni sul meeting intero (copia, stampa, elimina): in alto a destra, discrete finché non servono */
+.meeting-actions {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.chip.icon-action {
   background: none;
   border-color: transparent;
   color: var(--muted);
   cursor: pointer;
+  padding: 3px 7px;
+  min-height: 24px;
+}
+.action-icon {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+.chip.icon-action:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--line);
+}
+/* il cestino resta l'ultimo, un po' staccato dalle altre */
+.chip.delete-meeting {
+  margin-left: 8px;
 }
 .chip.delete-meeting:hover:not(:disabled) {
   color: var(--rec);
-  border-color: var(--line);
 }
 /* anche in :hover: subito dopo il primo click il puntatore è ancora sopra il pulsante */
-.chip.delete-meeting.confirm,
-.chip.delete-meeting.confirm:hover:not(:disabled) {
+.chip.icon-action.confirm,
+.chip.icon-action.confirm:hover:not(:disabled) {
   color: #fff;
   background: var(--rec);
   border-color: var(--rec);
   font-weight: 600;
+  padding: 2px 10px;
 }
 
 /* ---------- partecipanti e tag ---------- */
@@ -3755,4 +3775,83 @@ span.lib-cross {
 }
 .rec-btn:not(.on) .privacy-icon.hardened {
   color: var(--accent);
+}
+
+/* ---------- stampa / PDF: solo la nota del meeting aperto, su carta bianca ---------- */
+@media print {
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --panel: #f5f3ee;
+    --card: #ffffff;
+    --line: #dcd7cb;
+    --text: #1a1b18;
+    --muted: #66655f;
+    --accent: #3d6a4b;
+    --accent-soft: #e3eee5;
+    --ai: #4c587a;
+  }
+  @page {
+    margin: 18mm 16mm;
+  }
+  html,
+  body,
+  #root,
+  .app,
+  .main,
+  .meeting,
+  .meeting-main,
+  .doc {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  .sidebar,
+  .titlebar,
+  .toasts,
+  .toolbar,
+  .recbar,
+  .side-panel,
+  .find-bar,
+  .slash-menu,
+  .title-ai,
+  .meeting-actions,
+  .meta-row select,
+  .chip.add,
+  .chip.import,
+  .chip-x,
+  .block-btn {
+    display: none !important;
+  }
+  .meeting-header {
+    padding: 0 0 8px;
+  }
+  .doc {
+    padding: 0 !important;
+  }
+  .editor,
+  .streaming {
+    max-width: none;
+  }
+  .editor .ProseMirror {
+    min-height: 0;
+    padding-bottom: 0;
+  }
+  .find-match {
+    background: none !important;
+    color: inherit !important;
+  }
+  /* un blocco non si spezza tra due pagine, un titolo non resta solo in fondo */
+  :is(.ProseMirror, .md) :is(h1, h2, h3) {
+    break-after: avoid;
+  }
+  :is(.ProseMirror, .md) :is(pre, blockquote, table, figure, img, .callout, [data-type]) {
+    break-inside: avoid;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
