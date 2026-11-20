@@ -5,6 +5,7 @@ import { mmss } from "../../format";
 import { t } from "../../i18n";
 import { SHOW_IN_TRANSCRIPT, insertAside, oneLine, parseTime, showInTranscript } from "../meeting";
 import type { EditorPlugin } from "../types";
+import { sparklesEl } from "../../sparkles";
 
 interface Moment {
   /** Millisecondi dall'inizio del meeting, sulla stessa scala della trascrizione. */
@@ -117,7 +118,7 @@ function render(view: BlockView<Moment>) {
               title: t("Fai scrivere all'AI cosa si stava dicendo"),
               on: { click: () => window.dispatchEvent(new CustomEvent(MOMENT_EVENTS.fill)) },
             },
-            "✦",
+            sparklesEl(),
           ),
         ]
       : []),

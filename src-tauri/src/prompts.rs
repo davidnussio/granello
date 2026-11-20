@@ -197,6 +197,8 @@ pub enum AssistKind {
     Rewrite,
     /// Trasforma lo schizzo allegato in un diagramma Mermaid.
     Sketch,
+    /// Propone un titolo per il meeting.
+    Title,
 }
 
 pub fn assist_system(kind: AssistKind, language: &str, format: Option<&str>) -> String {
@@ -223,6 +225,11 @@ conserva il resto del blocco attuale.",
 il testo che sostituisce la selezione, in Markdown, senza spiegazioni, senza virgolette attorno e senza recinti \
 di codice. Mantieni la lingua del testo selezionato, a meno che la richiesta non chieda di tradurre."
         ),
+        AssistKind::Title => format!(
+            "{common}\nProponi un titolo per questo meeting, {lang}: da tre a otto parole che dicono di cosa si è \
+parlato o cosa si è deciso, abbastanza specifiche da riconoscerlo tra altri meeting. Niente data, niente \
+\"Meeting\" o \"Riunione\" all'inizio, niente virgolette, niente punto finale. Rispondi SOLO con il titolo, su una riga."
+        ),
         AssistKind::Sketch => "Ricevi l'immagine di uno schizzo fatto a mano su una lavagna. Trasformalo in un \
 diagramma Mermaid che ne riproduce la struttura: forme come nodi, frecce e linee come collegamenti, scritte come \
 etichette. Scegli il tipo di diagramma più adatto (di solito flowchart). Se una scritta non si legge, usa \
@@ -241,6 +248,7 @@ pub fn assist_user(kind: AssistKind, context: Option<&str>, instruction: &str, c
     let current = current.map(str::trim).filter(|c| !c.is_empty());
     match kind {
         AssistKind::Answer => s.push_str(&format!("## Richiesta\n{instruction}")),
+        AssistKind::Title => s.push_str("## Richiesta\nScrivi il titolo di questo meeting."),
         AssistKind::Block => {
             s.push_str(&format!("## Blocco attuale\n{}\n\n## Richiesta\n{instruction}", current.unwrap_or("(vuoto)")));
         }

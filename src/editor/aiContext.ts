@@ -5,7 +5,7 @@ import { api } from "../api";
  * trascrizione: lo dice qui la pagina del meeting, e loro chiedono da qui.
  */
 
-export type AssistKind = "answer" | "block" | "rewrite" | "sketch";
+export type AssistKind = "answer" | "block" | "rewrite" | "sketch" | "title";
 
 let meetingId: string | null = null;
 

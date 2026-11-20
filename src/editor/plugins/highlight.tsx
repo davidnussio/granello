@@ -128,7 +128,7 @@ export const highlight: EditorPlugin = {
     {
       id: "highlight",
       group: "inline",
-      label: "▮",
+      label: "A",
       className: "tb-highlight",
       get title() {
         return t("Evidenzia (⌘⇧H)");

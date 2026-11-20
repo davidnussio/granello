@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Sparkles } from "../sparkles";
 import { api, errorText, newStreamId, on } from "../api";
 import type { ChatMessage } from "../types";
 import Markdown from "./Markdown";
@@ -109,7 +110,7 @@ export default function ChatPanel({ scope, toast, suggestions = [], big, title, 
             <div className="chat-empty">
               {big && (
                 <>
-                  <div className="chat-mark">✦</div>
+                  <div className="chat-mark"><Sparkles /></div>
                   <h1>{title}</h1>
                   {subtitle && <p className="muted">{subtitle}</p>}
                 </>
@@ -127,7 +128,7 @@ export default function ChatPanel({ scope, toast, suggestions = [], big, title, 
             m.role === "assistant" ? (
               <div key={m.id} className="msg assistant">
                 <span className="msg-mark" aria-hidden>
-                  ✦
+                  <Sparkles />
                 </span>
                 <div className="msg-body">
                   <Markdown text={m.content} />
@@ -145,7 +146,7 @@ export default function ChatPanel({ scope, toast, suggestions = [], big, title, 
           {busy && (
             <div className="msg assistant">
               <span className="msg-mark" aria-hidden>
-                ✦
+                <Sparkles />
               </span>
               <div className="msg-body">
                 {streaming ? (

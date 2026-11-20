@@ -8,6 +8,7 @@ import TranscriptPanel from "./TranscriptPanel";
 import ChatPanel from "./ChatPanel";
 import { dayLabel, mmss, time } from "../format";
 import { t } from "../i18n";
+import { Sparkles, sparkle } from "../sparkles";
 import type { Editor } from "@tiptap/react";
 import { setAiMeeting, setTranscriptState } from "../editor/aiContext";
 import { insertQuote, quoteMd } from "../editor/plugins/transcriptQuote";
@@ -96,6 +97,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const fillRef = useRef<(auto: boolean) => void>(() => {});
   const markRef = useRef<(from?: Editor) => void>(() => {});
   const fillingRef = useRef(false);
+  const titleInput = useRef<HTMLInputElement>(null);
+  const [titling, setTitling] = useState(false);
   const tabRef = useRef<Tab>("notes");
   const setNotesRef = useRef<(md: string) => void>(() => {});
 
@@ -359,6 +362,25 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     enhance();
   };
 
+  // Fa proporre all'AI un titolo da note e trascrizione, e lo mette al posto di quello attuale.
+  const generateTitle = async () => {
+    if (titling) return;
+    setTitling(true);
+    try {
+      // le ultime note scritte devono essere già salvate: il titolo si basa su quelle
+      await api.updateMeeting({ id, notesMd: notesRef.current });
+      const title = (await api.aiAssist({ meetingId: id, kind: "title", instruction: "" })).trim();
+      if (!title) return;
+      if (titleInput.current) titleInput.current.value = title;
+      saveTitle(title);
+      setMeeting((m) => (m ? { ...m, title } : m));
+    } catch (e) {
+      toast(errorText(e));
+    } finally {
+      setTitling(false);
+    }
+  };
+
   const saveMeta = async (patch: { attendees?: string[]; tags?: string[] }) => {
     // aggiornamento immediato; il backend restituisce poi i valori ripuliti
     setMeeting((m) => (m ? { ...m, ...patch } : m));
@@ -428,7 +450,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         {t("Trascrizione")} {segments.length ? `(${segments.length})` : ""}
       </button>
       <button className={"btn small ghost" + (side === "chat" ? " on" : "")} onClick={() => setSide(side === "chat" ? "none" : "chat")}>
-        {t("✦ Chiedi")}
+        {sparkle(t("✦ Chiedi"))}
       </button>
     </>
   );
@@ -437,13 +459,38 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     <div className={"meeting" + (side !== "none" ? " with-side" : "")}>
       <div className="meeting-main">
         <header className="meeting-header">
-          <input
-            className="title-input"
-            aria-label={t("Titolo del meeting")}
-            defaultValue={meeting.title}
-            placeholder={t("Titolo del meeting")}
-            onChange={(e) => saveTitle(e.target.value)}
-          />
+          <div className="title-row">
+            {/* il campo è largo quanto il titolo, così il pulsante gli sta accanto */}
+            <span className="title-fit" data-value={meeting.title || t("Titolo del meeting")}>
+              <input
+                ref={titleInput}
+                className="title-input"
+                // senza, il campo ha una larghezza minima sua e il pulsante resta lontano dai titoli corti
+                size={1}
+                aria-label={t("Titolo del meeting")}
+                defaultValue={meeting.title}
+                placeholder={t("Titolo del meeting")}
+                onChange={(e) => {
+                  const title = e.target.value;
+                  setMeeting((m) => (m ? { ...m, title } : m));
+                  saveTitle(title);
+                }}
+              />
+            </span>
+            <button
+              className={"title-ai" + (titling ? " busy" : "")}
+              onClick={generateTitle}
+              disabled={titling || !hasContent}
+              aria-label={t("Genera il titolo con l'AI")}
+              title={
+                hasContent
+                  ? t("Genera il titolo con l'AI, da note e trascrizione")
+                  : t("Scrivi qualche nota o registra: poi l'AI può proporre un titolo")
+              }
+            >
+              <Sparkles />
+            </button>
+          </div>
           <div className="meta-row">
             <span className="chip">
               {dayLabel(when)} · {time(when)}
@@ -519,7 +566,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               onClick={() => setTab("enhanced")}
               disabled={!meeting.enhancedMd && streaming === null}
             >
-              {t("✦ Note AI")}
+              {sparkle(t("✦ Note AI"))}
             </button>
           </div>
           <div className="spacer" />
@@ -555,7 +602,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
                 ? t("Sostituire le note AI?")
                 : meeting.enhancedMd
                   ? t("↻ Rigenera note AI")
-                  : t("✦ Genera note AI")}
+                  : sparkle(t("✦ Genera note AI"))}
             </button>
           )}
         </div>

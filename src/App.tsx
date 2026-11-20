@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { sparkle } from "./sparkles";
 import { api, errorText, on } from "./api";
 import type { CalendarEvent, CalendarInfo, MeetingSummary, RecordingStatus, View } from "./types";
 import Sidebar from "./components/Sidebar";
@@ -274,7 +275,7 @@ export default function App() {
                   setToasts((x) => x.filter((y) => y.id !== item.id));
                 }}
               >
-                {item.action.label}
+                {sparkle(item.action.label)}
               </button>
             )}
             <button

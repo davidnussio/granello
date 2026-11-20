@@ -493,6 +493,9 @@ const en: Record<string, string> = {
   "Ferma e scrivi quello che ho detto": "Stop and write what I said",
   "Trascrivo…": "Transcribing…",
   "Detta la richiesta a voce": "Dictate the request",
+  "Genera il titolo con l'AI": "Generate the title with AI",
+  "Genera il titolo con l'AI, da note e trascrizione": "Generate the title with AI, from notes and transcript",
+  "Scrivi qualche nota o registra: poi l'AI può proporre un titolo": "Write some notes or record: then the AI can suggest a title",
 };
 
 export default en;

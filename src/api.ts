@@ -63,7 +63,7 @@ export const api = {
   /** Una richiesta dell'editor all'AI: domanda sul meeting, blocco da creare, testo da riscrivere, schizzo. */
   aiAssist: (request: {
     meetingId: string | null;
-    kind: "answer" | "block" | "rewrite" | "sketch";
+    kind: "answer" | "block" | "rewrite" | "sketch" | "title";
     instruction: string;
     current?: string;
     format?: string;

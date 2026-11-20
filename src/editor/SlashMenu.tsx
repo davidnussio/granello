@@ -1,4 +1,5 @@
 import { t } from "../i18n";
+import { sparkle } from "../sparkles";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Extension } from "@tiptap/react";
@@ -140,7 +141,7 @@ export function SlashMenu({ bridge }: { bridge: SlashBridge }) {
                 state.command(item);
               }}
             >
-              <span className="slash-icon">{item.icon}</span>
+              <span className="slash-icon">{sparkle(item.icon)}</span>
               <span className="slash-title">{item.title}</span>
               {item.hint && <span className="slash-hint">{item.hint}</span>}
             </button>

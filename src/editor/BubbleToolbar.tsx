@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BubbleMenu } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import type { ToolbarItem } from "./types";
+import { sparkle } from "../sparkles";
 
 /** Barra di formattazione che compare sopra il testo selezionato. I pulsanti arrivano dai plugin. */
 export default function BubbleToolbar({ editor, items }: { editor: Editor; items: ToolbarItem[] }) {
@@ -48,7 +49,7 @@ export default function BubbleToolbar({ editor, items }: { editor: Editor; items
                   else item.run?.(editor);
                 }}
               >
-                {item.label}
+                {sparkle(item.label)}
               </button>
             </span>
           );

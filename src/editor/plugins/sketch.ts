@@ -2,6 +2,7 @@ import { dataBlock, type BlockView } from "../dataBlock";
 import { h } from "../dom";
 import { t } from "../../i18n";
 import { askAi } from "../aiContext";
+import { sparkleNodes } from "../../sparkles";
 import { errorText, notify } from "../../api";
 import type { EditorPlugin } from "../types";
 
@@ -173,7 +174,7 @@ function render(view: BlockView<Sketch>) {
           disabled: data.strokes.length === 0 || view.local.converting === true || !view.editor.isEditable,
           on: { click: () => toDiagram(view) },
         },
-        view.local.converting === true ? t("Leggo lo schizzo…") : t("✦ In diagramma"),
+        ...sparkleNodes(view.local.converting === true ? t("Leggo lo schizzo…") : t("✦ In diagramma")),
       ),
     ),
     svg as unknown as HTMLElement,

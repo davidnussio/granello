@@ -9,6 +9,7 @@ import { createDictation, micButton, micContent, micTitle, type DictationPhase }
 import { errorText, notify } from "../../api";
 import { t } from "../../i18n";
 import type { EditorPlugin } from "../types";
+import { sparklesEl } from "../../sparkles";
 
 interface LiveAi {
   /** Cosa si chiede, es. "riassumi le obiezioni del cliente". */
@@ -122,7 +123,7 @@ function render(view: BlockView<LiveAi>) {
     h(
       "div",
       { class: "ai-head" },
-      h("span", { class: "ai-mark", attrs: { "aria-hidden": "true" } }, "✦"),
+      h("span", { class: "ai-mark", attrs: { "aria-hidden": "true" } }, sparklesEl()),
       request,
       ...(editable ? [mic.button] : []),
       live ? h("span", { class: "ai-live", title: t("Si aggiorna da sola mentre registri, al massimo ogni due minuti") }, t("● dal vivo")) : null,

@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { sparkle } from "../sparkles";
 import type { CalendarEvent, MeetingSummary, RecordingStatus, View } from "../types";
 import { groupByDay, time } from "../format";
 import { t } from "../i18n";
@@ -43,7 +44,7 @@ export default function Sidebar(p: Props) {
           ⌂ Home
         </button>
         <button className={navCls(p.view.kind === "chat")} onClick={() => p.setView({ kind: "chat" })}>
-          {t("✦ Chiedi ai meeting")}
+          {sparkle(t("✦ Chiedi ai meeting"))}
         </button>
       </nav>
 
@@ -82,7 +83,7 @@ export default function Sidebar(p: Props) {
                 ) : (
                   <span className="side-meta">
                     {time(m.createdAt)}
-                    {m.hasEnhanced ? " · ✦" : ""}
+                    {m.hasEnhanced && sparkle(" · ✦")}
                     {m.attendees.length ? ` · ${t("{n} persone", { n: m.attendees.length })}` : ""}
                   </span>
                 )}

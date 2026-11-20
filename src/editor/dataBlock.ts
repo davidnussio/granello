@@ -7,6 +7,7 @@ import { NEEDS_PARAGRAPH_AFTER } from "./trailing";
 import { askAi } from "./aiContext";
 import { micButton } from "./dictation";
 import { h } from "./dom";
+import { sparklesEl } from "../sparkles";
 import { errorText, notify } from "../api";
 import { t } from "../i18n";
 
@@ -88,8 +89,8 @@ function aiControls<T>(view: BlockView<T>, spec: DataBlockSpec<T>) {
   const state = { open: false, busy: false };
   const input = h("input", { type: "text", class: "block-ai-input" });
   const mic = micButton(input);
-  const bar = h("div", { class: "block-ai-bar" }, h("span", { class: "block-ai-mark", attrs: { "aria-hidden": "true" } }, "✦"), input, mic.button);
-  const button = h("button", { type: "button", class: "block-ai-btn" }, "✦");
+  const bar = h("div", { class: "block-ai-bar" }, h("span", { class: "block-ai-mark", attrs: { "aria-hidden": "true" } }, sparklesEl()), input, mic.button);
+  const button = h("button", { type: "button", class: "block-ai-btn" }, sparklesEl());
   const refresh = () => {
     button.title = t("Crea o modifica con l'AI");
     button.classList.toggle("on", state.open);

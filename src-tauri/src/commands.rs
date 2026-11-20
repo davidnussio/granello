@@ -821,7 +821,7 @@ const MAX_IMAGE_BASE64: usize = 6 * 1024 * 1024;
 pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> CmdResult<String> {
     use prompts::AssistKind;
     let AssistRequest { meeting_id, kind, instruction, current, format, image } = request;
-    if kind != AssistKind::Sketch && instruction.trim().is_empty() {
+    if !matches!(kind, AssistKind::Sketch | AssistKind::Title) && instruction.trim().is_empty() {
         return Err(tr("Scrivi cosa chiedere all'AI", "Write what to ask the AI").into());
     }
     let image = match (kind, image) {
@@ -856,7 +856,20 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
         .await
         .map_err(err)?;
     // il formato di un blocco può essere proprio un recinto di codice: lo legge l'editor
-    let text = if kind == AssistKind::Block { done.text.trim().to_string() } else { strip_fence(&done.text) };
+    let text = match kind {
+        AssistKind::Block => done.text.trim().to_string(),
+        // un titolo è una riga sola, senza virgolette né segni di Markdown attorno
+        AssistKind::Title => strip_fence(&done.text)
+            .lines()
+            .map(|l| l.trim().trim_matches(|c: char| matches!(c, '"' | '«' | '»' | '“' | '”' | '#' | '*' | '`' | ' ')))
+            .find(|l| !l.is_empty())
+            .unwrap_or_default()
+            .trim_end_matches('.')
+            .chars()
+            .take(120)
+            .collect(),
+        _ => strip_fence(&done.text),
+    };
     if text.is_empty() {
         return Err(tr("L'AI non ha risposto. Riprova.", "The AI gave no answer. Try again.").into());
     }

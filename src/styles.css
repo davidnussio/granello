@@ -7,6 +7,8 @@
   --muted: #7b7a72;
   --accent: #4a7c59;
   --accent-soft: #e3eee5;
+  /* semitrasparente: un colore pieno WebKit lo altera a modo suo e in tema scuro diventa quasi nero */
+  --selection: rgba(74, 124, 89, 0.3);
   --rec: #d64545;
   --ai: #5d6a8a;
   --radius: 10px;
@@ -27,6 +29,7 @@
     --muted: #9a998f;
     --accent: #7fb08c;
     --accent-soft: #2f3d32;
+    --selection: rgba(127, 176, 140, 0.42);
     --ai: #a9b4d0;
   }
 }
@@ -216,7 +219,7 @@ h3 { margin: 0 0 12px; font-size: 15px; }
 .streaming { max-width: 740px; }
 .editor .ProseMirror { outline: none; min-height: 300px; padding-bottom: 30vh; }
 .editor .ProseMirror, .streaming { line-height: 1.6; font-size: 15px; word-break: break-word; }
-.editor .ProseMirror ::selection { background: var(--accent-soft); }
+::selection { background: var(--selection); color: inherit; }
 .editor .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: var(--muted);
@@ -258,7 +261,10 @@ h3 { margin: 0 0 12px; font-size: 15px; }
 .hl-dot[data-color="green"] { background: #7cc873; }
 .hl-dot[data-color="blue"] { background: #6cb3ee; }
 .hl-dot[data-color="pink"] { background: #ee8db5; }
-.tb-highlight { color: #d9b21f; }
+/* una lettera passata con l'evidenziatore */
+.tb-btn.tb-highlight, .tb-btn.tb-highlight.on { position: relative; z-index: 0; color: #3a3000; font-weight: 700; }
+.tb-highlight::before { content: ""; position: absolute; inset: 5px 6px; border-radius: 4px; background: #f3d250; z-index: -1; }
+.tb-highlight.on::before { box-shadow: 0 0 0 2px var(--accent); }
 
 /* persone e date: pillole dentro il testo */
 .ProseMirror .mention { color: var(--accent); background: var(--accent-soft); border-radius: 5px; padding: 1px 5px; font-weight: 550; white-space: nowrap; }
@@ -858,3 +864,23 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .mic-btn.on { background: var(--rec); color: #fff; animation: ai-pulse 1.2s ease-in-out infinite; }
 .mic-btn.on:hover:not(:disabled) { background: var(--rec); color: #fff; }
 .mic-btn:disabled { opacity: 0.6; }
+
+/* titolo del meeting con il pulsante che lo fa generare all'AI */
+.title-row { display: flex; align-items: center; gap: 6px; }
+/* una copia invisibile del testo dà la larghezza al campo */
+.title-fit { display: inline-grid; min-width: 0; max-width: calc(100% - 34px); }
+.title-fit::after { content: attr(data-value) " "; grid-area: 1 / 1; visibility: hidden; white-space: pre; overflow: hidden; font-size: 28px; font-weight: 650; letter-spacing: -0.01em; }
+.title-fit .title-input { grid-area: 1 / 1; min-width: 0; }
+.title-ai { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: none; background: none; border-radius: 6px; color: var(--muted); opacity: 0.6; }
+.title-ai:hover:not(:disabled) { opacity: 1; color: var(--text); background: var(--panel); }
+.title-ai:disabled { opacity: 0.25; }
+.title-ai.busy { opacity: 1; animation: ai-pulse 1s ease-in-out infinite; }
+
+/* il segno dell'AI: tre stelline, grandi quanto il testo accanto */
+.sparkles { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; }
+.btn .sparkles, .chip .sparkles, .seg .sparkles, .nav-item .sparkles { margin-right: 0.1em; }
+.title-ai .sparkles { width: 20px; height: 20px; }
+.block-ai-btn .sparkles { width: 13px; height: 13px; vertical-align: middle; }
+.block-btn .sparkles, .mic-btn .sparkles { width: 14px; height: 14px; vertical-align: middle; }
+.slash-icon .sparkles, .tb-btn .sparkles { width: 15px; height: 15px; vertical-align: middle; }
+.block-ai-mark, .ai-mark { display: inline-flex; align-items: center; }
