@@ -105,6 +105,8 @@ pub fn run() {
             commands::discard_audio,
             commands::refine_transcript,
             commands::rename_speaker,
+            commands::set_speaker,
+            commands::assign_speaker,
             commands::list_tags,
             commands::demo_status,
             commands::load_demo,

@@ -609,6 +609,35 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
     db.segments(&meeting_id).map_err(err)
 }
 
+/// Il nome di un parlante come si salva: spazi ripuliti; "me" resta l'utente. `None` se non valido.
+fn speaker_name(name: &str) -> Option<String> {
+    let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
+    (!name.is_empty() && name != "them" && name != "file" && name.chars().count() <= 60).then_some(name)
+}
+
+/// Più persone allo stesso microfono: da adesso sta parlando `name` ("me" per l'utente).
+#[tauri::command]
+pub fn set_speaker(state: State<AppState>, meeting_id: String, name: String) -> CmdResult<()> {
+    let name = speaker_name(&name).ok_or(tr("Nome del parlante non valido", "Invalid speaker name"))?;
+    let session = state.session.lock();
+    match session.as_ref().filter(|s| s.meeting_id == meeting_id) {
+        Some(s) => {
+            s.set_speaker(&name);
+            Ok(())
+        }
+        None => Err(tr("Su questo meeting non si sta registrando", "This meeting is not being recorded").into()),
+    }
+}
+
+/// Attribuisce parti già trascritte a un parlante ("me" per l'utente). Ritorna la trascrizione aggiornata.
+#[tauri::command]
+pub fn assign_speaker(state: State<AppState>, meeting_id: String, ids: Vec<i64>, name: String) -> CmdResult<Vec<TranscriptSegment>> {
+    let name = speaker_name(&name).ok_or(tr("Nome del parlante non valido", "Invalid speaker name"))?;
+    let db = state.db.lock();
+    db.set_source(&meeting_id, &ids, &name).map_err(err)?;
+    db.segments(&meeting_id).map_err(err)
+}
+
 /// Dà un nome a un parlante riconosciuto dall'affinamento online (es. "Parlante 1" → "Marco").
 #[tauri::command]
 pub fn rename_speaker(state: State<AppState>, meeting_id: String, from: String, to: String) -> CmdResult<Vec<TranscriptSegment>> {
@@ -766,6 +795,7 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
         base_ms,
         // l'audio si conserva solo per l'affinamento online: opzione attiva, chiave presente,
         // meeting senza vincoli di privacy
+        speakers: Default::default(),
         save_recording: (file.is_none() && settings.save_recordings)
             .then(|| -> Option<audio::SaveRecording> {
                 let started_at = chrono::Utc::now().timestamp_millis();

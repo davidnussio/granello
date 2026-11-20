@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { TranscriptPart, TranscriptSegment } from "../types";
+import type { Privacy, TranscriptPart, TranscriptSegment } from "../types";
 import { mmss } from "../format";
 import { t } from "../i18n";
+import PrivacyIcon, { privacyHint, privacyLabel } from "./PrivacyIcon";
 
 type Source = TranscriptSegment["source"];
 
@@ -33,6 +34,9 @@ export default function TranscriptPanel({
   onReview,
   onRename,
   kept = null,
+  privacy,
+  people = [],
+  onAssign,
 }: {
   segments: TranscriptSegment[];
   live: boolean;
@@ -49,7 +53,14 @@ export default function TranscriptPanel({
   onRename?: (from: string, to: string) => void;
   /** Audio conservato in attesa dell'affinamento online, e cosa farne. */
   kept?: { refining: boolean; refine: () => void; discard: () => void } | null;
+  /** Livello di privacy del meeting: chi registra lo vede in cima alla trascrizione. */
+  privacy?: Privacy;
+  /** I partecipanti, tra cui scegliere chi ha detto una frase. */
+  people?: string[];
+  /** Attribuisce i segmenti a un parlante ("me" = tu). */
+  onAssign?: (ids: number[], name: string) => void;
 }) {
+  const [asking, setAsking] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [picked, setPicked] = useState<Picked | null>(null);
   const [confirm, setConfirm] = useState(false);
@@ -76,6 +87,9 @@ export default function TranscriptPanel({
     const sel = window.getSelection();
     const el = box.current;
     setConfirm(false);
+    // scrivendo un nome nel campo "Chi parla" la selezione nel testo sparisce: va tenuta
+    if (document.activeElement?.closest(".pick-actions")) return;
+    setAsking(false);
     if (!el || !sel || sel.isCollapsed || sel.rangeCount === 0) return setPicked(null);
     const range = sel.getRangeAt(0);
     const parts: TranscriptPart[] = [];
@@ -113,6 +127,7 @@ export default function TranscriptPanel({
     window.getSelection()?.removeAllRanges();
     setPicked(null);
     setConfirm(false);
+    setAsking(false);
   };
 
   // la bolla che contiene il punto richiesto: l'ultima iniziata prima
@@ -135,6 +150,12 @@ export default function TranscriptPanel({
         stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
       }}
     >
+      {privacy && (
+        <div className={"privacy-line " + privacy} title={privacyHint(privacy)}>
+          <PrivacyIcon privacy={privacy} />
+          <span>{privacyLabel(privacy)}</span>
+        </div>
+      )}
       {pending.length > 0 && (
         <div className="review-banner" role="status">
           <strong>
@@ -233,7 +254,7 @@ export default function TranscriptPanel({
           // il click non deve togliere la selezione prima di averla letta
           onMouseDown={(e) => e.preventDefault()}
         >
-          {picked.quote && onQuote && (
+          {picked.quote && onQuote && !asking && (
             <button
               className="btn small primary"
               onClick={() => {
@@ -244,7 +265,41 @@ export default function TranscriptPanel({
               {t("❝ Cita nelle note")}
             </button>
           )}
-          {onReview && (
+          {onAssign && !asking && (
+            <button className="btn small" title={t("Indica chi ha detto il testo selezionato")} onClick={() => setAsking(true)}>
+              {t("Chi parla…")}
+            </button>
+          )}
+          {onAssign && asking && (
+            <span className="who-menu">
+              {["me", ...people].map((name) => (
+                <button
+                  key={name}
+                  className="btn small"
+                  onClick={() => {
+                    onAssign(picked.parts.map((p) => p.id), name);
+                    done();
+                  }}
+                >
+                  {name === "me" ? t("Io") : name}
+                </button>
+              ))}
+              <input
+                className="speaker-input"
+                placeholder={t("Altro nome…")}
+                aria-label={t("Nome del parlante")}
+                onMouseDown={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  const name = e.currentTarget.value.trim();
+                  if (e.key === "Enter" && name) {
+                    onAssign(picked.parts.map((p) => p.id), name);
+                    done();
+                  } else if (e.key === "Escape") setAsking(false);
+                }}
+              />
+            </span>
+          )}
+          {onReview && !asking && (
             <button
               className="btn small"
               title={t("Resta leggibile, ma il meeting non va a modelli online finché non decidi")}
@@ -256,7 +311,7 @@ export default function TranscriptPanel({
               {t("Da verificare")}
             </button>
           )}
-          {onRedact && (
+          {onRedact && !asking && (
             <button
               className={"btn small" + (confirm ? " danger" : "")}
               title={t("Cancella per sempre il testo selezionato: non si può annullare")}

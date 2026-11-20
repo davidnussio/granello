@@ -674,6 +674,19 @@ impl Db {
         Ok(())
     }
 
+    /// Attribuisce alcuni segmenti a un parlante (o a "me").
+    pub fn set_source(&self, meeting_id: &str, ids: &[i64], source: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        for id in ids {
+            self.conn.execute(
+                "UPDATE transcript_segments SET source = ?1 WHERE id = ?2 AND meeting_id = ?3",
+                params![source, id, meeting_id],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
     /// Dà un nome a un parlante: cambia la sorgente di tutti i suoi segmenti in quel meeting.
     pub fn rename_source(&self, meeting_id: &str, from: &str, to: &str) -> Result<()> {
         self.conn.execute(

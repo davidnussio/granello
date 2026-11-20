@@ -592,6 +592,13 @@ const en: Record<string, string> = {
   "Serve ffmpeg, che su questo Mac non c'è (si installa con: brew install ffmpeg). Senza, le registrazioni restano in WAV, circa 115 MB all'ora.": "This needs ffmpeg, which isn't on this Mac (install it with: brew install ffmpeg). Without it recordings stay in WAV, about 115 MB per hour.",
   "Con ffmpeg le registrazioni vengono compresse (circa 20 MB all'ora). Togliendo le pause, i minuti dell'audio non corrispondono più a quelli della trascrizione.": "With ffmpeg recordings are compressed (about 20 MB per hour). With pauses removed, the audio timings no longer match the transcript's.",
   "Mostra nel Finder": "Show in Finder",
+  "Indica chi ha detto il testo selezionato": "Say who spoke the selected text",
+  "Chi parla…": "Who's speaking…",
+  "Altro nome…": "Another name…",
+  "Chi sta parlando al microfono": "Who is speaking into the microphone",
+  "Più persone allo stesso microfono? Indica chi sta parlando: da quel momento la trascrizione lo attribuisce a lui.": "Several people on one microphone? Say who is speaking: from that moment the transcript credits them.",
+  "Al microfono: io": "At the mic: me",
+  "Al microfono: {name}": "At the mic: {name}",
 };
 
 export default en;

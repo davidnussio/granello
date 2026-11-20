@@ -62,6 +62,11 @@ export const api = {
   discardAudio: (meetingId: string) => invoke<void>("discard_audio", { meetingId }),
   /** Carica l'audio su Gladia e sostituisce la trascrizione con quella online, con i parlanti. */
   refineTranscript: (meetingId: string) => invoke<TranscriptSegment[]>("refine_transcript", { meetingId }),
+  /** Più persone allo stesso microfono: da adesso parla `name` ("me" = tu). */
+  setSpeaker: (meetingId: string, name: string) => invoke<void>("set_speaker", { meetingId, name }),
+  /** Attribuisce parti già trascritte a un parlante ("me" = tu); ritorna la trascrizione aggiornata. */
+  assignSpeaker: (meetingId: string, ids: number[], name: string) =>
+    invoke<TranscriptSegment[]>("assign_speaker", { meetingId, ids, name }),
   /** Dà un nome a un parlante riconosciuto dall'affinamento online. */
   renameSpeaker: (meetingId: string, from: string, to: string) =>
     invoke<TranscriptSegment[]>("rename_speaker", { meetingId, from, to }),

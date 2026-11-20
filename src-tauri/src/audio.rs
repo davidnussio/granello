@@ -309,6 +309,26 @@ pub struct SessionConfig {
     pub keep_audio: Option<PathBuf>,
     /// Se presente, la sessione viene salvata come registrazione da riascoltare.
     pub save_recording: Option<SaveRecording>,
+    /// Chi sta parlando al microfono, nel tempo (vedi `Speakers`).
+    pub speakers: Speakers,
+}
+
+/// Chi parla al microfono quando più persone usano lo stesso computer: ogni cambio è il punto
+/// del meeting (ms) da cui vale e il nome. Prima del primo cambio, e con "me", è l'utente.
+#[derive(Clone, Default)]
+pub struct Speakers(Arc<Mutex<Vec<(i64, String)>>>);
+
+impl Speakers {
+    /// Da `at_ms` in poi al microfono c'è `name` ("me" per l'utente).
+    pub fn switch(&self, at_ms: i64, name: &str) {
+        self.0.lock().push((at_ms, name.to_string()));
+    }
+
+    /// A chi va attribuito ciò che il microfono ha sentito al punto `at_ms`.
+    pub fn at(&self, at_ms: i64) -> String {
+        let list = self.0.lock();
+        list.iter().rev().find(|(from, _)| *from <= at_ms).map(|(_, name)| name.clone()).unwrap_or_else(|| "me".into())
+    }
 }
 
 /// Dove salvare la registrazione di una sessione e come chiuderla.
@@ -332,6 +352,7 @@ pub struct Session {
     /// Da dove riparte il tempo del meeting e quando è partita la cattura.
     base_ms: i64,
     started: Instant,
+    speakers: Speakers,
 }
 
 /// Come finisce il thread di trascrizione di un file caricato.
@@ -358,6 +379,7 @@ fn spawn_transcriber(
     // solo dal vivo: di un file caricato esiste già l'originale
     let keep_audio = cfg.keep_audio.clone().filter(|_| import.is_none());
     let save_recording = cfg.save_recording.clone().filter(|_| import.is_none());
+    let speakers = cfg.speakers.clone();
     std::thread::Builder::new().name("granello-transcribe".into()).spawn(move || {
         let mut keeper = keep_audio.and_then(|path| {
             crate::keep::Keeper::open(&path).map_err(|e| log::error!("audio conservato: {e}")).ok()
@@ -383,9 +405,11 @@ fn spawn_transcriber(
             match res {
                 Ok(segs) => {
                     for s in segs {
+                        // il microfono può essere di più persone: vale chi era indicato in quel momento
+                        let who = if chunk.source == "me" { speakers.at(chunk.start_ms + s.start_ms) } else { chunk.source.to_string() };
                         let saved = db.lock().add_segment(
                             &meeting_id,
-                            chunk.source,
+                            &who,
                             chunk.start_ms + s.start_ms,
                             chunk.start_ms + s.end_ms.max(s.start_ms),
                             &s.text,
@@ -634,6 +658,7 @@ System Settings → Privacy & Security → Microphone and that the microphone is
         }
 
         Ok(Self {
+            speakers: cfg.speakers.clone(),
             meeting_id: cfg.meeting_id,
             stop_tx,
             audio_thread: Some(audio_thread),
@@ -690,6 +715,7 @@ System Settings → Privacy & Security → Microphone and that the microphone is
         };
 
         Ok(Self {
+            speakers: cfg.speakers.clone(),
             meeting_id: cfg.meeting_id,
             stop_tx,
             audio_thread: Some(decode_thread),
@@ -705,6 +731,14 @@ System Settings → Privacy & Security → Microphone and that the microphone is
     /// segmenti della trascrizione. `None` mentre si trascrive un file: lì non c'è un "adesso".
     pub fn position_ms(&self) -> Option<i64> {
         (!self.importing).then(|| self.base_ms + self.started.elapsed().as_millis() as i64)
+    }
+
+    /// Da adesso al microfono parla `name` ("me" per l'utente). Non vale per un file caricato.
+    pub fn set_speaker(&self, name: &str) {
+        if let Some(now) = self.position_ms() {
+            // chi cambia nome lo fa appena l'altro comincia: si torna indietro di un attimo
+            self.speakers.switch(now - 700, name);
+        }
     }
 
     /// Ferma la cattura. La trascrizione dei blocchi in coda continua in background
@@ -870,6 +904,11 @@ mod tests {
         let (_, chunk) = c.poll(false);
         let chunk = chunk.expect("taglio sulla pausa");
         assert_eq!(chunk.start_ms, 1000);
+        let speakers = Speakers::default();
+        assert_eq!(speakers.at(5000), "me");
+        speakers.switch(10_000, "Marco");
+        speakers.switch(20_000, "me");
+        assert_eq!((speakers.at(9_999), speakers.at(10_000), speakers.at(19_000), speakers.at(25_000)), ("me".into(), "Marco".into(), "Marco".into(), "me".into()));
         assert_eq!(chunk.samples.len(), 8 * 16_000);
         // blocco successivo parte dopo 8 secondi
         shared.lock().extend(tone(2.0, 48_000, 0.3));

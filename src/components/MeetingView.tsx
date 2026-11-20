@@ -6,6 +6,7 @@ import NoteEditor from "../editor/NoteEditor";
 import Markdown from "./Markdown";
 import TranscriptPanel from "./TranscriptPanel";
 import Recordings from "./Recordings";
+import PrivacyIcon, { privacyHint, privacyLabel } from "./PrivacyIcon";
 import ChatPanel from "./ChatPanel";
 import { dayLabel, mmss, time } from "../format";
 import { t } from "../i18n";
@@ -101,6 +102,11 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const [keptAudio, setKeptAudio] = useState(false);
   const [refining, setRefining] = useState(false);
   const [recVersion, setRecVersion] = useState(0);
+  // chi sta parlando al microfono: "me" finché non si indica un altro; riparte a ogni registrazione
+  const [micSpeaker, setMicSpeaker] = useState("me");
+  useEffect(() => {
+    if (rec.meetingId !== id) setMicSpeaker("me");
+  }, [rec.meetingId, id]);
   const refineRef = useRef<() => void>(() => {});
   const titleInput = useRef<HTMLInputElement>(null);
   const [titling, setTitling] = useState(false);
@@ -473,6 +479,19 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   refineRef.current = refine;
   const discardAudio = () =>
     api.discardAudio(id).then(() => setKeptAudio(false)).catch((e) => toast(errorText(e)));
+  const assignSpeaker = (ids: number[], name: string) =>
+    api.assignSpeaker(id, ids, name).then(setSegments).catch((e) => toast(errorText(e)));
+  // Più persone allo stesso microfono: da adesso ciò che sente va a chi è indicato qui.
+  const changeSpeaker = async (name: string) => {
+    const previous = micSpeaker;
+    setMicSpeaker(name);
+    try {
+      await api.setSpeaker(id, name);
+    } catch (e) {
+      setMicSpeaker(previous);
+      toast(errorText(e));
+    }
+  };
   const renameSpeaker = (from: string, to: string) =>
     api.renameSpeaker(id, from, to).then(setSegments).catch((e) => toast(errorText(e)));
 
@@ -722,11 +741,29 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             className={"rec-btn" + (inSession ? " on" : "")}
             onClick={toggleRecording}
             disabled={busyRec || otherRecording}
-            title={otherRecording ? t("C'è già una registrazione in corso su un altro meeting") : ""}
+            title={otherRecording ? t("C'è già una registrazione in corso su un altro meeting") : `${privacyLabel(meeting.privacy)}. ${privacyHint(meeting.privacy)}`}
           >
             <span className="rec-icon" />
             {isImporting ? t("Annulla") : isRecording ? t("Stop") : segments.length ? t("Riprendi") : t("Registra")}
+            {/* chi avvia la registrazione vede subito quanto di questo meeting può uscire dal Mac */}
+            <PrivacyIcon privacy={meeting.privacy} />
           </button>
+          {isRecording && meeting.attendees.length > 0 && (
+            <select
+              className={"chip select" + (micSpeaker !== "me" ? " on" : "")}
+              value={micSpeaker}
+              onChange={(e) => changeSpeaker(e.target.value)}
+              aria-label={t("Chi sta parlando al microfono")}
+              title={t("Più persone allo stesso microfono? Indica chi sta parlando: da quel momento la trascrizione lo attribuisce a lui.")}
+            >
+              <option value="me">{t("Al microfono: io")}</option>
+              {meeting.attendees.map((name) => (
+                <option key={name} value={name}>
+                  {t("Al microfono: {name}", { name })}
+                </option>
+              ))}
+            </select>
+          )}
           {!inSession && (
             <button
               className="btn small ghost"
@@ -803,6 +840,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} focus={transcriptFocus} onQuote={addQuote} onRedact={redact}
               onReview={review}
               onRename={renameSpeaker}
+              privacy={meeting.privacy}
+              people={meeting.attendees}
+              onAssign={assignSpeaker}
               kept={keptAudio && !inSession ? { refining, refine, discard: discardAudio } : null}
             />
           ) : (
