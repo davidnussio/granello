@@ -17,6 +17,7 @@ mod models;
 mod prompts;
 mod secrets;
 mod transcribe;
+mod updater;
 
 use commands::AppState;
 use parking_lot::Mutex;
@@ -50,6 +51,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let models_dir = data_dir.join("models");
@@ -84,6 +86,7 @@ pub fn run() {
                 commands::allow_recordings_dir(app.handle(), &state.data_dir, chosen.as_deref());
             }
             spawn_calendar_watcher(app.handle().clone());
+            updater::spawn_check(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -1,0 +1,177 @@
+name: Release
+
+# Si parte da un tag: aggiorna "version" in package.json, src-tauri/Cargo.toml e
+# src-tauri/tauri.conf.json, committa, poi
+#   git tag -a v0.2.0 -m "Granello 0.2.0" && git push origin main v0.2.0
+# Il workflow crea la release IN BOZZA con i DMG e latest.json. Le app installate
+# leggono releases/latest/download/latest.json, che vede solo le release
+# pubblicate: nessuna si aggiorna finché la bozza non viene pubblicata a mano.
+#
+# Secret richiesti: TAURI_SIGNING_PRIVATE_KEY e TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+# (chiave privata dell'updater; copia nel password manager di David).
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Il tag corrisponde alle versioni, la chiave pubblica c'è
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE="$(jq -r .version package.json)"
+          CONF="$(jq -r .version src-tauri/tauri.conf.json)"
+          CARGO="$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -1)"
+          for v in "$PACKAGE" "$CONF" "$CARGO"; do
+            if [ "$v" != "$VERSION" ]; then
+              echo "::error::Il tag $GITHUB_REF_NAME non corrisponde alle versioni (package.json $PACKAGE, tauri.conf.json $CONF, Cargo.toml $CARGO)"
+              exit 1
+            fi
+          done
+          if [ -z "$(jq -r '.plugins.updater.pubkey // empty' src-tauri/tauri.conf.json)" ]; then
+            echo "::error::Manca la chiave pubblica dell'updater in src-tauri/tauri.conf.json"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Dipendenze
+        run: pnpm install --frozen-lockfile
+
+      - name: Controlli
+        run: pnpm check
+
+  build:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest # Apple Silicon
+            label: macOS-arm64
+            arch: aarch64
+          - os: macos-15-intel # Mac Intel, supportato da GitHub fino all'autunno 2027
+            label: macOS-intel
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Dipendenze
+        run: pnpm install --frozen-lockfile
+
+      # Gli artefatti dell'updater (.app.tar.gz firmato) si creano solo qui, così
+      # una build locale non chiede la chiave privata.
+      - name: Build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm tauri build --config '{"bundle":{"createUpdaterArtifacts":true}}'
+
+      - name: Nomi degli artefatti
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          BUNDLE=src-tauri/target/release/bundle
+          mkdir artifacts
+          mv "$BUNDLE"/dmg/*.dmg "artifacts/Granello-$VERSION-${{ matrix.label }}.dmg"
+          mv "$BUNDLE"/macos/Granello.app.tar.gz "artifacts/Granello-$VERSION-${{ matrix.arch }}.app.tar.gz"
+          mv "$BUNDLE"/macos/Granello.app.tar.gz.sig "artifacts/Granello-$VERSION-${{ matrix.arch }}.app.tar.gz.sig"
+          ls -la artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: granello-${{ matrix.label }}
+          path: artifacts/*
+          if-no-files-found: error
+
+  release:
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # tutta la storia e i tag, per trovare la release precedente
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # Il manifest che le app installate leggono per aggiornarsi.
+      - name: latest.json
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+          BASE: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+        run: |
+          entry() {
+            jq -n --arg sig "$(cat "artifacts/Granello-$VERSION-$1.app.tar.gz.sig")" \
+              --arg url "$BASE/Granello-$VERSION-$1.app.tar.gz" '{signature: $sig, url: $url}'
+          }
+          jq -n --arg version "$VERSION" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --argjson arm "$(entry aarch64)" --argjson intel "$(entry x86_64)" \
+            '{version: $version, pub_date: $date, platforms: {"darwin-aarch64": $arm, "darwin-x86_64": $intel}}' \
+            > artifacts/latest.json
+          cat artifacts/latest.json
+
+      # Bozza delle note: i commit dal tag precedente. Si riscrivono prima di pubblicare.
+      - name: Note dai commit
+        run: |
+          PREVIOUS="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+          RANGE="${PREVIOUS:+$PREVIOUS..}$GITHUB_REF_NAME"
+          {
+            echo "<!-- Bozza generata dai commit ($RANGE): riscrivere prima di pubblicare. -->"
+            echo
+            git log --no-merges --pretty='- %s' "$RANGE"
+          } > notes.md
+          cat notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Granello ${{ needs.check.outputs.version }}
+          body_path: notes.md
+          draft: true
+          files: artifacts/*
+          fail_on_unmatched_files: true
