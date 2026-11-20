@@ -19,6 +19,8 @@ pub const ANTHROPIC_ID: &str = "anthropic";
 #[cfg(any(target_os = "macos", windows))]
 const SERVICE: &str = "ch.dambox.granello";
 
+/// Il nome della voce nel Portachiavi o in Gestione credenziali.
+#[cfg(any(target_os = "macos", windows, test))]
 fn account(provider_id: &str) -> String {
     if provider_id == ANTHROPIC_ID {
         "anthropic-api-key".into()
