@@ -1,0 +1,6 @@
+[tools]
+node = "24"
+pnpm = "12.18.0"
+
+[bootstrap.packages]
+"brew:cmake" = "latest"
