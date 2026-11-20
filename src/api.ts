@@ -56,6 +56,10 @@ export const api = {
   deleteRecording: (id: number) => invoke<void>("delete_recording", { id }),
   /** Toglie le pause senza audio da una registrazione; ritorna l'elenco aggiornato. */
   trimRecording: (id: number) => invoke<Recording[]>("trim_recording", { id }),
+  /** Unisce le registrazioni di un meeting in un solo file (serve ffmpeg). */
+  mergeRecordings: (meetingId: string) => invoke<void>("merge_recordings", { meetingId }),
+  /** La forma d'onda di una registrazione: valori da 0 a 255, uno per barra. */
+  recordingWaveform: (id: number) => invoke<number[]>("recording_waveform", { id }),
   /** Fa scegliere la cartella delle registrazioni. null se la scelta viene annullata. */
   pickRecordingsDir: () => invoke<string | null>("pick_recordings_dir"),
   /** C'è dell'audio conservato per l'affinamento online di questo meeting? */

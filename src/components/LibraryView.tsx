@@ -440,7 +440,7 @@ export default function LibraryView({
           aria-label={t("Filtra i meeting elencati")}
           placeholder={group ? t("Filtra in {name}", { name: group.label }) : t("Filtra i meeting elencati")}
         />
-        {cross ? (
+        {dim === "recordings" ? null : cross ? (
           <span className="chip lib-cross">
             {DIMS.find((d) => d.id === cross.dim)!.icon} {hash(cross.dim)}
             {cross.label}

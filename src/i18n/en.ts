@@ -703,6 +703,19 @@ const en: Record<string, string> = {
   "Stampa o salva in PDF": "Print or save as PDF",
   "Stampa o salva in PDF la nota che stai guardando": "Print or save as PDF the note you are looking at",
   "Elimina il meeting": "Delete the meeting",
+
+  // recordings: one card per meeting, player with waveform, merge
+  "Il file della registrazione non si trova: è stato spostato, o il disco è scollegato.":
+    "The recording file can't be found: it was moved, or the disk is not connected.",
+  Riproduci: "Play",
+  "Posizione nella registrazione": "Position in the recording",
+  "1 registrazione": "1 recording",
+  "{n} registrazioni": "{n} recordings",
+  "Unisce le registrazioni di questo meeting in un solo file, dalla più vecchia. I file separati non restano.":
+    "Merges this meeting's recordings into a single file, oldest first. The separate files are not kept.",
+  "Unisco…": "Merging…",
+  "Unire in un solo file?": "Merge into one file?",
+  Unisci: "Merge",
 };
 
 export default en;

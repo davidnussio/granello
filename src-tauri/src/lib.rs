@@ -115,6 +115,8 @@ pub fn run() {
             commands::list_recordings,
             commands::delete_recording,
             commands::trim_recording,
+            commands::merge_recordings,
+            commands::recording_waveform,
             commands::pick_recordings_dir,
             commands::kept_audio,
             commands::discard_audio,

@@ -117,6 +117,92 @@ pub fn trim(file: &Path) -> Result<Finished> {
     Ok(Finished { path: output, duration_ms, bytes, trimmed: true })
 }
 
+/// Unisce più registrazioni, nell'ordine dato, in un solo M4A (`output`). Ritorna la durata.
+pub fn merge(ffmpeg: &Path, inputs: &[PathBuf], output: &Path) -> Result<i64> {
+    let mut cmd = Command::new(ffmpeg);
+    cmd.args(["-hide_banner", "-nostdin", "-y"]);
+    for input in inputs {
+        cmd.arg("-i").arg(input);
+    }
+    // ogni pezzo portato allo stesso formato: un WAV appena registrato e un M4A già compresso
+    // non si incollano altrimenti
+    let mut graph = String::new();
+    for i in 0..inputs.len() {
+        graph.push_str(&format!("[{i}:a]aresample=16000,aformat=sample_fmts=fltp:channel_layouts=mono[a{i}];"));
+    }
+    for i in 0..inputs.len() {
+        graph.push_str(&format!("[a{i}]"));
+    }
+    graph.push_str(&format!("concat=n={}:v=0:a=1[out]", inputs.len()));
+    cmd.args(["-filter_complex", &graph, "-map", "[out]", "-c:a", "aac", "-b:a", "48k"]).arg(output);
+    let out = cmd.output()?;
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    if !out.status.success() || !output.is_file() {
+        let _ = std::fs::remove_file(output);
+        let last = stderr.lines().last().unwrap_or_default();
+        return Err(anyhow!("ffmpeg: {last}"));
+    }
+    Ok(last_time_ms(&stderr).unwrap_or(0))
+}
+
+/// Quante barre ha la forma d'onda mostrata nel player.
+pub const WAVE_BARS: usize = 160;
+
+/// La forma d'onda di una registrazione: il file diviso in `bars` fette uguali, per ognuna
+/// il picco del volume da 0 a 255, rapportato al punto più forte. Il file si legge un
+/// blocco alla volta.
+pub fn waveform(file: &Path, bars: usize) -> Result<Vec<u8>> {
+    let mut audio = crate::decode::AudioFile::open(file)?;
+    // un picco ogni 20 ms circa: un'ora di audio sono 180 mila numeri
+    let mut peaks: Vec<f32> = Vec::new();
+    let (mut peak, mut filled) = (0f32, 0usize);
+    while let Some(block) = audio.next_block()? {
+        let window = (block.rate as usize / 50).max(1);
+        for sample in block.samples {
+            peak = peak.max(sample.abs());
+            filled += 1;
+            if filled >= window {
+                peaks.push(peak);
+                (peak, filled) = (0.0, 0);
+            }
+        }
+    }
+    if filled > 0 {
+        peaks.push(peak);
+    }
+    let loudest = peaks.iter().copied().fold(0f32, f32::max);
+    if peaks.is_empty() || loudest <= 0.0 || bars == 0 {
+        return Ok(vec![0; bars]);
+    }
+    Ok((0..bars)
+        .map(|i| {
+            let from = i * peaks.len() / bars;
+            let to = ((i + 1) * peaks.len() / bars).max(from + 1).min(peaks.len());
+            let top = peaks[from.min(peaks.len() - 1)..to].iter().copied().fold(0f32, f32::max);
+            // radice: le parti a voce bassa restano visibili accanto a quelle forti
+            ((top / loudest).sqrt() * 255.0).round() as u8
+        })
+        .collect())
+}
+
+/// Dove si tengono le forme d'onda già calcolate: nella cartella dei dati, non in quella
+/// delle registrazioni. Il nome porta la dimensione del file, così un file cambiato
+/// (pause tolte, registrazioni unite) non riusa quella vecchia.
+pub fn waveform_cache(data_dir: &Path, id: i64, bytes: i64) -> PathBuf {
+    data_dir.join("waveforms").join(format!("{id}-{bytes}.bin"))
+}
+
+/// Toglie le forme d'onda salvate di una registrazione che non c'è più o è cambiata.
+pub fn forget_waveform(data_dir: &Path, id: i64) {
+    let Ok(entries) = std::fs::read_dir(data_dir.join("waveforms")) else { return };
+    let prefix = format!("{id}-");
+    for entry in entries.flatten() {
+        if entry.file_name().to_string_lossy().starts_with(&prefix) {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -158,6 +244,49 @@ mod tests {
         drop(crate::keep::Keeper::open(&empty).unwrap());
         assert!(finalize(&empty, false).is_none());
         assert!(!empty.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    fn wav_with(path: &Path, parts: &[(i64, usize)]) {
+        let mut k = crate::keep::Keeper::open(path).unwrap();
+        for (at_ms, samples) in parts {
+            let tone: Vec<f32> = (0..*samples).map(|i| (i as f32 * 0.17).sin() * 0.4).collect();
+            k.add(*at_ms, &tone).unwrap();
+        }
+    }
+
+    #[test]
+    fn waveform_follows_sound_and_silence() {
+        let dir = std::env::temp_dir().join(format!("granello-wave-{}", std::process::id()));
+        let wav = dir.join("onda.wav");
+        // 2 secondi di suono, 6 di silenzio, altri 2 di suono
+        wav_with(&wav, &[(0, 32_000), (8000, 32_000)]);
+        let bars = waveform(&wav, 10).unwrap();
+        assert_eq!(bars.len(), 10);
+        assert!(bars[0] > 200 && bars[9] > 200, "{bars:?}");
+        assert!(bars[3..7].iter().all(|b| *b == 0), "{bars:?}");
+
+        let cache = waveform_cache(&dir, 7, 123);
+        std::fs::create_dir_all(cache.parent().unwrap()).unwrap();
+        std::fs::write(&cache, &bars).unwrap();
+        std::fs::write(waveform_cache(&dir, 77, 1), [0]).unwrap();
+        forget_waveform(&dir, 7);
+        assert!(!cache.exists());
+        assert!(waveform_cache(&dir, 77, 1).exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Con ffmpeg installato: due registrazioni diventano un solo file, una dopo l'altra.
+    #[test]
+    fn merges_recordings_when_ffmpeg_is_there() {
+        let Some(tool) = ffmpeg() else { return };
+        let dir = std::env::temp_dir().join(format!("granello-merge-{}", std::process::id()));
+        let (a, b, out) = (dir.join("a.wav"), dir.join("b.wav"), dir.join("unite.m4a"));
+        wav_with(&a, &[(0, 32_000)]);
+        wav_with(&b, &[(0, 48_000)]);
+        let ms = merge(&tool, &[a, b], &out).unwrap();
+        assert!(out.is_file());
+        assert!(ms > 4500 && ms < 5500, "durata {ms}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

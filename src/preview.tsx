@@ -4,7 +4,7 @@
 // schermate della vetrina. Non entra nella build dell'app.
 //
 // Parametri: ?lang=it|en
-import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
+import { mockConvertFileSrc, mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 
 interface Fixtures {
   settings: Record<string, unknown>;
@@ -60,6 +60,33 @@ const events =
         { title: "Weekly sync", attendees: ["Elena Rossi"], h: 17 },
       ];
 
+// registrazioni inventate (senza audio vero) per i primi due meeting: tre e una
+const titled = data.meetings as { id: string; title: string; createdAt: number }[];
+let recordings = [
+  { of: 0, after: 0, durationMs: 129_000, bytes: 820_000, trimmed: true },
+  { of: 0, after: 14, durationMs: 20_000, bytes: 130_000, trimmed: false },
+  { of: 0, after: 16, durationMs: 12_000, bytes: 90_000, trimmed: false },
+  { of: 1, after: 0, durationMs: 2_520_000, bytes: 15_400_000, trimmed: false },
+]
+  .filter((r) => titled[r.of])
+  .map((r, i) => ({
+    id: i + 1,
+    meetingId: titled[r.of].id,
+    meetingTitle: titled[r.of].title,
+    path: `/anteprima/registrazione-${i + 1}.m4a`,
+    startedAt: titled[r.of].createdAt + r.after * 60_000,
+    durationMs: r.durationMs,
+    bytes: r.bytes,
+    trimmed: r.trimmed,
+  }))
+  .toReversed();
+// una forma d'onda finta ma sempre uguale per la stessa registrazione
+const fakeWave = (id: number) =>
+  Array.from({ length: 160 }, (_, i) => {
+    const speech = Math.sin(i / (5 + id)) * Math.sin(i / 2.3 + id) * Math.sin(i * 1.7 + id * 3);
+    return Math.round(Math.abs(speech) ** 0.6 * 255 * (Math.sin(i / 23 + id) > -0.6 ? 1 : 0.05));
+  });
+
 const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   list_meetings: () => data.meetings,
   get_meeting: (a) => data.details[a.id as string],
@@ -96,7 +123,32 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   system_time_format: () => ({ hour12: false, locale: lang === "it" ? "it-CH" : "en-GB" }),
   recording_status: () => ({ meetingId: null, recording: false, importing: false, pendingChunks: 0 }),
   recordings_info: () => ({ dir: "", defaultDir: "", ffmpeg: true }),
-  list_recordings: () => [],
+  list_recordings: (a) => recordings.filter((r) => !a.meetingId || r.meetingId === a.meetingId),
+  recording_waveform: (a) => fakeWave(a.id as number),
+  delete_recording: (a) => {
+    recordings = recordings.filter((r) => r.id !== a.id);
+    return null;
+  },
+  trim_recording: (a) => {
+    recordings = recordings.map((r) =>
+      r.id === a.id
+        ? { ...r, trimmed: true, durationMs: Math.round(r.durationMs * 0.8), bytes: r.bytes - 1 }
+        : r,
+    );
+    return recordings;
+  },
+  merge_recordings: (a) => {
+    const parts = recordings.filter((r) => r.meetingId === a.meetingId).toReversed();
+    const merged = {
+      ...parts[0],
+      durationMs: parts.reduce((ms, r) => ms + r.durationMs, 0),
+      bytes: parts.reduce((n, r) => n + r.bytes, 0),
+      trimmed: parts.some((r) => r.trimmed),
+    };
+    recordings = recordings.filter((r) => r.meetingId !== a.meetingId || r.id === merged.id);
+    recordings = recordings.map((r) => (r.id === merged.id ? merged : r));
+    return null;
+  },
   list_audio_devices: () => ["MacBook Pro Microphone"],
   get_chat: () => [],
   kept_audio: () => false,
@@ -118,6 +170,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
 };
 
 mockWindows("main");
+mockConvertFileSrc("macos");
 mockIPC(
   (cmd, payload) => {
     const handler = handlers[cmd];

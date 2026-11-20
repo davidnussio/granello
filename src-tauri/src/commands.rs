@@ -387,6 +387,7 @@ pub fn delete_meeting(state: State<AppState>, id: String) -> CmdResult<()> {
     // le registrazioni salvate se ne vanno con il meeting: prima i file, le righe seguono
     for r in db.recordings(Some(&id)).unwrap_or_default() {
         let _ = std::fs::remove_file(&r.path);
+        recordings::forget_waveform(&state.data_dir, r.id);
     }
     db.delete_meeting(&id).map_err(err)?;
     keep::remove(&state.data_dir, &id);
@@ -463,6 +464,7 @@ pub fn redact_transcript(state: State<AppState>, meeting_id: String, parts: Vec<
     // lo stesso vale per le registrazioni salvate: le parole oscurate lì si sentirebbero ancora
     for r in db.recordings(Some(&meeting_id)).unwrap_or_default() {
         let _ = std::fs::remove_file(&r.path);
+        recordings::forget_waveform(&state.data_dir, r.id);
         let _ = db.delete_recording(r.id);
     }
     db.segments(&meeting_id).map_err(err)
@@ -536,7 +538,78 @@ pub fn delete_recording(state: State<AppState>, id: i64) -> CmdResult<()> {
         return Err(tr("Ferma la registrazione prima di eliminarla", "Stop the recording before deleting it").into());
     }
     let _ = std::fs::remove_file(&recording.path);
+    recordings::forget_waveform(&state.data_dir, id);
     state.db.lock().delete_recording(id).map_err(err)
+}
+
+/// Unisce le registrazioni di un meeting in una sola, dalla più vecchia (serve ffmpeg).
+/// Quella che resta prende il posto della prima; le altre spariscono dall'elenco e dal disco.
+#[tauri::command]
+pub async fn merge_recordings(state: State<'_, AppState>, meeting_id: String) -> CmdResult<()> {
+    if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == meeting_id) {
+        return Err(tr("Attendi la fine della registrazione", "Wait for the recording to finish").into());
+    }
+    let tool = recordings::ffmpeg().ok_or_else(|| tr("Per unire le registrazioni serve ffmpeg, che su questo Mac non c'è", "Merging recordings needs ffmpeg, which isn't on this Mac"))?;
+    // solo quelle chiuse e con il file ancora al suo posto, in ordine di tempo
+    let mut parts: Vec<Recording> = state
+        .db
+        .lock()
+        .recordings(Some(&meeting_id))
+        .map_err(err)?
+        .into_iter()
+        .filter(|r| r.duration_ms > 0 && std::path::Path::new(&r.path).is_file())
+        .collect();
+    parts.sort_by_key(|r| (r.started_at, r.id));
+    if parts.len() < 2 {
+        return Err(tr("Servono almeno due registrazioni da unire", "At least two recordings are needed to merge").into());
+    }
+    let first = PathBuf::from(&parts[0].path);
+    let inputs: Vec<PathBuf> = parts.iter().map(|r| PathBuf::from(&r.path)).collect();
+    let temp = first.with_extension("merge.m4a");
+    let duration_ms = {
+        let (inputs, temp) = (inputs.clone(), temp.clone());
+        tokio::task::spawn_blocking(move || recordings::merge(&tool, &inputs, &temp)).await.map_err(err)?.map_err(err)?
+    };
+    // i pezzi si tolgono solo adesso che il file unito esiste
+    for input in &inputs {
+        let _ = std::fs::remove_file(input);
+    }
+    let output = first.with_extension("m4a");
+    std::fs::rename(&temp, &output).map_err(err)?;
+    let bytes = std::fs::metadata(&output).map(|m| m.len()).unwrap_or(0);
+    let duration_ms = if duration_ms > 0 { duration_ms } else { parts.iter().map(|r| r.duration_ms).sum() };
+    let db = state.db.lock();
+    db.update_recording(parts[0].id, &output.to_string_lossy(), duration_ms, bytes as i64, parts.iter().any(|r| r.trimmed)).map_err(err)?;
+    for r in &parts {
+        recordings::forget_waveform(&state.data_dir, r.id);
+    }
+    for r in &parts[1..] {
+        db.delete_recording(r.id).map_err(err)?;
+    }
+    Ok(())
+}
+
+/// La forma d'onda di una registrazione (`recordings::WAVE_BARS` valori da 0 a 255), per il
+/// player. Si calcola la prima volta e poi si rilegge dalla cartella dei dati.
+#[tauri::command]
+pub async fn recording_waveform(state: State<'_, AppState>, id: i64) -> CmdResult<Vec<u8>> {
+    let recording = find_recording(&state, id)?;
+    if recording.duration_ms == 0 {
+        return Ok(Vec::new());
+    }
+    let cache = recordings::waveform_cache(&state.data_dir, id, recording.bytes);
+    if let Ok(saved) = std::fs::read(&cache) {
+        if saved.len() == recordings::WAVE_BARS {
+            return Ok(saved);
+        }
+    }
+    let path = PathBuf::from(&recording.path);
+    let bars = tokio::task::spawn_blocking(move || recordings::waveform(&path, recordings::WAVE_BARS)).await.map_err(err)?.map_err(err)?;
+    if let Some(dir) = cache.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let _ = std::fs::write(&cache, &bars);
+    Ok(bars)
 }
 
 /// Toglie le pause senza audio da una registrazione già salvata (serve ffmpeg).
@@ -550,6 +623,7 @@ pub async fn trim_recording(state: State<'_, AppState>, id: i64) -> CmdResult<Ve
     let done = tokio::task::spawn_blocking(move || recordings::trim(&path)).await.map_err(err)?.map_err(err)?;
     let db = state.db.lock();
     db.update_recording(id, &done.path.to_string_lossy(), done.duration_ms, done.bytes as i64, true).map_err(err)?;
+    recordings::forget_waveform(&state.data_dir, id);
     db.recordings(None).map_err(err)
 }
 

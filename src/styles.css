@@ -3656,25 +3656,29 @@ span.lib-cross {
 .recordings {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-width: 720px;
+  gap: 12px;
+  max-width: 760px;
 }
-.recording {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
+/* una card per meeting: titolo, quante sono, poi un audio per riga */
+.rec-card {
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--card);
+  overflow: hidden;
 }
-.recording-head {
+.rec-card-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.rec-card-sum {
+  margin-right: auto;
+  white-space: nowrap;
 }
 .recording-title {
+  min-width: 0;
   border: none;
   background: none;
   padding: 0;
@@ -3682,26 +3686,107 @@ span.lib-cross {
   font-weight: 600;
   color: var(--text);
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .recording-title:hover {
   color: var(--accent);
   text-decoration: underline;
 }
-.recording audio {
-  width: 100%;
-  height: 34px;
-}
-.recording-actions {
+.rec-row {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: 4px;
+  padding: 10px 14px 8px;
+}
+.rec-row + .rec-row {
+  border-top: 1px solid var(--line);
+}
+.rec-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rec-play {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+}
+.rec-play:hover {
+  filter: brightness(1.08);
+}
+.rec-play svg {
+  width: 16px;
+  height: 16px;
+}
+/* la forma d'onda è anche la barra del tempo: si clicca o si trascina per spostarsi */
+.rec-wave {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  cursor: pointer;
+  border-radius: 6px;
+  touch-action: none;
+}
+.rec-wave:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.rec-wave svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.rec-wave rect {
+  fill: var(--muted);
+  opacity: 0.45;
+}
+.rec-wave rect.on {
+  fill: var(--accent);
+  opacity: 1;
+}
+.rec-wave.flat rect {
+  opacity: 0.25;
+}
+.rec-time {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rec-row-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-left: 40px;
+  min-height: 26px;
+}
+.rec-row-actions {
+  display: flex;
+  gap: 2px;
 }
 .recordings.compact {
   padding: 0 14px 8px;
 }
-.recordings.compact .recording {
-  padding: 8px 10px;
+.recordings.compact .rec-card {
   background: var(--bg);
+}
+.recordings.compact :is(.rec-row, .rec-card-head) {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+.recordings.compact .rec-row-foot {
+  padding-left: 0;
+  flex-wrap: wrap;
 }
 .rec-empty {
   padding: 4px 2px;
