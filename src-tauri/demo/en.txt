@@ -350,3 +350,344 @@ Project closed: the site is live.
 - [x] Copy reviewed
 - [x] Pricing pages
 - [x] Go-live
+
+=== demo-chiusura
+title: Closing call with Nord
+when: 0 08:30
+minutes: 25
+attendees: Marco Bianchi, Elena Rossi
+tags: cliente-nord, prezzi
+--- notes
+Nord's board approved the two years.
+
+> [!DECISION]
+> Renewal signed: 8% over two years, CRM integration included.
+
+::: quote 3:40 Marco Bianchi
+The board said yes to two years, provided the integration is ready by March.
+:::
+
+- [x] Counter-offer sent
+- [x] Board approval
+- [ ] @[Elena Rossi]: send the contract to sign by [[{{date:+3}}]]
+- [ ] Tell @[Luca Ferri] about the March deadline
+--- transcript
+00:06 me Marco, how did it go with the board?
+00:14 them Well. They looked at the numbers and eight percent over two years went through.
+03:40 them The board said yes to two years, provided the integration is ready by March.
+03:58 me March is the date we're already working towards. I'll send the contract within three days.
+04:10 them Perfect, we'll sign as soon as it arrives.
+
+=== demo-direzione-nord
+title: Presentation to Nord's board
+when: 4 11:30
+minutes: 45
+attendees: Marco Bianchi, Paolo Greco, Elena Rossi
+tags: cliente-nord, prezzi
+--- notes
+@[Paolo Greco] is the CFO: he only looks at the total cost over the two years.
+
+| Year | Current cost | With the proposal |
+| --- | --- | --- |
+| 2027 | 48000 | 44160 |
+| 2028 | 48000 | 44160 |
+
+[[chart:bar]]
+
+Savings over two years: $2 \times (48000 - 44160) = 7680$
+
+::: moment 21:15
+Paolo asks for an exit clause after the first year.
+:::
+
+- [ ] @[Elena Rossi]: check the exit clause with legal
+
+=== demo-collaudo
+title: Integration acceptance test plan
+when: 6 10:00
+minutes: 30
+attendees: Luca Ferri, Marco Bianchi
+tags: cliente-nord
+--- notes
+## What we test
+
+[[progress]]
+
+- [x] Creating a contact
+- [x] Editing a contact
+- [ ] Duplicate contacts
+- [ ] Custom fields
+- [ ] 5000 contacts at once
+
+::: timeline
+- {{date:+12}} Test environment
+- {{date:+26}} First week of testing
+- {{date:+40}} Testing with real data
+:::
+
+> [!NOTE]
+> Testing with real data runs on a copy, never on the production CRM.
+
+=== demo-notifiche
+title: Notifications design
+when: 4 16:00
+minutes: 40
+attendees: Giulia Moretti, Luca Ferri
+tags: app-mobile
+--- notes
+## Screen sketch
+
+```sketch
+680x220
+ink 2.5 60,30 260,30 260,190 60,190 60,30
+ink 2.5 80,60 240,60
+ink 2.5 80,95 240,95
+ink 2.5 80,130 240,130
+blue 2.5 300,95 400,95 385,85
+blue 2.5 400,95 385,105
+ink 2.5 430,50 620,50 620,140 430,140 430,50
+red 2.5 450,80 600,80
+ink 2.5 450,110 560,110
+```
+
+## Which notifications
+
+::: poll Which notification comes first?
+- [4] Order ready
+- [2] Appointment reminder
+- [1] Product news
+:::
+
+::: pros-cons
++ Few notifications, all useful
++ Each can be turned off
+- Needs consent on iOS
+= We start with "Order ready"
+:::
+
+- [ ] @[Luca Ferri]: prototype by [[{{date:+9}}]]
+
+=== demo-offline
+title: Offline-use requirements
+when: 2 11:00
+minutes: 50
+attendees: Giulia Moretti, Luca Ferri, Anna Villa
+tags: app-mobile
+--- notes
+@[Anna Villa] brings the support cases: technicians often work in basements and warehouses with no signal.
+
+```mermaid
+sequenceDiagram
+  participant T as Technician
+  participant A as App
+  participant S as Server
+  T->>A: fills in the form offline
+  A->>A: saves locally
+  A-->>S: sends when the network is back
+  S-->>A: confirms
+```
+
+::: matrix
+| Criterion | Weight | Read only | Read and write |
+| --- | --- | --- | --- |
+| Use to technicians | 3 | 2 | 5 |
+| Development time | 2 | 5 | 2 |
+| Risk of conflicts | 2 | 5 | 2 |
+:::
+
+> [!WARNING]
+> Two technicians editing the same order offline: we must decide who wins.
+
+=== demo-beta
+title: Beta tester feedback
+when: 10 15:30
+minutes: 35
+attendees: Giulia Moretti, Anna Villa
+tags: app-mobile, supporto
+--- notes
+Twelve clients tried the beta for two weeks.
+
+| Week | Reports |
+| --- | --- |
+| 1 | 23 |
+| 2 | 14 |
+| 3 | 9 |
+| 4 | 6 |
+
+[[chart:line]]
+
+Average satisfaction: [[rating:4]]
+
+::: kanban
+## To fix
+- Slow sign-in on weak signal
+- Text too small
+## Liked
+- Order search
+- Attached photos
+:::
+
+=== demo-standup-giovedi
+title: Thursday standup
+when: 7 09:15
+minutes: 10
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+tags: standup
+--- notes
+[[timer:10:00]]
+
+- @[Luca Ferri]: CRM authentication done, first sync today
+- @[Elena Rossi]: preparing the numbers for Nord's board
+- @[Giulia Moretti]: collecting requests for the roadmap
+
+No blockers.
+
+=== demo-standup-scorso
+title: Last Monday's standup
+when: 10 09:15
+minutes: 14
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+tags: standup
+--- notes
+::: kanban
+## Done last week
+- Demo to Nord
+- Estimate of the three candidates
+## This week
+- Test environment
+- Board presentation
+## Blocked
+- None
+:::
+
+=== demo-retro
+title: November retrospective
+when: 14 14:30
+minutes: 60
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+tags: retrospettiva
+--- notes
+How the month went: [[rating:4]]
+
+::: kanban
+## Went well
+- The demo to Nord
+- Estimates were met
+## Went badly
+- Too many meetings on Tuesdays
+- Support requests came in late
+## Let's try
+- Meeting-free Tuesdays
+- One channel for support
+:::
+
+::: poll Do we keep meeting-free Tuesdays?
+- [4] Yes
+- [0] No
+:::
+
+> [!DECISION]
+> From December, Tuesdays are meeting-free.
+
+=== demo-colloquio-marketing
+title: Interview with Davide Sala, marketing
+when: 16 10:00
+minutes: 45
+attendees: Davide Sala, Giulia Moretti, Elena Rossi
+tags: colloqui
+--- notes
+Launch experience: [[rating:5]]
+
+Industry knowledge: [[rating:3]]
+
+Clear writing: [[rating:4]]
+
+::: pros-cons
++ Has launched two apps
++ Writes well and fast
+- Doesn't know our industry
+= Make an offer
+:::
+
+- [x] @[Giulia Moretti]: check references
+
+=== demo-one-on-one-luca
+title: 1:1 with Luca
+when: 9 17:00
+minutes: 30
+attendees: Luca Ferri
+tags: one-on-one
+--- notes
+## How it's going
+
+He likes the Nord integration, less so the constant interruptions.
+
+::: details What interrupts him
+Support questions in chat and meetings moved at the last minute.
+:::
+
+## Actions
+
+- [ ] Two chat-free mornings a week
+- [ ] Route support questions through @[Anna Villa]
+
+=== demo-supporto
+title: Support ticket review
+when: 11 11:00
+minutes: 30
+attendees: Anna Villa, Giulia Moretti
+tags: supporto
+--- notes
+| Month | Open tickets |
+| --- | --- |
+| August | 41 |
+| September | 52 |
+| October | 47 |
+| November | 38 |
+
+[[chart:line]]
+
+The most frequent topic is ==signing in from a phone==: one more reason for the app.
+
+- [ ] @[Anna Villa]: list of the ten most repeated tickets
+
+=== demo-lancio
+title: App launch plan
+when: 13 15:00
+minutes: 40
+attendees: Chiara Fontana, Giulia Moretti
+tags: marketing, app-mobile
+--- notes
+::: timeline
+- {{date:+9}} Notifications beta
+- {{date:+60}} Landing page online
+- {{date:+80}} Release on the stores
+- {{date:+87}} Email to clients
+:::
+
+[[progress]]
+
+- [x] Name and icon
+- [ ] Store copy
+- [ ] Intro video
+- [ ] @[Chiara Fontana]: list of clients to tell first
+
+=== demo-listino
+title: 2027 price list review
+when: 20 10:30
+minutes: 55
+attendees: Elena Rossi, Giulia Moretti
+tags: prezzi
+--- notes
+| Plan | 2026 price | 2027 price |
+| --- | --- | --- |
+| Basic | 19 | 21 |
+| Team | 39 | 42 |
+| Company | 79 | 85 |
+
+[[chart:bar]]
+
+Average increase: $\frac{21+42+85}{19+39+79} - 1 \approx 8\%$
+
+> [!NOTE]
+> Clients with a contract in force keep the price they signed.

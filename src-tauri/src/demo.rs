@@ -27,6 +27,9 @@ use chrono::{Duration, Local, NaiveTime, TimeZone};
 /// Tutti i meeting di esempio hanno un id con questo prefisso: è così che si riconoscono per toglierli.
 pub const ID_PREFIX: &str = "demo-";
 
+/// Tag aggiunto a ogni meeting di esempio, oltre ai suoi: li si riconosce e li si filtra a colpo d'occhio.
+pub const TAG: &str = "faker";
+
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DemoSegment {
     pub source: String,
@@ -73,7 +76,13 @@ pub fn load(lang: Lang) -> Result<DemoData> {
         Lang::It => include_str!("../demo/it.txt"),
         Lang::En => include_str!("../demo/en.txt"),
     };
-    parse(text, Local::now().timestamp_millis())
+    let mut data = parse(text, Local::now().timestamp_millis())?;
+    for m in &mut data.meetings {
+        if !m.tags.iter().any(|t| t == TAG) {
+            m.tags.push(TAG.into());
+        }
+    }
+    Ok(data)
 }
 
 fn list(value: &str) -> Vec<String> {
@@ -236,7 +245,8 @@ mod tests {
     fn shipped_demo_data_is_valid() {
         for lang in [Lang::It, Lang::En] {
             let data = load(lang).unwrap();
-            assert!(data.meetings.len() >= 6, "{lang:?}");
+            assert!(data.meetings.len() >= 20, "{lang:?}: {} meeting", data.meetings.len());
+            assert!(data.meetings.iter().all(|m| m.tags.last().map(String::as_str) == Some(TAG)), "manca #{TAG} ({lang:?})");
             let mut ids: Vec<&str> = data.meetings.iter().map(|m| m.id.as_str()).collect();
             ids.sort();
             ids.dedup();

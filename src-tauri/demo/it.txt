@@ -350,3 +350,344 @@ Progetto chiuso: il sito è online.
 - [x] Testi rivisti
 - [x] Pagine dei prezzi
 - [x] Messa online
+
+=== demo-chiusura
+title: Call di chiusura con Nord
+when: 0 08:30
+minutes: 25
+attendees: Marco Bianchi, Elena Rossi
+tags: cliente-nord, prezzi
+--- notes
+La direzione di Nord ha approvato i due anni.
+
+> [!DECISION]
+> Rinnovo firmato: 8% su due anni, integrazione CRM inclusa.
+
+::: quote 3:40 Marco Bianchi
+La direzione ha detto sì ai due anni, a patto che l'integrazione sia pronta per marzo.
+:::
+
+- [x] Controproposta inviata
+- [x] Approvazione della direzione
+- [ ] @[Elena Rossi]: mandare il contratto da firmare entro il [[{{date:+3}}]]
+- [ ] Avvisare @[Luca Ferri] della scadenza di marzo
+--- transcript
+00:06 me Marco, com'è andata in direzione?
+00:14 them Bene. Hanno guardato i numeri e l'otto per cento su due anni è passato.
+03:40 them La direzione ha detto sì ai due anni, a patto che l'integrazione sia pronta per marzo.
+03:58 me Marzo è la data su cui stiamo già lavorando. Ti mando il contratto entro tre giorni.
+04:10 them Perfetto, lo firmiamo appena arriva.
+
+=== demo-direzione-nord
+title: Presentazione alla direzione di Nord
+when: 4 11:30
+minutes: 45
+attendees: Marco Bianchi, Paolo Greco, Elena Rossi
+tags: cliente-nord, prezzi
+--- notes
+@[Paolo Greco] è il direttore finanziario: guarda solo il costo totale sui due anni.
+
+| Anno | Costo attuale | Con la proposta |
+| --- | --- | --- |
+| 2027 | 48000 | 44160 |
+| 2028 | 48000 | 44160 |
+
+[[chart:bar]]
+
+Risparmio sui due anni: $2 \times (48000 - 44160) = 7680$
+
+::: moment 21:15
+Paolo chiede una clausola di uscita dopo il primo anno.
+:::
+
+- [ ] @[Elena Rossi]: verificare con il legale la clausola di uscita
+
+=== demo-collaudo
+title: Piano di collaudo dell'integrazione
+when: 6 10:00
+minutes: 30
+attendees: Luca Ferri, Marco Bianchi
+tags: cliente-nord
+--- notes
+## Cosa proviamo
+
+[[progress]]
+
+- [x] Creazione di un contatto
+- [x] Modifica di un contatto
+- [ ] Contatti duplicati
+- [ ] Campi personalizzati
+- [ ] 5000 contatti in una volta
+
+::: timeline
+- {{date:+12}} Ambiente di prova
+- {{date:+26}} Prima settimana di collaudo
+- {{date:+40}} Collaudo con i dati veri
+:::
+
+> [!NOTE]
+> Il collaudo con i dati veri si fa su una copia, mai sul CRM in produzione.
+
+=== demo-notifiche
+title: Disegno delle notifiche
+when: 4 16:00
+minutes: 40
+attendees: Giulia Moretti, Luca Ferri
+tags: app-mobile
+--- notes
+## Schizzo della schermata
+
+```sketch
+680x220
+ink 2.5 60,30 260,30 260,190 60,190 60,30
+ink 2.5 80,60 240,60
+ink 2.5 80,95 240,95
+ink 2.5 80,130 240,130
+blue 2.5 300,95 400,95 385,85
+blue 2.5 400,95 385,105
+ink 2.5 430,50 620,50 620,140 430,140 430,50
+red 2.5 450,80 600,80
+ink 2.5 450,110 560,110
+```
+
+## Quali notifiche
+
+::: poll Quale notifica serve per prima?
+- [4] Ordine pronto
+- [2] Promemoria appuntamento
+- [1] Novità del prodotto
+:::
+
+::: pros-cons
++ Poche notifiche, tutte utili
++ Si spengono una per una
+- Serve il consenso su iOS
+= Si parte da "Ordine pronto"
+:::
+
+- [ ] @[Luca Ferri]: prototipo entro il [[{{date:+9}}]]
+
+=== demo-offline
+title: Requisiti dell'uso offline
+when: 2 11:00
+minutes: 50
+attendees: Giulia Moretti, Luca Ferri, Anna Villa
+tags: app-mobile
+--- notes
+@[Anna Villa] porta i casi del supporto: i tecnici lavorano spesso in cantine e magazzini senza rete.
+
+```mermaid
+sequenceDiagram
+  participant T as Tecnico
+  participant A as App
+  participant S as Server
+  T->>A: compila il modulo senza rete
+  A->>A: salva in locale
+  A-->>S: invia quando torna la rete
+  S-->>A: conferma
+```
+
+::: matrix
+| Criterio | Peso | Solo lettura | Lettura e scrittura |
+| --- | --- | --- | --- |
+| Utilità per i tecnici | 3 | 2 | 5 |
+| Tempo di sviluppo | 2 | 5 | 2 |
+| Rischio di conflitti | 2 | 5 | 2 |
+:::
+
+> [!WARNING]
+> Due tecnici che modificano lo stesso ordine senza rete: va deciso chi vince.
+
+=== demo-beta
+title: Riscontri dei beta tester
+when: 10 15:30
+minutes: 35
+attendees: Giulia Moretti, Anna Villa
+tags: app-mobile, supporto
+--- notes
+Dodici clienti hanno provato la beta per due settimane.
+
+| Settimana | Segnalazioni |
+| --- | --- |
+| 1 | 23 |
+| 2 | 14 |
+| 3 | 9 |
+| 4 | 6 |
+
+[[chart:line]]
+
+Soddisfazione media: [[rating:4]]
+
+::: kanban
+## Da sistemare
+- Accesso lento con rete debole
+- Testi troppo piccoli
+## Piace
+- Ricerca degli ordini
+- Foto allegate
+:::
+
+=== demo-standup-giovedi
+title: Standup del giovedì
+when: 7 09:15
+minutes: 10
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+tags: standup
+--- notes
+[[timer:10:00]]
+
+- @[Luca Ferri]: autenticazione con il CRM finita, oggi la prima sincronizzazione
+- @[Elena Rossi]: prepara i numeri per la direzione di Nord
+- @[Giulia Moretti]: raccoglie le richieste per la roadmap
+
+Nessun blocco.
+
+=== demo-standup-scorso
+title: Standup di lunedì scorso
+when: 10 09:15
+minutes: 14
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+tags: standup
+--- notes
+::: kanban
+## Fatto la settimana scorsa
+- Demo a Nord
+- Stima dei tre candidati
+## Questa settimana
+- Ambiente di prova
+- Presentazione alla direzione
+## Bloccati
+- Nessuno
+:::
+
+=== demo-retro
+title: Retrospettiva di novembre
+when: 14 14:30
+minutes: 60
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+tags: retrospettiva
+--- notes
+Com'è andato il mese: [[rating:4]]
+
+::: kanban
+## È andato bene
+- La demo a Nord
+- Le stime rispettate
+## È andato male
+- Troppe riunioni il martedì
+- Richieste del supporto arrivate tardi
+## Proviamo
+- Martedì senza riunioni
+- Un canale unico per il supporto
+:::
+
+::: poll Teniamo il martedì senza riunioni?
+- [4] Sì
+- [0] No
+:::
+
+> [!DECISION]
+> Da dicembre il martedì è senza riunioni.
+
+=== demo-colloquio-marketing
+title: Colloquio con Davide Sala, marketing
+when: 16 10:00
+minutes: 45
+attendees: Davide Sala, Giulia Moretti, Elena Rossi
+tags: colloqui
+--- notes
+Esperienza nei lanci: [[rating:5]]
+
+Conoscenza del settore: [[rating:3]]
+
+Chiarezza nello scrivere: [[rating:4]]
+
+::: pros-cons
++ Ha già lanciato due app
++ Scrive bene e in fretta
+- Non conosce il nostro settore
+= Proposta da fare
+:::
+
+- [x] @[Giulia Moretti]: sentire le referenze
+
+=== demo-one-on-one-luca
+title: 1:1 con Luca
+when: 9 17:00
+minutes: 30
+attendees: Luca Ferri
+tags: one-on-one
+--- notes
+## Come va
+
+Gli piace l'integrazione con Nord, meno le interruzioni continue.
+
+::: details Cosa lo interrompe
+Le domande del supporto in chat e le riunioni spostate all'ultimo.
+:::
+
+## Azioni
+
+- [ ] Due mattine a settimana senza chat
+- [ ] Passare le domande del supporto da @[Anna Villa]
+
+=== demo-supporto
+title: Revisione dei ticket di supporto
+when: 11 11:00
+minutes: 30
+attendees: Anna Villa, Giulia Moretti
+tags: supporto
+--- notes
+| Mese | Ticket aperti |
+| --- | --- |
+| Agosto | 41 |
+| Settembre | 52 |
+| Ottobre | 47 |
+| Novembre | 38 |
+
+[[chart:line]]
+
+Il tema più frequente è ==l'accesso da telefono==: un motivo in più per l'app.
+
+- [ ] @[Anna Villa]: elenco dei dieci ticket più ripetuti
+
+=== demo-lancio
+title: Piano di lancio dell'app
+when: 13 15:00
+minutes: 40
+attendees: Chiara Fontana, Giulia Moretti
+tags: marketing, app-mobile
+--- notes
+::: timeline
+- {{date:+9}} Beta delle notifiche
+- {{date:+60}} Pagina di presentazione online
+- {{date:+80}} Rilascio sugli store
+- {{date:+87}} Mail ai clienti
+:::
+
+[[progress]]
+
+- [x] Nome e icona
+- [ ] Testi per gli store
+- [ ] Video di presentazione
+- [ ] @[Chiara Fontana]: elenco dei clienti da avvisare per primi
+
+=== demo-listino
+title: Revisione del listino 2027
+when: 20 10:30
+minutes: 55
+attendees: Elena Rossi, Giulia Moretti
+tags: prezzi
+--- notes
+| Piano | Prezzo 2026 | Prezzo 2027 |
+| --- | --- | --- |
+| Base | 19 | 21 |
+| Team | 39 | 42 |
+| Azienda | 79 | 85 |
+
+[[chart:bar]]
+
+Aumento medio: $\frac{21+42+85}{19+39+79} - 1 \approx 8\%$
+
+> [!NOTE]
+> Ai clienti con contratto in corso il prezzo resta quello firmato.
