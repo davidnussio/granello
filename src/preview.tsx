@@ -44,8 +44,10 @@ const whisperModels = data.whisperModels.map((m, i) => ({ ...m, downloaded: i ==
 if (whisperModels.length) data.settings.whisperModel = whisperModels[0].name;
 
 // due eventi inventati in calendario per oggi
+// per le schermate gli eventi sono domani: la Home li mostra a qualunque ora si scatti
 const hour = (h: number) => {
   const d = new Date();
+  if (params.has("shots")) d.setDate(d.getDate() + 1);
   d.setHours(h, 0, 0, 0);
   return d.getTime();
 };

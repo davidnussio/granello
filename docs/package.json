@@ -1,0 +1,17 @@
+{
+  "name": "granello-docs",
+  "private": true,
+  "type": "module",
+  "description": "The documentation site of Granello (granello.dambox.ch)",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "devDependencies": {
+    "@astrojs/starlight": "^0.42.7",
+    "astro": "^7.4.4",
+    "sharp": "^0.34.0"
+  },
+  "packageManager": "pnpm@12.18.0"
+}

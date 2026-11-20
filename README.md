@@ -1,6 +1,6 @@
 # Granello
 
-**English** · [Italiano](README.it.md)
+**English** · [Italiano](README.it.md) · [Documentation](https://granello.dambox.ch)
 
 A meeting notepad for macOS: jot down a few notes during the meeting, Granello records and transcribes **locally** with whisper.cpp, then an AI model (Claude or a local model) merges your notes and the transcript into complete notes. No bot joins the call.
 

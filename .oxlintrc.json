@@ -9,7 +9,7 @@
     "browser": true,
     "es2024": true
   },
-  "ignorePatterns": ["dist/**", "src-tauri/**"],
+  "ignorePatterns": ["dist/**", "src-tauri/**", "docs/**"],
   "rules": {
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",

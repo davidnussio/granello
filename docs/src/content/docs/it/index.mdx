@@ -1,0 +1,63 @@
+---
+title: Note dei meeting che restano sul tuo Mac
+description: Granello è un blocco note per i meeting su macOS. Registra e trascrive sul Mac, e ogni meeting ha il suo livello di privacy.
+template: splash
+hero:
+  title: Granello
+  tagline: Un blocco note per i meeting su macOS. Registra e trascrive sul tuo Mac, senza bot che entrano nella call, e ogni meeting ha il suo livello di privacy.
+  image:
+    file: ../../../assets/logo.png
+  actions:
+    - text: Come funziona la privacy
+      link: /it/privacy/overview/
+    - text: Installazione
+      link: /it/start/install/
+      variant: secondary
+    - text: Codice sorgente
+      link: https://github.com/davidnussio/granello
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+![Un meeting con privacy blindata: le note AI accanto alla trascrizione, con Oscura e Da verificare sulla frase selezionata](../../../assets/shots/it/privacy.webp)
+
+## La privacy è il prodotto
+
+<CardGrid>
+  <Card title="Trascritto sul tuo Mac" icon="laptop">
+    Il parlato diventa testo sul tuo Mac, con whisper.cpp. Di norma l'audio viene trascritto e scartato: non
+    viene salvato né caricato.
+  </Card>
+  <Card title="Un livello di privacy per meeting" icon="approve-check-circle">
+    Standard, audio locale o blindata. Con blindata non esce niente dal Mac: le funzioni AI usano un modello
+    locale, oppure non sono disponibili.
+  </Card>
+  <Card title="Oscura e verifica" icon="pencil">
+    Seleziona una frase nella trascrizione e oscurala per sempre, oppure segnala da verificare. Un meeting con
+    parti da verificare non viene inviato a modelli online.
+  </Card>
+  <Card title="Nessun bot nella call" icon="seti:audio">
+    Granello ascolta il tuo microfono e quello che il computer riproduce. Niente entra nella riunione, e gli
+    altri partecipanti non vedono niente di nuovo.
+  </Card>
+  <Card title="I tuoi modelli, le tue chiavi" icon="setting">
+    Le note AI usano il provider che scegli tu, con la tua API key nel Portachiavi. Con un provider locale non
+    esce niente dal tuo Mac.
+  </Card>
+  <Card title="Codice aperto" icon="github">
+    Il codice è pubblico con licenza MIT: quello che Granello fa con i tuoi meeting si può leggere, non solo
+    promettere.
+  </Card>
+</CardGrid>
+
+## Cosa fa
+
+- **Durante il meeting** scrivi poche righe. Granello registra, mostra i livelli dell'audio e ti fa segnare un momento con un tasto.
+- **Dopo**, un modello AI unisce i tuoi appunti e la trascrizione in note complete, seguendo il template che scegli.
+- **Più avanti**, la Libreria ritrova i meeting per progetto, persona, tag e periodo, ed elenca le decisioni e le azioni scritte nelle note.
+
+![La Libreria a colonne: progetti, meeting del progetto e anteprima](../../../assets/shots/it/library.webp)
+
+Granello è in sviluppo: non c'è ancora un rilascio pubblicato. Puoi [compilarlo dal codice](/it/start/install/).

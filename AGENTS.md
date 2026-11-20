@@ -29,6 +29,11 @@ and knowledge live in `~/Developer/repos/dev-commons`.
   data and no backend (`preview.html`, port 1430); check it there before
   saying it works. `pnpm screenshots` regenerates the showcase images.
 - Vite uses port 1420 (Tauri's `devUrl`).
+- Documentation site: `docs/` (Astro Starlight, English and Italian, granello.dambox.ch on
+  Vercel). It is a package of its own (run `pnpm install` inside it). A
+  change users can see goes in the docs too, in both languages; `pnpm screenshots` also
+  refreshes the images there. Text on that site follows the same rules as any public text:
+  demo data only, nothing promised that does not exist.
 - Releases: `version` must match in `package.json`, `src-tauri/Cargo.toml`
   and `src-tauri/tauri.conf.json`; the tag `vX.Y.Z` starts
   `.github/workflows/release.yml`, which builds Apple Silicon and Intel DMGs,

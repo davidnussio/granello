@@ -1,0 +1,23 @@
+/* The app's colours: sage green on warm paper, and on a near-black in the dark theme. */
+:root {
+  --sl-color-accent-low: #2f3d32;
+  --sl-color-accent: #7fb08c;
+  --sl-color-accent-high: #d7e8db;
+  --sl-color-black: #1b1c19;
+  --sl-color-gray-6: #22231f;
+  --sl-color-gray-5: #393a33;
+}
+:root[data-theme="light"] {
+  --sl-color-accent-low: #e3eee5;
+  --sl-color-accent: #3d6a4b;
+  --sl-color-accent-high: #24402d;
+  --sl-color-white: #22241f;
+  --sl-color-gray-7: #f3efe6;
+  --sl-color-gray-6: #e6e0d3;
+  --sl-color-black: #fbf9f4;
+}
+/* Screenshots of the app are dark windows: a border keeps them apart from the page. */
+.sl-markdown-content img {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 10px;
+}
