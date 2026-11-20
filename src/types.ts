@@ -201,6 +201,21 @@ export interface Project {
   archived: boolean;
 }
 
+/** Un elemento che la Libreria mostra attraverso i meeting, letto dalle note. */
+export type ItemKind = "decision" | "action" | "quote";
+
+export interface LibraryItem {
+  meetingId: string;
+  kind: ItemKind;
+  /** Markdown in linea, così com'è nella nota. */
+  text: string;
+  /** Solo per le azioni: la voce è spuntata. */
+  done: boolean;
+  /** Solo per le citazioni: chi l'ha detta e a che minuto (ms). */
+  who: string | null;
+  ms: number | null;
+}
+
 export type View =
   | { kind: "meeting"; id: string }
   | { kind: "chat" }

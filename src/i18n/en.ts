@@ -530,6 +530,37 @@ const en: Record<string, string> = {
   Libreria: "Library",
   "Filtra i meeting elencati": "Filter the listed meetings",
   "Filtra in {name}": "Filter in {name}",
+  Decisioni: "Decisions",
+  Azioni: "Actions",
+  Citazioni: "Quotes",
+  "Togli il filtro {name}": "Remove the {name} filter",
+  "Incrocia con un'altra dimensione": "Cross with another dimension",
+  "Mostra solo i meeting che hanno anche questo: una persona dentro un progetto, un tag in un mese…":
+    "Show only the meetings that also have this: a person inside a project, a tag in a month…",
+  "+ Incrocia con…": "+ Cross with…",
+  "Cosa elencare": "What to list",
+  Elementi: "Items",
+  "Decisioni, azioni e citazioni scritte nelle note di questi meeting":
+    "Decisions, actions and quotes written in the notes of these meetings",
+  "Nessun meeting ha anche {name}.": "No meeting also has {name}.",
+  "Tipi di elemento": "Item types",
+  "Doppio clic o Invio: apre il meeting": "Double-click or Enter: opens the meeting",
+  Fatta: "Done",
+  "Nessun elemento dei tipi scelti: riattiva un tipo qui sopra.":
+    "No items of the chosen types: turn a type back on above.",
+  "Nessun elemento qui. Nelle note, un riquadro decisione, una checklist o una citazione dalla trascrizione compaiono in questo elenco.":
+    "No items here. In the notes, a decision callout, a checklist or a transcript quote show up in this list.",
+  "Nessun meeting qui.": "No meetings here.",
+  "{n} meeting selezionati": "{n} meetings selected",
+  "Un tag aggiunto o tolto qui vale per tutti i meeting selezionati.":
+    "A tag added or removed here applies to every selected meeting.",
+  "Tag da aggiungere ai meeting selezionati": "Tag to add to the selected meetings",
+  "Aggiungi a tutti": "Add to all",
+  "Solo {n} su {total} lo hanno: aggiungilo agli altri": "Only {n} of {total} have it: add it to the others",
+  "Togli #{tag} dai meeting selezionati": "Remove #{tag} from the selected meetings",
+  "Annulla la selezione": "Clear the selection",
+  "⌘ clic o Maiusc clic su altri meeting: li selezioni insieme per dare loro un tag.":
+    "⌘-click or Shift-click other meetings to select them together and tag them.",
   "Cambia l'ordine dei meeting": "Change the order of the meetings",
   "↑ Più vecchi": "↑ Oldest",
   "↓ Più recenti": "↓ Newest",

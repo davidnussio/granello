@@ -8,9 +8,9 @@ OAuth…) live in the "Next steps" section of the [README](README.md).
 Browse meetings by project, person, tag and period (cascading columns). Projects are promoted tags.
 
 - [x] Columns with preview, keyboard navigation, projects (promote, archive).
-- [ ] Cross two dimensions (a person inside a project) with a filter on top.
-- [ ] Tag several selected meetings at once.
-- [ ] A view of items across meetings (decisions, action items, quotes), once those blocks exist.
+- [x] Cross two dimensions (a person inside a project) with a filter on top.
+- [x] Tag several selected meetings at once.
+- [x] A view of items across meetings (decisions, action items, quotes). It reads what the notes already have: decision callouts, checklists and transcript quotes. The dedicated decision and action-item blocks (see "Editor components") will feed the same view.
 - [ ] A board to arrange a selection of those items, if the first two views are not enough.
 
 ## Privacy and online models

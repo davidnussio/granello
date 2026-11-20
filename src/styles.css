@@ -3349,6 +3349,137 @@ button.lib-row {
   align-self: flex-start;
   margin-top: 6px;
 }
+.lib-hint {
+  margin-top: auto !important;
+  padding-top: 12px;
+  line-height: 1.45;
+}
+
+/* libreria: filtro incrociato, vista elementi, selezione multipla */
+.lib-cross {
+  flex: none;
+  max-width: 220px;
+  gap: 4px;
+  color: var(--text);
+  font-size: 12.5px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+span.lib-cross {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.lib-mode {
+  margin-left: auto;
+}
+.lib-items {
+  grid-column: 3 / -1;
+  padding: 0;
+  gap: 0;
+}
+.lib-kinds {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.lib-kind {
+  gap: 6px;
+  cursor: pointer;
+  padding: 3px 10px;
+}
+.lib-kind.on {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.lib-kind:not(.on) {
+  opacity: 0.6;
+}
+.lib-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px;
+}
+.lib-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: none;
+  background: none;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: inherit;
+}
+.lib-item:hover,
+.lib-item.on {
+  background: var(--panel);
+}
+.lib-col.focus .lib-item.on {
+  background: var(--accent-soft);
+}
+.lib-item-icon {
+  flex: none;
+  width: 18px;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.lib-item.decision .lib-item-icon {
+  color: var(--accent);
+}
+.lib-item-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lib-item-text {
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.lib-item.quote .lib-item-text {
+  font-style: italic;
+}
+.lib-item.done .lib-item-text {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.lib-meeting.picked {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.lib-bulk-add {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0;
+}
+.lib-bulk-add input {
+  flex: 1;
+  min-width: 0;
+}
+.lib-preview .lib-bulk-add .btn {
+  align-self: center;
+  margin-top: 0;
+}
+.lib-partial {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 0 0 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+.lib-partial:hover {
+  color: var(--accent);
+}
 
 /* dati di esempio: invito in Home */
 .demo-card {

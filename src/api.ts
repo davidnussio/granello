@@ -4,6 +4,7 @@ import type {
   CalendarEvent,
   CalendarOverview,
   ChatMessage,
+  LibraryItem,
   Meeting,
   MeetingDetail,
   MeetingSummary,
@@ -83,6 +84,11 @@ export const api = {
   listProjects: () => invoke<Project[]>("list_projects"),
   /** Promuove un tag a progetto (false), lo archivia (true) o lo riporta a tag normale (null). */
   setProject: (tag: string, archived: boolean | null) => invoke<Project[]>("set_project", { tag, archived }),
+  /** Aggiunge e toglie tag a più meeting insieme. */
+  tagMeetings: (ids: string[], add: string[], remove: string[]) =>
+    invoke<void>("tag_meetings", { ids, add, remove }),
+  /** Decisioni, azioni e citazioni di tutti i meeting, lette dalle note. */
+  listItems: () => invoke<LibraryItem[]>("list_items"),
   listTags: () => invoke<TagCount[]>("list_tags"),
   listPeople: () => invoke<Person[]>("list_people"),
   deletePerson: (id: number) => invoke<void>("delete_person", { id }),

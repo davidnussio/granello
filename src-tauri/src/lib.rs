@@ -1,6 +1,7 @@
 // prima degli altri moduli: definisce le macro trf!/tra! che usano
 #[macro_use]
 mod i18n;
+mod items;
 
 mod attachments;
 mod audio;
@@ -112,6 +113,8 @@ pub fn run() {
             commands::set_speaker,
             commands::assign_speaker,
             commands::list_tags,
+            commands::tag_meetings,
+            commands::list_items,
             commands::demo_status,
             commands::load_demo,
             commands::remove_demo,

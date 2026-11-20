@@ -313,6 +313,40 @@ impl Db {
         Ok(())
     }
 
+    /// Aggiunge e toglie tag a più meeting insieme: o riesce per tutti, o per nessuno.
+    /// Un meeting che ha già il massimo dei tag non ne riceve altri.
+    pub fn tag_meetings(&self, ids: &[String], add: &[String], remove: &[String]) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        for id in ids {
+            let current: Option<String> =
+                tx.query_row("SELECT tags FROM meetings WHERE id = ?1", [id], |r| r.get(0)).optional()?;
+            let Some(current) = current else { continue };
+            let mut tags: Vec<String> = serde_json::from_str(&current).unwrap_or_default();
+            tags.retain(|t| !remove.contains(t));
+            for tag in add {
+                if !tags.contains(tag) && tags.len() < crate::models::MAX_TAGS {
+                    tags.push(tag.clone());
+                }
+            }
+            tx.execute("UPDATE meetings SET tags = ?1 WHERE id = ?2", params![serde_json::to_string(&tags)?, id])?;
+            self.reindex(id)?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Decisioni, azioni e citazioni di tutti i meeting, dal più recente, nell'ordine delle note.
+    pub fn list_items(&self) -> Result<Vec<crate::items::Item>> {
+        let mut stmt = self.conn.prepare("SELECT id, notes_md, enhanced_md FROM meetings ORDER BY created_at DESC")?;
+        let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<String>>(2)?)))?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (id, notes, enhanced) = row?;
+            out.extend(crate::items::of_meeting(&id, &notes, enhanced.as_deref()));
+        }
+        Ok(out)
+    }
+
     /// Tag usati, dal più frequente.
     pub fn all_tags(&self) -> Result<Vec<TagCount>> {
         let mut stmt = self.conn.prepare(
@@ -1010,6 +1044,35 @@ mod tests {
         db.delete_meeting(&m.id).unwrap();
         assert!(db.list_meetings(None).unwrap().is_empty());
         assert!(db.chat_history(&m.id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn tags_several_meetings_at_once_and_lists_their_items() {
+        let db = Db::open_in_memory().unwrap();
+        let a = db.create_meeting("Primo", None, &[], None).unwrap();
+        let b = db.create_meeting("Secondo", None, &[], None).unwrap();
+        let c = db.create_meeting("Terzo", None, &[], None).unwrap();
+        db.set_tags(&a.id, &["prezzi".into(), "vecchio".into()]).unwrap();
+        db.set_tags(&c.id, &["vecchio".into()]).unwrap();
+
+        let ids = vec![a.id.clone(), b.id.clone(), "non-esiste".to_string()];
+        db.tag_meetings(&ids, &["prezzi".into(), "cliente-nord".into()], &["vecchio".into()]).unwrap();
+        let tags = |id: &str| db.get_meeting(id).unwrap().unwrap().tags;
+        assert_eq!(tags(&a.id), vec!["prezzi", "cliente-nord"]);
+        assert_eq!(tags(&b.id), vec!["prezzi", "cliente-nord"]);
+        assert_eq!(tags(&c.id), vec!["vecchio"]);
+        // i tag nuovi si trovano con la ricerca
+        assert_eq!(db.list_meetings(Some("cliente-nord")).unwrap().len(), 2);
+
+        // oltre il massimo non se ne aggiungono
+        let many: Vec<String> = (0..crate::models::MAX_TAGS + 3).map(|i| format!("t{i}")).collect();
+        db.tag_meetings(std::slice::from_ref(&b.id), &many, &[]).unwrap();
+        assert_eq!(tags(&b.id).len(), crate::models::MAX_TAGS);
+
+        db.update_meeting(&a.id, None, Some("> [!DECISION]\n> Si parte a marzo.\n\n- [ ] Avvisare il cliente"), None, None).unwrap();
+        let items = db.list_items().unwrap();
+        assert_eq!(items.len(), 2);
+        assert!(items.iter().all(|i| i.meeting_id == a.id));
     }
 
     #[test]

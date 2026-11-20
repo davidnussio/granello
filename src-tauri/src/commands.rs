@@ -291,6 +291,18 @@ pub fn set_project(state: State<AppState>, tag: String, archived: Option<bool>) 
     db.list_projects().map_err(err)
 }
 
+/// Aggiunge e toglie tag a più meeting insieme (la selezione multipla della Libreria).
+#[tauri::command]
+pub fn tag_meetings(state: State<AppState>, ids: Vec<String>, add: Vec<String>, remove: Vec<String>) -> CmdResult<()> {
+    state.db.lock().tag_meetings(&ids, &normalize_tags(add), &normalize_tags(remove)).map_err(err)
+}
+
+/// Decisioni, azioni e citazioni di tutti i meeting, lette dalle note.
+#[tauri::command]
+pub fn list_items(state: State<AppState>) -> CmdResult<Vec<crate::items::Item>> {
+    state.db.lock().list_items().map_err(err)
+}
+
 #[tauri::command]
 pub fn list_tags(state: State<AppState>) -> CmdResult<Vec<TagCount>> {
     state.db.lock().all_tags().map_err(err)

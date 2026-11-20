@@ -334,6 +334,7 @@ export default function App() {
             projects={projects}
             onProjectsChanged={setProjects}
             onOpen={(id) => setView({ kind: "meeting", id })}
+            onMeetingsChanged={refreshMeetings}
             toast={toast}
           />
         )}

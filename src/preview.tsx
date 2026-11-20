@@ -13,6 +13,7 @@ interface Fixtures {
   tags: unknown[];
   people: unknown[];
   projects: unknown[];
+  items: unknown[];
   templates: unknown[];
   demoCount: number;
   whisperModels: { name: string; downloaded: boolean }[];
@@ -65,6 +66,21 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   list_tags: () => data.tags,
   list_people: () => data.people,
   list_projects: () => data.projects,
+  list_items: () => data.items,
+  // l'unica scrittura che l'anteprima esegue davvero: serve a provare i tag su più meeting
+  tag_meetings: (a) => {
+    const ids = a.ids as string[];
+    const retag = (m: { id: string; tags: string[] }) => {
+      if (!ids.includes(m.id)) return;
+      const kept = m.tags.filter((tag) => !(a.remove as string[]).includes(tag));
+      m.tags = [...kept, ...(a.add as string[]).filter((tag) => !kept.includes(tag))];
+    };
+    (data.meetings as { id: string; tags: string[] }[]).forEach(retag);
+    for (const d of Object.values(data.details) as { meeting: { id: string; tags: string[] } }[])
+      retag(d.meeting);
+    data.meetings = [...data.meetings];
+    return null;
+  },
   list_templates: () => data.templates,
   get_settings: () => data.settings,
   demo_status: () => data.demoCount,

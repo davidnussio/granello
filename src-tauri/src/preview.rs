@@ -44,6 +44,7 @@ mod tests {
                 "tags": db.all_tags().unwrap(),
                 "people": db.list_people().unwrap(),
                 "projects": db.list_projects().unwrap(),
+                "items": db.list_items().unwrap(),
                 "templates": db.list_templates().unwrap(),
                 "demoCount": db.demo_count().unwrap(),
                 "whisperModels": crate::transcribe::model_catalog(std::path::Path::new("/nonexistent")),
