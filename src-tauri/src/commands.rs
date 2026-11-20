@@ -390,6 +390,16 @@ mod privacy_tests {
     use super::*;
 
     #[test]
+    fn system_locale_keeps_the_chosen_region() {
+        assert_eq!(locale_tag("en_US@rg=chzzzz").as_deref(), Some("en-CH"));
+        assert_eq!(locale_tag("it_CH").as_deref(), Some("it-CH"));
+        assert_eq!(locale_tag("en_US\n").as_deref(), Some("en-US"));
+        assert_eq!(locale_tag("de").as_deref(), Some("de"));
+        assert_eq!(locale_tag("fr_FR@calendar=gregorian;rg=cazzzz").as_deref(), Some("fr-CA"));
+        assert_eq!(locale_tag(""), None);
+    }
+
+    #[test]
     fn only_servers_on_this_mac_are_local() {
         let provider = |kind, url: &str| Provider { kind, base_url: url.into(), ..Default::default() };
         for url in ["http://localhost:1234/v1", "http://127.0.0.1:11434/v1", "http://[::1]:8080/v1", "http://ollama.localhost/v1"] {
@@ -1459,6 +1469,56 @@ pub fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings)
         let _ = secrets::set_api_key(&state.data_dir, &gone.id, "");
     }
     Ok(s)
+}
+
+/// Come macOS mostra l'ora, per l'opzione "come il sistema".
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemTime {
+    /// L'utente ha forzato le 12 ore (true) o le 24 ore (false) nelle Impostazioni di Sistema.
+    hour12: Option<bool>,
+    /// Lingua e regione del sistema (es. "en-CH"): senza una scelta forzata decide la regione.
+    locale: Option<String>,
+}
+
+/// "en_US@rg=chzzzz" → "en-CH": la regione scelta nelle Impostazioni di Sistema (`rg`) conta
+/// più di quella nel nome della lingua, ed è lei a decidere tra 12 e 24 ore.
+fn locale_tag(apple_locale: &str) -> Option<String> {
+    let (base, extra) = apple_locale.trim().split_once('@').unwrap_or((apple_locale.trim(), ""));
+    let mut parts = base.split(['_', '-']);
+    let language = parts.next().filter(|l| !l.is_empty() && l.chars().all(|c| c.is_ascii_alphabetic()))?;
+    let region = extra
+        .split(';')
+        .find_map(|kv| kv.strip_prefix("rg="))
+        .and_then(|rg| rg.get(..2))
+        .or_else(|| parts.find(|p| p.len() == 2))
+        .filter(|r| r.chars().all(|c| c.is_ascii_alphabetic()));
+    Some(match region {
+        Some(r) => format!("{}-{}", language.to_lowercase(), r.to_uppercase()),
+        None => language.to_lowercase(),
+    })
+}
+
+#[tauri::command]
+pub fn system_time_format() -> SystemTime {
+    // le preferenze globali di macOS; su altri sistemi il comando non c'è e decide il browser
+    let read = |key: &str| {
+        std::process::Command::new("defaults")
+            .args(["read", "-g", key])
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    };
+    let forced = |key: &str| read(key).is_some_and(|v| v == "1" || v.eq_ignore_ascii_case("true"));
+    let hour12 = if forced("AppleICUForce24HourTime") {
+        Some(false)
+    } else if forced("AppleICUForce12HourTime") {
+        Some(true)
+    } else {
+        None
+    };
+    SystemTime { hour12, locale: read("AppleLocale").and_then(|l| locale_tag(&l)) }
 }
 
 /// Le note AI sono utilizzabili? (provider esistente e, se serve, chiave presente)

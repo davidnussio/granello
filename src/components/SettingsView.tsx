@@ -14,6 +14,7 @@ interface Props {
   demo: Demo;
   onCalendarChanged: () => void;
   onLangChanged: (setting: string) => void;
+  onTimeFormatChanged: (setting: string) => void;
 }
 
 const LANGS: [string, string][] = [
@@ -24,7 +25,7 @@ const LANGS: [string, string][] = [
   ["auto", "Rilevamento automatico"],
 ];
 
-export default function SettingsView({ toast, demo, onCalendarChanged, onLangChanged }: Props) {
+export default function SettingsView({ toast, demo, onCalendarChanged, onLangChanged, onTimeFormatChanged }: Props) {
   const [savedAt, setSavedAt] = useState(0);
   const [s, setS] = useState<Settings | null>(null);
   const [devices, setDevices] = useState<string[]>([]);
@@ -58,6 +59,7 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
       setS(await api.saveSettings(next));
       if ("calendars" in patch) onCalendarChanged();
       if ("uiLanguage" in patch) onLangChanged(next.uiLanguage);
+      if ("timeFormat" in patch) onTimeFormatChanged(next.timeFormat);
       // conferma discreta: le impostazioni si salvano da sole, senza un pulsante
       const stamp = Date.now();
       setSavedAt(stamp);
@@ -117,6 +119,14 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
             <option value="system">{t("Come il sistema")}</option>
             <option value="it">Italiano</option>
             <option value="en">English</option>
+          </select>
+        </label>
+        <label className="field">
+          <span>{t("Formato dell'ora")}</span>
+          <select value={s.timeFormat || "system"} onChange={(e) => save({ timeFormat: e.target.value })}>
+            <option value="system">{t("Come il sistema")}</option>
+            <option value="24">{t("24 ore (14:30)")}</option>
+            <option value="12">{t("12 ore (2:30 PM)")}</option>
           </select>
         </label>
         <label className="field">

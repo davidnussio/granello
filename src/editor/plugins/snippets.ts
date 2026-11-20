@@ -1,7 +1,6 @@
 import { t } from "../../i18n";
+import { time } from "../../format";
 import type { EditorPlugin } from "../types";
-
-const timeFmt = new Intl.DateTimeFormat("it-CH", { hour: "2-digit", minute: "2-digit" });
 
 /** Frammenti tipici delle note di un meeting. Esempio di plugin senza estensioni TipTap. */
 export const snippets: EditorPlugin = {
@@ -50,7 +49,7 @@ export const snippets: EditorPlugin = {
         return t("Meeting");
       },
       keywords: ["ora", "orario", "time", "adesso"],
-      run: (e) => e.chain().focus().insertContent(`${timeFmt.format(new Date())} `).run(),
+      run: (e) => e.chain().focus().insertContent(`${time(Date.now())} `).run(),
     },
   ],
 };

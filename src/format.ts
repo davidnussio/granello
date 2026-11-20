@@ -1,14 +1,42 @@
 import { locale, t } from "./i18n";
 
 // i formatter dipendono dalla lingua dell'interfaccia: si ricreano solo quando cambia
-let cached: { loc: string; day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } | null = null;
+let cached: { loc: string; hour12: boolean | undefined; day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } | null = null;
+
+/** Ore in formato 12 (AM/PM) o 24; `undefined` lascia decidere la lingua dell'interfaccia. */
+let hour12: boolean | undefined;
+
+/**
+ * Applica il formato dell'ora scelto nelle Impostazioni: "24", "12", oppure "system", che segue
+ * macOS. `system` è ciò che il sistema dice di sé: una scelta forzata, oppure lingua e regione
+ * (es. "en-CH") da cui si ricava l'uso del posto.
+ */
+export function setTimeFormat(setting: string, system?: { hour12: boolean | null; locale: string | null } | null) {
+  if (setting === "24") hour12 = false;
+  else if (setting === "12") hour12 = true;
+  else if (system && system.hour12 !== null) hour12 = system.hour12;
+  else {
+    try {
+      hour12 = new Intl.DateTimeFormat(system?.locale ?? undefined, { hour: "numeric" }).resolvedOptions().hour12;
+    } catch {
+      hour12 = undefined;
+    }
+  }
+}
+
 function fmt() {
   const loc = locale();
-  if (!cached || cached.loc !== loc) {
+  if (!cached || cached.loc !== loc || cached.hour12 !== hour12) {
     cached = {
       loc,
+      hour12,
       day: new Intl.DateTimeFormat(loc, { weekday: "long", day: "numeric", month: "long" }),
-      time: new Intl.DateTimeFormat(loc, { hour: "2-digit", minute: "2-digit" }),
+      // h23 e non "hour12: false": così la mezzanotte è 00:05 ovunque, mai 24:05
+      time: new Intl.DateTimeFormat(loc, {
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: hour12 === undefined ? undefined : hour12 ? "h12" : "h23",
+      }),
     };
   }
   return cached;

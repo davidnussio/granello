@@ -11,6 +11,7 @@ import Home from "./components/Home";
 import LibraryView from "./components/LibraryView";
 import type { Demo } from "./components/DemoData";
 import { getLang, resolveLang, setLang, t } from "./i18n";
+import { setTimeFormat } from "./format";
 
 export interface SetupStatus {
   hasKey: boolean;
@@ -44,9 +45,26 @@ export default function App() {
     setLang(resolveLang(setting));
     setLangState(getLang());
   }, []);
+  // il formato dell'ora segue l'impostazione, che di default è quella di macOS
+  const [, setTimeVersion] = useState(0);
+  const applyTimeFormat = useCallback((setting: string) => {
+    api
+      .systemTimeFormat()
+      .catch(() => null)
+      .then((system) => {
+        setTimeFormat(setting, system);
+        setTimeVersion((v) => v + 1);
+      });
+  }, []);
   useEffect(() => {
-    api.getSettings().then((s) => applyLang(s.uiLanguage)).catch(() => {});
-  }, [applyLang]);
+    api
+      .getSettings()
+      .then((s) => {
+        applyLang(s.uiLanguage);
+        applyTimeFormat(s.timeFormat);
+      })
+      .catch(() => {});
+  }, [applyLang, applyTimeFormat]);
 
   const toast = useCallback((text: string, action?: Toast["action"]) => {
     const id = Date.now() + Math.random();
@@ -305,6 +323,7 @@ export default function App() {
             toast={toast}
             demo={demo}
             onCalendarChanged={() => refreshEvents(true)}
+            onTimeFormatChanged={applyTimeFormat}
             onLangChanged={(l) => {
               applyLang(l);
               refreshMeetings();

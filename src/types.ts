@@ -118,6 +118,8 @@ export interface Settings {
   notifyBeforeMin: number;
   /** A fine riunione l'audio viene caricato su Gladia per una trascrizione con i parlanti. */
   onlineTranscription: boolean;
+  /** Formato dell'ora: "system" segue macOS, "24" oppure "12" (AM/PM). */
+  timeFormat: string;
   /** Salva l'audio di ogni registrazione, per riascoltarlo. */
   saveRecordings: boolean;
   /** Cartella delle registrazioni; null = quella predefinita. */

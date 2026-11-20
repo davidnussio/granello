@@ -142,6 +142,7 @@ pub fn run() {
             commands::log_frontend_error,
             commands::has_api_key,
             commands::ai_ready,
+            commands::system_time_format,
             commands::list_provider_models,
             commands::set_api_key,
             commands::list_whisper_models,

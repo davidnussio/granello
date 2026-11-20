@@ -278,6 +278,8 @@ pub struct Settings {
     /// Affinamento online: a fine riunione l'audio viene caricato su Gladia per una
     /// trascrizione con i parlanti. Spento di default: è l'unico caso in cui l'audio esce dal Mac.
     pub online_transcription: bool,
+    /// Formato dell'ora nell'interfaccia: "system" (o vuoto) segue macOS, "24" oppure "12".
+    pub time_format: String,
     /// Salva l'audio di ogni registrazione, per riascoltarlo. Spento di default.
     pub save_recordings: bool,
     /// Cartella delle registrazioni; assente = quella predefinita, nella cartella dati.

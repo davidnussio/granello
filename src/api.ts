@@ -133,6 +133,8 @@ export const api = {
   hasApiKey: (providerId: string) => invoke<boolean>("has_api_key", { providerId }),
   setApiKey: (providerId: string, key: string) => invoke<void>("set_api_key", { providerId, key }),
   aiReady: () => invoke<boolean>("ai_ready"),
+  /** Come macOS mostra l'ora: una scelta forzata, oppure lingua e regione da cui ricavarla. */
+  systemTimeFormat: () => invoke<{ hour12: boolean | null; locale: string | null }>("system_time_format"),
   listProviderModels: (provider: Provider) => invoke<string[]>("list_provider_models", { provider }),
   appInfo: () => invoke<AppInfo>("app_info"),
   /** Scrive un errore dell'interfaccia nel file di log dell'app. Non fallisce mai. */

@@ -599,6 +599,9 @@ const en: Record<string, string> = {
   "Più persone allo stesso microfono? Indica chi sta parlando: da quel momento la trascrizione lo attribuisce a lui.": "Several people on one microphone? Say who is speaking: from that moment the transcript credits them.",
   "Al microfono: io": "At the mic: me",
   "Al microfono: {name}": "At the mic: {name}",
+  "Formato dell'ora": "Time format",
+  "24 ore (14:30)": "24-hour (14:30)",
+  "12 ore (2:30 PM)": "12-hour (2:30 PM)",
 };
 
 export default en;
