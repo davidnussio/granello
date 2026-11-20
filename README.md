@@ -56,7 +56,7 @@ A meeting notepad for macOS: jot down a few notes during the meeting, Granello r
 - **Chat**: ask about one meeting or all of them (SQLite FTS5 full-text search finds the relevant meetings, answers cite title and date).
 - **Tags and participants**: tag meetings (the sidebar shows up to two per meeting) and edit who took part. Granello keeps a people directory and autocompletes from it and from the names in your calendar; a meeting that overlaps a calendar event offers to import its attendees.
 - **Search** in the sidebar across titles, tags, participants, notes, AI notes and transcripts.
-- **Shortcuts**: ⌘N new notes, ⌘K search, ⌘, settings.
+- **Shortcuts**: ⌘N new notes, ⌘K search, ⌘, settings. In a note, ⌘F opens find and replace: matches are highlighted, Enter and Shift Enter move between them, and "All" replaces every match with a single undo. It searches the note's text; blocks made of data (polls, kanban, quotes…) are left out.
 - **English and Italian**: the interface follows your Mac's language and can be changed in Settings → Profile.
 
 ## AI models

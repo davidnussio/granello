@@ -33,6 +33,7 @@ import { embed } from "./plugins/embed";
 import { moment } from "./plugins/moment";
 import { transcriptQuote } from "./plugins/transcriptQuote";
 import { ai } from "./plugins/ai";
+import { find } from "./plugins/find";
 
 export type { CommandItem, EditorPlugin, PluginContext, SuggestMenu, ToolbarItem } from "./types";
 export { base, formatting, headings, lists, tasks, blocks, links, snippets };
@@ -63,6 +64,7 @@ export {
   moment,
   transcriptQuote,
   ai,
+  find,
 };
 
 /** Plugin attivi di default. L'ordine determina l'ordine di comandi e pulsanti. */
@@ -101,6 +103,7 @@ export const defaultPlugins: EditorPlugin[] = [
   ai,
   mention,
   date,
+  find,
 ];
 
 /** Unisce i contributi dei plugin. Un plugin successivo con lo stesso `name` sostituisce il precedente. */

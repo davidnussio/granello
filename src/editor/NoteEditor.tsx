@@ -3,6 +3,7 @@ import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { defaultPlugins, resolvePlugins, type EditorPlugin } from "./index";
 import { SlashBridge, SlashMenu, slashExtension } from "./SlashMenu";
 import BubbleToolbar from "./BubbleToolbar";
+import { FindBar } from "./plugins/find";
 
 interface Props {
   /** Markdown iniziale. Cambiare `docKey` per ricaricare il contenuto. */
@@ -90,6 +91,9 @@ export default function NoteEditor({
         }
       }}
     >
+      {/* contenitore fisso: la barra compare e scompare senza che React debba inserirla accanto
+          alla barra di selezione, che TipTap sposta fuori da qui */}
+      <div className="find-slot">{editor && <FindBar editor={editor} />}</div>
       {editor && <BubbleToolbar editor={editor} items={toolbar} />}
       <EditorContent editor={editor} />
       <SlashMenu bridge={bridge} />

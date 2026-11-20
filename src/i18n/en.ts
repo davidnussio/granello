@@ -679,6 +679,18 @@ const en: Record<string, string> = {
   "Formato dell'ora": "Time format",
   "24 ore (14:30)": "24-hour (14:30)",
   "12 ore (2:30 PM)": "12-hour (2:30 PM)",
+  // editor: find and replace
+  "Trova e sostituisci": "Find and replace",
+  "Trova nella nota": "Find in the note",
+  "Distingui maiuscole e minuscole": "Match case",
+  "Precedente (Maiusc Invio)": "Previous (Shift Enter)",
+  "Successivo (Invio)": "Next (Enter)",
+  "Chiudi (Esc)": "Close (Esc)",
+  "Sostituisci con": "Replace with",
+  Sostituisci: "Replace",
+  "Sostituisce tutte le corrispondenze; un solo Annulla le riporta":
+    "Replaces every match; a single Undo brings them back",
+  Tutti: "All",
 };
 
 export default en;

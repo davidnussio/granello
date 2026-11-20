@@ -56,7 +56,7 @@ Blocco note per i meeting su macOS: scrivi poche note durante il meeting, Granel
 - **Chat**: domande su un meeting o su tutti (ricerca full-text SQLite FTS5 per trovare i meeting pertinenti, con citazione di titolo e data).
 - **Tag e partecipanti**: tag sui meeting (la sidebar ne mostra al massimo due per meeting) e partecipanti modificabili. Granello tiene una rubrica delle persone e completa i nomi da lì e dal calendario; se il meeting coincide con un evento del calendario propone di importarne i partecipanti.
 - **Ricerca** nella sidebar su titoli, tag, partecipanti, note, note AI e trascrizioni.
-- **Scorciatoie**: ⌘N nuove note, ⌘K cerca, ⌘, impostazioni.
+- **Scorciatoie**: ⌘N nuove note, ⌘K cerca, ⌘, impostazioni. Dentro una nota, ⌘F apre trova e sostituisci: le corrispondenze sono evidenziate, Invio e Maiusc Invio passano dall'una all'altra, e "Tutti" le sostituisce tutte con un solo Annulla. Cerca nel testo della nota; i blocchi fatti di dati (sondaggi, kanban, citazioni…) restano fuori.
 - **Italiano e inglese**: l'interfaccia segue la lingua del Mac e si cambia da Impostazioni → Profilo.
 
 ## Modelli AI
