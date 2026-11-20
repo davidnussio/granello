@@ -10,15 +10,21 @@ interface Props {
   [property: string]: unknown;
 }
 
-export function h<K extends keyof HTMLElementTagNameMap>(tag: K, props: Props = {}, ...children: Child[]): HTMLElementTagNameMap[K] {
+export function h<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  props: Props = {},
+  ...children: Child[]
+): HTMLElementTagNameMap[K] {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(props)) {
     if (value === undefined) continue;
     if (key === "class") el.className = value as string;
     else if (key === "style") el.style.cssText = value as string;
-    else if (key === "attrs") for (const [a, v] of Object.entries(value as Record<string, string>)) el.setAttribute(a, v);
+    else if (key === "attrs")
+      for (const [a, v] of Object.entries(value as Record<string, string>)) el.setAttribute(a, v);
     else if (key === "on") {
-      for (const [type, fn] of Object.entries(value as Record<string, EventListener>)) el.addEventListener(type, fn);
+      for (const [type, fn] of Object.entries(value as Record<string, EventListener>))
+        el.addEventListener(type, fn);
     } else (el as unknown as Record<string, unknown>)[key] = value;
   }
   for (const child of children) {
@@ -63,7 +69,11 @@ export function field(
  * Campo di testo su più righe che cresce con il contenuto. Come `field`: conferma con Invio
  * o uscendo, ripristina con Esc. Il testo resta una riga sola: gli a capo sono solo visivi.
  */
-export function area(value: string, onCommit: (value: string) => void, props: Props = {}): HTMLTextAreaElement {
+export function area(
+  value: string,
+  onCommit: (value: string) => void,
+  props: Props = {},
+): HTMLTextAreaElement {
   const text = h("textarea", { rows: 1, value, ...props });
   // dove il browser sa adattare da solo l'altezza al contenuto (`field-sizing`, vedi il CSS)
   // non serve misurare: segue anche i cambi di larghezza. Altrimenti si misura a mano.

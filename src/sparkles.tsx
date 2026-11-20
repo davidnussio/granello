@@ -52,5 +52,8 @@ export function sparklesEl(): SVGElement {
 
 /** Come `sparkle()`, ma in nodi DOM: da passare come figli a `h()`. */
 export function sparkleNodes(text: string): (Node | string)[] {
-  return text.split("✦").flatMap((part, i) => (i > 0 ? [sparklesEl(), part] : [part])).filter((n) => n !== "");
+  return text
+    .split("✦")
+    .flatMap((part, i) => (i > 0 ? [sparklesEl(), part] : [part]))
+    .filter((n) => n !== "");
 }

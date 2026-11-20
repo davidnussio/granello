@@ -55,7 +55,9 @@ function render(view: BlockView<Nothing>) {
     h(
       "span",
       { class: "progress-label" },
-      total ? t("{done} di {total} · {pct}%", { done, total, pct: share }) : t("Nessuna azione in questa sezione"),
+      total
+        ? t("{done} di {total} · {pct}%", { done, total, pct: share })
+        : t("Nessuna azione in questa sezione"),
     ),
   );
 }

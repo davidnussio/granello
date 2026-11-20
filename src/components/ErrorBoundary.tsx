@@ -24,7 +24,9 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
       <div className="crash">
         <h2>{t("Qualcosa è andato storto")}</h2>
         <p className="muted">
-          {t("L'interfaccia ha avuto un errore imprevisto. Le tue note e le trascrizioni sono salvate: ricarica per continuare.")}
+          {t(
+            "L'interfaccia ha avuto un errore imprevisto. Le tue note e le trascrizioni sono salvate: ricarica per continuare.",
+          )}
         </p>
         <pre>{this.state.error.message}</pre>
         <button className="btn primary" onClick={() => window.location.reload()}>

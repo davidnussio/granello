@@ -79,7 +79,8 @@ function mathView(display: boolean): NodeViewRenderer {
     input.addEventListener("blur", () => finish(true));
     input.addEventListener("keydown", (e) => {
       const key = (e as KeyboardEvent).key;
-      const confirm = key === "Enter" && (!display || (e as KeyboardEvent).metaKey || (e as KeyboardEvent).ctrlKey);
+      const confirm =
+        key === "Enter" && (!display || (e as KeyboardEvent).metaKey || (e as KeyboardEvent).ctrlKey);
       if (!confirm && key !== "Escape") return;
       e.preventDefault();
       const pos = position();
@@ -160,14 +161,17 @@ const MathInline = Node.create({
             once(md, "math-inline", () => {
               md.inline.ruler.before("escape", "math_inline", (state, silent) => {
                 const start = state.pos;
-                if (state.src.charCodeAt(start) !== 0x24 || state.src.charCodeAt(start + 1) === 0x24) return false;
+                if (state.src.charCodeAt(start) !== 0x24 || state.src.charCodeAt(start + 1) === 0x24)
+                  return false;
                 let end = start + 1;
-                while ((end = state.src.indexOf("$", end)) !== -1 && state.src.charCodeAt(end - 1) === 0x5c) end++;
+                while ((end = state.src.indexOf("$", end)) !== -1 && state.src.charCodeAt(end - 1) === 0x5c)
+                  end++;
                 if (end < 0 || end >= state.posMax) return false;
                 const latex = state.src.slice(start + 1, end);
                 // "costa $5 e poi $10": uno spazio dentro i bordi o una cifra subito dopo non è una formula
                 if (!latex || /^\s|\s$|\n/.test(latex) || /\d/.test(state.src.charAt(end + 1))) return false;
-                if (!silent) state.push("html_inline", "", 0).content = `<span data-math="${escAttr(latex)}"></span>`;
+                if (!silent)
+                  state.push("html_inline", "", 0).content = `<span data-math="${escAttr(latex)}"></span>`;
                 state.pos = end + 1;
                 return true;
               });
@@ -223,7 +227,8 @@ const MathBlock = Node.create({
                 "math_block",
                 (state, startLine, endLine, silent) => {
                   if (state.sCount[startLine] - state.blkIndent >= 4) return false;
-                  const line = (n: number) => state.src.slice(state.bMarks[n] + state.tShift[n], state.eMarks[n]);
+                  const line = (n: number) =>
+                    state.src.slice(state.bMarks[n] + state.tShift[n], state.eMarks[n]);
                   const first = line(startLine);
                   if (!first.startsWith("$$")) return false;
                   const rest = first.slice(2).trim();

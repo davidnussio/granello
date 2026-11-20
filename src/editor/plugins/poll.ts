@@ -8,7 +8,13 @@ interface Poll {
   options: { text: string; votes: number }[];
 }
 
-const empty: Poll = { question: "", options: [{ text: "", votes: 0 }, { text: "", votes: 0 }] };
+const empty: Poll = {
+  question: "",
+  options: [
+    { text: "", votes: 0 },
+    { text: "", votes: 0 },
+  ],
+};
 
 function render(view: BlockView<Poll>) {
   const { data } = view;
@@ -50,7 +56,12 @@ function render(view: BlockView<Poll>) {
         h("span", { class: "poll-votes", title: t("Voti") }, o.votes),
         h(
           "button",
-          { type: "button", class: "block-btn", title: t("Aggiungi un voto"), on: { click: () => view.set(withOption(i, { votes: o.votes + 1 })) } },
+          {
+            type: "button",
+            class: "block-btn",
+            title: t("Aggiungi un voto"),
+            on: { click: () => view.set(withOption(i, { votes: o.votes + 1 })) },
+          },
           "+",
         ),
         h(
@@ -75,7 +86,10 @@ function render(view: BlockView<Poll>) {
           class: "block-add",
           on: {
             click: () =>
-              view.set({ ...data, options: [...data.options, { text: "", votes: 0 }] }, `option-${data.options.length}`),
+              view.set(
+                { ...data, options: [...data.options, { text: "", votes: 0 }] },
+                `option-${data.options.length}`,
+              ),
           },
         },
         t("+ Opzione"),
@@ -99,7 +113,8 @@ const PollBlock = dataBlock<Poll>({
   empty,
   autofocus: "question",
   ai: {
-    format: "::: poll Domanda del sondaggio\n- [3] Prima opzione\n- [1] Seconda opzione\n:::\n\nTra parentesi quadre il numero di voti di ogni opzione (0 se non si è ancora votato).",
+    format:
+      "::: poll Domanda del sondaggio\n- [3] Prima opzione\n- [1] Seconda opzione\n:::\n\nTra parentesi quadre il numero di voti di ogni opzione (0 se non si è ancora votato).",
   },
   format: {
     kind: "container",

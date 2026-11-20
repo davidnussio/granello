@@ -69,7 +69,13 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
   const addProvider = async (preset: (typeof PRESETS)[number]) => {
     let id = preset.id;
     for (let n = 2; s.providers.some((p) => p.id === id); n++) id = `${preset.id}-${n}`;
-    const p: Provider = { id, name: t(preset.name), kind: "openai", baseUrl: preset.baseUrl, contextTokens: null };
+    const p: Provider = {
+      id,
+      name: t(preset.name),
+      kind: "openai",
+      baseUrl: preset.baseUrl,
+      contextTokens: null,
+    };
     if (await save({ providers: [...s.providers, p] })) loadModels(p, true);
   };
 
@@ -141,7 +147,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
           />
           <datalist id={listId}>
             {list.map((m) => (
-              <option key={m} value={m} />
+              <option key={m} value={m} aria-label={m} />
             ))}
           </datalist>
         </div>
@@ -153,8 +159,16 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
   return (
     <section className="card">
       <h3>{t("Modelli AI")}</h3>
-      {picker(t("Note AI"), "notesModel", t("Scrive le note arricchite: conta la qualità, conviene il modello migliore che hai."))}
-      {picker(t("Chat"), "chatModel", t("Risponde alle domande sui meeting: può essere un modello più piccolo o locale."))}
+      {picker(
+        t("Note AI"),
+        "notesModel",
+        t("Scrive le note arricchite: conta la qualità, conviene il modello migliore che hai."),
+      )}
+      {picker(
+        t("Chat"),
+        "chatModel",
+        t("Risponde alle domande sui meeting: può essere un modello più piccolo o locale."),
+      )}
 
       <h4 className="sub">{t("Provider")}</h4>
       {s.providers.map((p) => {
@@ -172,7 +186,9 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
                 onChange={(e) => patchProvider(p.id, { name: e.target.value })}
                 onBlur={() => save({})}
               />
-              <span className="chip tiny">{p.kind === "anthropic" ? "Anthropic" : t("Compatibile OpenAI")}</span>
+              <span className="chip tiny">
+                {p.kind === "anthropic" ? "Anthropic" : t("Compatibile OpenAI")}
+              </span>
               <div className="spacer" />
               <button className="btn small" onClick={() => loadModels(p)} disabled={checking === p.id}>
                 {checking === p.id ? t("Verifico…") : t("Verifica")}
@@ -231,12 +247,16 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
             </label>
             {p.kind === "openai" && isLocal(p.baseUrl) && (
               <small className="muted">
-                {t("Resta tutto su questo Mac. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare un meeting che non ci sta.")}
+                {t(
+                  "Resta tutto su questo Mac. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare un meeting che non ci sta.",
+                )}
               </small>
             )}
             {p.kind === "openai" && p.baseUrl.startsWith("http://") && !isLocal(p.baseUrl) && (
               <small className="warn">
-                {t("Indirizzo non cifrato (http) verso un altro computer: note e trascrizioni viaggiano in chiaro sulla rete.")}
+                {t(
+                  "Indirizzo non cifrato (http) verso un altro computer: note e trascrizioni viaggiano in chiaro sulla rete.",
+                )}
               </small>
             )}
           </div>

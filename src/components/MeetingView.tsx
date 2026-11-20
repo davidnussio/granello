@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorText, newStreamId, on, SYSTEM_AUDIO } from "../api";
-import type { CalendarEvent, Meeting, Privacy, RecordingStatus, Template, TranscriptPart, TranscriptSegment } from "../types";
+import type {
+  CalendarEvent,
+  Meeting,
+  Privacy,
+  RecordingStatus,
+  Template,
+  TranscriptPart,
+  TranscriptSegment,
+} from "../types";
 import ChipInput, { type ChipSuggestion } from "./ChipInput";
 import NoteEditor from "../editor/NoteEditor";
 import Markdown from "./Markdown";
@@ -14,7 +22,14 @@ import { Sparkles, sparkle } from "../sparkles";
 import type { Editor } from "@tiptap/react";
 import { setAiMeeting, setTranscriptState } from "../editor/aiContext";
 import { insertQuote, quoteMd } from "../editor/plugins/transcriptQuote";
-import { MOMENT_EVENTS, emptyMoments, fillMomentsIn, fillMomentsMd, insertMoment, momentMd } from "../editor/plugins/moment";
+import {
+  MOMENT_EVENTS,
+  emptyMoments,
+  fillMomentsIn,
+  fillMomentsMd,
+  insertMoment,
+  momentMd,
+} from "../editor/plugins/moment";
 
 interface Props {
   id: string;
@@ -69,6 +84,21 @@ function useDebounced<T>(fn: (v: T) => void, ms: number) {
   return call;
 }
 
+const suggestPeople = async (query: string): Promise<ChipSuggestion[]> =>
+  (await api.suggestPeople(query)).map((p) => ({
+    value: p.name,
+    hint: p.email ?? undefined,
+    badge: p.source === "calendar" ? t("dal calendario") : undefined,
+  }));
+
+const suggestTags = async (query: string): Promise<ChipSuggestion[]> => {
+  const q = query.replace(/^#/, "").toLowerCase();
+  return (await api.listTags())
+    .filter((tag) => tag.name.includes(q))
+    .slice(0, 8)
+    .map((tag) => ({ value: tag.name, hint: t("{n} meeting", { n: tag.count }) }));
+};
+
 export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, onDeleted }: Props) {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
@@ -89,7 +119,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const streamRef = useRef<string | null>(null);
   const [devices, setDevices] = useState<string[]>([]);
   const [systemDevice, setSystemDevice] = useState<string | null>(null);
-  const [importProgress, setImportProgress] = useState<{ doneMs: number; totalMs: number | null } | null>(null);
+  const [importProgress, setImportProgress] = useState<{ doneMs: number; totalMs: number | null } | null>(
+    null,
+  );
   const [transcriptFocus, setTranscriptFocus] = useState<{ ms: number } | null>(null);
   // l'editor delle note, quando è a schermo: i momenti segnati vanno lì
   const notesEditor = useRef<Editor | null>(null);
@@ -132,10 +164,19 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
 
   useEffect(() => {
     load();
-    api.listTemplates().then(setTemplates).catch(() => {});
-    api.keptAudio(id).then(setKeptAudio).catch(() => {});
+    api
+      .listTemplates()
+      .then(setTemplates)
+      .catch(() => {});
+    api
+      .keptAudio(id)
+      .then(setKeptAudio)
+      .catch(() => {});
     // evento di calendario alla stessa ora: da lì si possono importare i partecipanti
-    api.calendarMatch(id).then(setCalEvent).catch(() => {});
+    api
+      .calendarMatch(id)
+      .then(setCalEvent)
+      .catch(() => {});
   }, [load, id]);
 
   // l'AI dei blocchi dell'editor lavora su questo meeting e segue la sua trascrizione
@@ -148,8 +189,12 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   }, [segments.length, rec.meetingId, rec.importing, id]);
 
   const loadDevices = useCallback(() => {
-    api.listAudioDevices().then(setDevices).catch(() => {});
-    api.getSettings()
+    api
+      .listAudioDevices()
+      .then(setDevices)
+      .catch(() => {});
+    api
+      .getSettings()
       .then((s) => {
         setSystemDevice(s.systemDevice);
         setUserName(s.userName ?? "");
@@ -172,7 +217,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   useEffect(() => {
     const offs = [
       on("transcript-segment", (s) => {
-        if (s.meetingId === id) setSegments((prev) => [...prev, s].sort((a, b) => a.startMs - b.startMs));
+        if (s.meetingId === id) setSegments((prev) => [...prev, s].toSorted((a, b) => a.startMs - b.startMs));
       }),
       on("audio-level", (l) => {
         if (l.meetingId === id) setLevel({ mic: l.mic, system: l.system });
@@ -186,7 +231,10 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         setImportProgress(null);
         // il passo successivo naturale dopo la registrazione
         if (!hasEnhancedRef.current) {
-          toast(t("Trascrizione completata"), { label: t("✦ Genera note AI"), run: () => enhanceRef.current() });
+          toast(t("Trascrizione completata"), {
+            label: t("✦ Genera note AI"),
+            run: () => enhanceRef.current(),
+          });
         }
         // la registrazione salvata, se c'è, è appena stata chiusa
         setRecVersion((v) => v + 1);
@@ -225,7 +273,10 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     api.updateMeeting({ id, enhancedMd }).catch((e) => toast(errorText(e)));
   }, 600);
   const saveTitle = useDebounced<string>((title) => {
-    api.updateMeeting({ id, title }).then(onChanged).catch((e) => toast(errorText(e)));
+    api
+      .updateMeeting({ id, title })
+      .then(onChanged)
+      .catch((e) => toast(errorText(e)));
   }, 500);
 
   const setNotes = (md: string) => {
@@ -238,12 +289,22 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     (picked: { ms: number; source: TranscriptSegment["source"]; text: string }) => {
       // dopo l'affinamento online la sorgente è già il nome del parlante
       const who =
-        picked.source === "me" ? userName.trim() || t("Io") : picked.source === "file" ? "" : picked.source === "them" ? t("Altri") : picked.source;
+        picked.source === "me"
+          ? userName.trim() || t("Io")
+          : picked.source === "file"
+            ? ""
+            : picked.source === "them"
+              ? t("Altri")
+              : picked.source;
       const quote = { ms: picked.ms, who, text: picked.text };
       const editor = tabRef.current === "enhanced" ? enhancedEditor.current : notesEditor.current;
       if (editor && !editor.isDestroyed) insertQuote(editor, quote);
       else setNotesRef.current(`${notesRef.current.trimEnd()}\n\n${quoteMd(quote)}\n`.trimStart());
-      toast(tabRef.current === "enhanced" && editor ? t("Citazione aggiunta alle note AI") : t("Citazione aggiunta alle tue note"));
+      toast(
+        tabRef.current === "enhanced" && editor
+          ? t("Citazione aggiunta alle note AI")
+          : t("Citazione aggiunta alle tue note"),
+      );
     },
     [userName, toast],
   );
@@ -278,7 +339,11 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
       const editor = notesEditor.current;
       if (editor && !editor.isDestroyed) fillMomentsIn(editor, fills);
       else setNotes(fillMomentsMd(notesRef.current, fills));
-      toast(fills.length === 1 ? t("Un momento segnato è stato riempito") : t("{n} momenti segnati sono stati riempiti", { n: fills.length }));
+      toast(
+        fills.length === 1
+          ? t("Un momento segnato è stato riempito")
+          : t("{n} momenti segnati sono stati riempiti", { n: fills.length }),
+      );
     } catch (e) {
       toast(errorText(e));
     } finally {
@@ -418,21 +483,6 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     }
   };
 
-  const suggestPeople = async (query: string): Promise<ChipSuggestion[]> =>
-    (await api.suggestPeople(query)).map((p) => ({
-      value: p.name,
-      hint: p.email ?? undefined,
-      badge: p.source === "calendar" ? t("dal calendario") : undefined,
-    }));
-
-  const suggestTags = async (query: string): Promise<ChipSuggestion[]> => {
-    const q = query.replace(/^#/, "").toLowerCase();
-    return (await api.listTags())
-      .filter((tag) => tag.name.includes(q))
-      .slice(0, 8)
-      .map((tag) => ({ value: tag.name, hint: t("{n} meeting", { n: tag.count }) }));
-  };
-
   const changePrivacy = async (privacy: Privacy) => {
     const previous = meeting?.privacy ?? "open";
     setMeeting((m) => (m ? { ...m, privacy } : m));
@@ -459,7 +509,10 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
       })
       .catch((e) => toast(errorText(e)));
   const review = (ids: number[], flag: boolean) =>
-    api.reviewTranscript(id, ids, flag).then(setSegments).catch((e) => toast(errorText(e)));
+    api
+      .reviewTranscript(id, ids, flag)
+      .then(setSegments)
+      .catch((e) => toast(errorText(e)));
 
   // Affinamento online: l'audio conservato viene caricato su Gladia e la trascrizione locale
   // lascia il posto a quella con i parlanti. Poi l'audio viene cancellato.
@@ -478,9 +531,15 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   };
   refineRef.current = refine;
   const discardAudio = () =>
-    api.discardAudio(id).then(() => setKeptAudio(false)).catch((e) => toast(errorText(e)));
+    api
+      .discardAudio(id)
+      .then(() => setKeptAudio(false))
+      .catch((e) => toast(errorText(e)));
   const assignSpeaker = (ids: number[], name: string) =>
-    api.assignSpeaker(id, ids, name).then(setSegments).catch((e) => toast(errorText(e)));
+    api
+      .assignSpeaker(id, ids, name)
+      .then(setSegments)
+      .catch((e) => toast(errorText(e)));
   // Più persone allo stesso microfono: da adesso ciò che sente va a chi è indicato qui.
   const changeSpeaker = async (name: string) => {
     const previous = micSpeaker;
@@ -493,7 +552,10 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     }
   };
   const renameSpeaker = (from: string, to: string) =>
-    api.renameSpeaker(id, from, to).then(setSegments).catch((e) => toast(errorText(e)));
+    api
+      .renameSpeaker(id, from, to)
+      .then(setSegments)
+      .catch((e) => toast(errorText(e)));
 
   const changeTemplate = async (templateId: string) => {
     setMeeting((m) => (m ? { ...m, templateId } : m));
@@ -532,10 +594,16 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   // aprono e chiudono il pannello di destra: a pannello aperto stanno sotto di lui
   const sideButtons = (
     <>
-      <button className={"btn small ghost" + (side === "transcript" ? " on" : "")} onClick={() => setSide(side === "transcript" ? "none" : "transcript")}>
+      <button
+        className={"btn small ghost" + (side === "transcript" ? " on" : "")}
+        onClick={() => setSide(side === "transcript" ? "none" : "transcript")}
+      >
         {t("Trascrizione")} {segments.length ? `(${segments.length})` : ""}
       </button>
-      <button className={"btn small ghost" + (side === "chat" ? " on" : "")} onClick={() => setSide(side === "chat" ? "none" : "chat")}>
+      <button
+        className={"btn small ghost" + (side === "chat" ? " on" : "")}
+        onClick={() => setSide(side === "chat" ? "none" : "chat")}
+      >
         {sparkle(t("✦ Chiedi"))}
       </button>
     </>
@@ -587,9 +655,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               onChange={(e) => changeTemplate(e.target.value)}
               title={t("Template usato per le note AI")}
             >
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  ☰ {t.name}
+              {templates.map((tpl) => (
+                <option key={tpl.id} value={tpl.id}>
+                  ☰ {tpl.name}
                 </option>
               ))}
             </select>
@@ -600,9 +668,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               aria-label={t("Privacy di questo meeting")}
               title={
                 meeting.privacy === "hardened"
-                  ? t("Blindata: non esce niente da questo Mac. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.")
+                  ? t(
+                      "Blindata: non esce niente da questo Mac. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.",
+                    )
                   : meeting.privacy === "audio"
-                    ? t("Audio locale: l'audio si trascrive solo su questo Mac. Il testo può andare al provider AI configurato.")
+                    ? t(
+                        "Audio locale: l'audio si trascrive solo su questo Mac. Il testo può andare al provider AI configurato.",
+                      )
                     : t("Standard: valgono le impostazioni generali.")
               }
             >
@@ -654,7 +726,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               placeholder={t("Nome del tag")}
               prefix="#"
               chipClass="tag"
-              normalize={(raw) => raw.trim().replace(/^#+/, "").toLowerCase().replace(/[\s,]+/g, "-")}
+              normalize={(raw) =>
+                raw
+                  .trim()
+                  .replace(/^#+/, "")
+                  .toLowerCase()
+                  .replace(/[\s,]+/g, "-")
+              }
             />
           </div>
         </header>
@@ -688,17 +766,21 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             </button>
           ) : (
             <button
-              className={"btn small" + (canEnhance && !meeting.enhancedMd ? " primary" : "") + (confirmRegen ? " danger" : "")}
+              className={
+                "btn small" +
+                (canEnhance && !meeting.enhancedMd ? " primary" : "") +
+                (confirmRegen ? " danger" : "")
+              }
               disabled={!canEnhance}
               onClick={requestEnhance}
               title={
                 isImporting
                   ? t("Attendi la fine della trascrizione per generare le note")
                   : isRecording
-                  ? t("Ferma la registrazione per generare le note")
-                  : meeting.enhancedMd
-                    ? t("Rigenerando, le note AI attuali e le tue modifiche vengono sostituite")
-                    : ""
+                    ? t("Ferma la registrazione per generare le note")
+                    : meeting.enhancedMd
+                      ? t("Rigenerando, le note AI attuali e le tue modifiche vengono sostituite")
+                      : ""
               }
             >
               {confirmRegen
@@ -715,7 +797,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             <NoteEditor
               docKey={id + ":notes"}
               value={meeting.notesMd}
-              placeholder={t("Scrivi i punti importanti, al resto pensa la trascrizione. Digita / per i comandi.")}
+              placeholder={t(
+                "Scrivi i punti importanti, al resto pensa la trascrizione. Digita / per i comandi.",
+              )}
               onEditor={(editor) => (notesEditor.current = editor)}
               onChange={setNotes}
             />
@@ -741,10 +825,20 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             className={"rec-btn" + (inSession ? " on" : "")}
             onClick={toggleRecording}
             disabled={busyRec || otherRecording}
-            title={otherRecording ? t("C'è già una registrazione in corso su un altro meeting") : `${privacyLabel(meeting.privacy)}. ${privacyHint(meeting.privacy)}`}
+            title={
+              otherRecording
+                ? t("C'è già una registrazione in corso su un altro meeting")
+                : `${privacyLabel(meeting.privacy)}. ${privacyHint(meeting.privacy)}`
+            }
           >
             <span className="rec-icon" />
-            {isImporting ? t("Annulla") : isRecording ? t("Stop") : segments.length ? t("Riprendi") : t("Registra")}
+            {isImporting
+              ? t("Annulla")
+              : isRecording
+                ? t("Stop")
+                : segments.length
+                  ? t("Riprendi")
+                  : t("Registra")}
             {/* chi avvia la registrazione vede subito quanto di questo meeting può uscire dal Mac */}
             <PrivacyIcon privacy={meeting.privacy} />
           </button>
@@ -754,7 +848,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               value={micSpeaker}
               onChange={(e) => changeSpeaker(e.target.value)}
               aria-label={t("Chi sta parlando al microfono")}
-              title={t("Più persone allo stesso microfono? Indica chi sta parlando: da quel momento la trascrizione lo attribuisce a lui.")}
+              title={t(
+                "Più persone allo stesso microfono? Indica chi sta parlando: da quel momento la trascrizione lo attribuisce a lui.",
+              )}
             >
               <option value="me">{t("Al microfono: io")}</option>
               {meeting.attendees.map((name) => (
@@ -782,12 +878,19 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               onFocus={loadDevices}
               onChange={(e) => changeSystemDevice(e.target.value || null)}
               aria-label={t("Audio degli altri partecipanti")}
-              title={t("Da dove arriva l'audio degli altri partecipanti. Si può cambiare anche mentre registri.")}
+              title={t(
+                "Da dove arriva l'audio degli altri partecipanti. Si può cambiare anche mentre registri.",
+              )}
             >
               <option value="">{t("Altri: nessuno")}</option>
               <option value={SYSTEM_AUDIO}>{t("Altri: audio di sistema")}</option>
               {/* un dispositivo salvato ma ora scollegato resta visibile */}
-              {[...new Set([...(systemDevice && systemDevice !== SYSTEM_AUDIO ? [systemDevice] : []), ...devices])].map((d) => (
+              {[
+                ...new Set([
+                  ...(systemDevice && systemDevice !== SYSTEM_AUDIO ? [systemDevice] : []),
+                  ...devices,
+                ]),
+              ].map((d) => (
                 <option key={d} value={d}>
                   {t("Altri: {device}", { device: d })}
                 </option>
@@ -811,7 +914,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               <button
                 className="btn small ghost"
                 onClick={() => markMoment()}
-                title={t("Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)")}
+                title={t(
+                  "Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)",
+                )}
               >
                 {t("⚑ Segna")}
               </button>
@@ -820,7 +925,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
           {(finishing || (isRecording && rec.pendingChunks > 1)) && (
             <span className="muted small">{t("Completo la trascrizione…")}</span>
           )}
-          {!isRecording && otherRecording && <span className="muted small">{t("Registrazione in corso altrove")}</span>}
+          {!isRecording && otherRecording && (
+            <span className="muted small">{t("Registrazione in corso altrove")}</span>
+          )}
           <div className="spacer" />
           {side === "none" && sideButtons}
         </footer>
@@ -837,7 +944,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
           {/* l'audio salvato di questo meeting, se c'è: si riascolta accanto alla trascrizione */}
           {side === "transcript" && <Recordings meetingId={id} version={recVersion} toast={toast} />}
           {side === "transcript" ? (
-            <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} focus={transcriptFocus} onQuote={addQuote} onRedact={redact}
+            <TranscriptPanel
+              segments={segments}
+              live={isRecording}
+              importing={isImporting}
+              focus={transcriptFocus}
+              onQuote={addQuote}
+              onRedact={redact}
               onReview={review}
               onRename={renameSpeaker}
               privacy={meeting.privacy}
@@ -849,7 +962,11 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             <ChatPanel
               scope={id}
               toast={toast}
-              suggestions={[t("Scrivi una email di follow-up"), t("Quali sono le azioni e chi le fa?"), t("Cosa non è stato deciso?")]}
+              suggestions={[
+                t("Scrivi una email di follow-up"),
+                t("Quali sono le azioni e chi le fa?"),
+                t("Cosa non è stato deciso?"),
+              ]}
             />
           )}
           <footer className="recbar side-foot">{sideButtons}</footer>

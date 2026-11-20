@@ -1,8 +1,8 @@
 {
   "name": "granello",
+  "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,11 @@
     "tauri": "tauri",
     "dev:secrets": "envsec -c ai run --inject \"pnpm tauri dev\"",
     "test": "cd src-tauri && cargo test",
-    "check": "tsc && node scripts/check-i18n.mjs && cd src-tauri && cargo clippy --all-targets -- -D warnings && cargo test"
+    "check": "tsc && oxlint --deny-warnings && oxfmt --check && node scripts/check-i18n.mjs && cd src-tauri && cargo clippy --all-targets -- -D warnings && cargo test",
+    "lint": "oxlint --deny-warnings",
+    "fmt": "oxfmt",
+    "preview:data": "cd src-tauri && cargo test --lib preview_fixtures -- --ignored --quiet",
+    "preview": "pnpm preview:data && vite --port 1430 --strictPort"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -45,6 +49,8 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "oxfmt": "^0.78.0",
+    "oxlint": "^1.94.0",
     "typescript": "^5.6.3",
     "vite": "^6.0.0"
   },

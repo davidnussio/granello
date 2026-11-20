@@ -21,10 +21,10 @@ export default function BubbleToolbar({ editor, items }: { editor: Editor; items
       editor={editor}
       className="bubble-toolbar"
       tippyOptions={{ duration: 120, maxWidth: "none", onHidden: () => setPanelId(null) }}
-      shouldShow={({ editor, state, element }) => {
+      shouldShow={({ editor: ed, state, element }) => {
         const inMenu = element.contains(document.activeElement);
-        if (!editor.isEditable || (!editor.isFocused && !inMenu)) return false;
-        return !state.selection.empty && !editor.isActive("codeBlock");
+        if (!ed.isEditable || (!ed.isFocused && !inMenu)) return false;
+        return !state.selection.empty && !ed.isActive("codeBlock");
       }}
     >
       {panelItem?.panel ? (

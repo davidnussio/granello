@@ -72,6 +72,9 @@ function el(tag: string, attrs: Record<string, string | number>, text?: string):
   return node;
 }
 
+const show = (n: number) =>
+  Math.abs(n) >= 1000 ? `${Math.round(n / 100) / 10}k` : String(Math.round(n * 100) / 100);
+
 function draw(data: TableData, kind: Chart["kind"]): SVGElement {
   const W = 680;
   const H = 240;
@@ -84,7 +87,6 @@ function draw(data: TableData, kind: Chart["kind"]): SVGElement {
   const innerH = H - m.top - m.bottom;
   const y = (v: number) => m.top + innerH - ((v - min) / span) * innerH;
   const band = innerW / data.categories.length;
-  const show = (n: number) => (Math.abs(n) >= 1000 ? `${Math.round(n / 100) / 10}k` : String(Math.round(n * 100) / 100));
 
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart-svg", role: "img" });
   for (let i = 0; i <= 4; i++) {
@@ -96,7 +98,13 @@ function draw(data: TableData, kind: Chart["kind"]): SVGElement {
   }
   data.categories.forEach((label, i) => {
     const text = label.length > 14 ? `${label.slice(0, 13)}…` : label;
-    svg.append(el("text", { x: m.left + band * (i + 0.5), y: H - 10, "text-anchor": "middle", class: "chart-tick" }, text));
+    svg.append(
+      el(
+        "text",
+        { x: m.left + band * (i + 0.5), y: H - 10, "text-anchor": "middle", class: "chart-tick" },
+        text,
+      ),
+    );
   });
 
   data.series.forEach((s, si) => {
@@ -106,14 +114,34 @@ function draw(data: TableData, kind: Chart["kind"]): SVGElement {
       s.values.forEach((v, i) => {
         if (v === null) return;
         const x = m.left + band * i + band * 0.14 + width * si;
-        const bar = el("rect", { x, y: Math.min(y(v), y(0)), width: Math.max(1, width - 2), height: Math.max(1, Math.abs(y(v) - y(0))), rx: 2, fill: color });
+        const bar = el("rect", {
+          x,
+          y: Math.min(y(v), y(0)),
+          width: Math.max(1, width - 2),
+          height: Math.max(1, Math.abs(y(v) - y(0))),
+          rx: 2,
+          fill: color,
+        });
         bar.append(el("title", {}, `${s.name} · ${data.categories[i]}: ${v}`));
         svg.append(bar);
       });
     } else {
-      const points = s.values.map((v, i) => (v === null ? null : [m.left + band * (i + 0.5), y(v)] as const));
-      const path = points.filter((p) => p !== null).map((p) => p!.join(",")).join(" ");
-      svg.append(el("polyline", { points: path, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }));
+      const points = s.values.map((v, i) =>
+        v === null ? null : ([m.left + band * (i + 0.5), y(v)] as const),
+      );
+      const path = points
+        .filter((p) => p !== null)
+        .map((p) => p!.join(","))
+        .join(" ");
+      svg.append(
+        el("polyline", {
+          points: path,
+          fill: "none",
+          stroke: color,
+          "stroke-width": 2,
+          "stroke-linejoin": "round",
+        }),
+      );
       points.forEach((p, i) => {
         if (!p) return;
         const dot = el("circle", { cx: p[0], cy: p[1], r: 3.5, fill: color });
@@ -141,7 +169,11 @@ function render(view: BlockView<Chart>) {
 
   if (!data) {
     view.dom.replaceChildren(
-      h("span", { class: "chart-empty" }, t("Il grafico disegna la tabella che lo precede: prima colonna le voci, le altre i numeri.")),
+      h(
+        "span",
+        { class: "chart-empty" },
+        t("Il grafico disegna la tabella che lo precede: prima colonna le voci, le altre i numeri."),
+      ),
     );
     return;
   }
@@ -150,7 +182,12 @@ function render(view: BlockView<Chart>) {
       "div",
       { class: "chart-head" },
       ...data.series.map((s, i) =>
-        h("span", { class: "chart-legend" }, h("span", { class: "chart-swatch", style: `background: ${COLORS[i % COLORS.length]}` }), s.name),
+        h(
+          "span",
+          { class: "chart-legend" },
+          h("span", { class: "chart-swatch", style: `background: ${COLORS[i % COLORS.length]}` }),
+          s.name,
+        ),
       ),
       h(
         "button",

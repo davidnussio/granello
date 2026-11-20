@@ -42,7 +42,8 @@ const Mention = Node.create({
             once(md, "mention", () => {
               md.inline.ruler.before("link", "mention", (state, silent) => {
                 const start = state.pos;
-                if (state.src.charCodeAt(start) !== 0x40 || state.src.charCodeAt(start + 1) !== 0x5b) return false;
+                if (state.src.charCodeAt(start) !== 0x40 || state.src.charCodeAt(start + 1) !== 0x5b)
+                  return false;
                 const end = state.src.indexOf("]", start + 2);
                 if (end < 0 || end >= state.posMax) return false;
                 const name = state.src.slice(start + 2, end).trim();
@@ -62,7 +63,12 @@ const Mention = Node.create({
   },
 });
 
-const cleanName = (raw: string) => raw.replace(/[[\]\n]/g, "").replace(/\s+/g, " ").trim().slice(0, 80);
+const cleanName = (raw: string) =>
+  raw
+    .replace(/[[\]\n]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
 
 function person(name: string, hint?: string): CommandItem {
   return {
@@ -77,7 +83,10 @@ function person(name: string, hint?: string): CommandItem {
       e
         .chain()
         .focus()
-        .insertContent([{ type: "mention", attrs: { name } }, { type: "text", text: " " }])
+        .insertContent([
+          { type: "mention", attrs: { name } },
+          { type: "text", text: " " },
+        ])
         .run(),
   };
 }

@@ -26,7 +26,10 @@ export default function ChatPanel({ scope, toast, suggestions = [], big, title, 
   const field = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    api.getChat(scope).then(setMessages).catch((e) => toast(errorText(e)));
+    api
+      .getChat(scope)
+      .then(setMessages)
+      .catch((e) => toast(errorText(e)));
   }, [scope, toast]);
 
   useEffect(
@@ -63,7 +66,10 @@ export default function ChatPanel({ scope, toast, suggestions = [], big, title, 
     const sid = newStreamId();
     streamRef.current = sid;
     setStreaming("");
-    setMessages((m) => [...m, { id: -Date.now(), scope, role: "user", content: question, createdAt: Date.now() }]);
+    setMessages((m) => [
+      ...m,
+      { id: -Date.now(), scope, role: "user", content: question, createdAt: Date.now() },
+    ]);
     try {
       await api.chat(scope, question, sid);
     } catch (e) {
@@ -89,7 +95,13 @@ export default function ChatPanel({ scope, toast, suggestions = [], big, title, 
   };
 
   const newChatButton = !empty && (
-    <button type="button" className="btn small ghost" onClick={clear} disabled={busy} title={t("Nuova conversazione")}>
+    <button
+      type="button"
+      className="btn small ghost"
+      onClick={clear}
+      disabled={busy}
+      title={t("Nuova conversazione")}
+    >
       {big ? t("+ Nuova conversazione") : "+"}
     </button>
   );
@@ -110,7 +122,9 @@ export default function ChatPanel({ scope, toast, suggestions = [], big, title, 
             <div className="chat-empty">
               {big && (
                 <>
-                  <div className="chat-mark"><Sparkles /></div>
+                  <div className="chat-mark">
+                    <Sparkles />
+                  </div>
                   <h1>{title}</h1>
                   {subtitle && <p className="muted">{subtitle}</p>}
                 </>

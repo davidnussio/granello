@@ -16,18 +16,31 @@ interface Props {
   onOpenSettings: () => void;
 }
 
-export default function Home({ events, calendars, onToggleCalendar, onNew, onOpenEvent, onRefresh, setup, demo, onOpenSettings }: Props) {
+export default function Home({
+  events,
+  calendars,
+  onToggleCalendar,
+  onNew,
+  onOpenEvent,
+  onRefresh,
+  setup,
+  demo,
+  onOpenSettings,
+}: Props) {
   const now = Date.now();
   const upcoming = events.filter((e) => e.end > now);
   const active = calendars.filter((c) => c.enabled);
   // da quale calendario arriva un evento interessa solo se ce n'è più di uno attivo
-  const calendarName = (id: string) => (active.length > 1 ? calendars.find((c) => c.id === id)?.name : undefined);
+  const calendarName = (id: string) =>
+    active.length > 1 ? calendars.find((c) => c.id === id)?.name : undefined;
 
   return (
     <div className="page">
       <h1 className="page-title">{t("Ciao 👋")}</h1>
       <p className="muted">
-        {t("Apri un meeting dal calendario o crea note nuove. Scrivi quello che ti sembra importante: Granello trascrive in locale e alla fine l'AI arricchisce le tue note con la trascrizione.")}
+        {t(
+          "Apri un meeting dal calendario o crea note nuove. Scrivi quello che ti sembra importante: Granello trascrive in locale e alla fine l'AI arricchisce le tue note con la trascrizione.",
+        )}
       </p>
       <div className="row gap" style={{ margin: "20px 0 32px" }}>
         <button className="btn primary" onClick={onNew}>
@@ -45,7 +58,9 @@ export default function Home({ events, calendars, onToggleCalendar, onNew, onOpe
             <li className={setup.hasModel ? "done" : ""}>
               <strong>{t("Modello di trascrizione")}</strong>
               <span className="muted small">
-                {setup.hasModel ? t("Scaricato") : t("Serve per registrare: scaricalo una volta, poi funziona offline.")}
+                {setup.hasModel
+                  ? t("Scaricato")
+                  : t("Serve per registrare: scaricalo una volta, poi funziona offline.")}
               </span>
             </li>
             <li className={setup.hasKey ? "done" : ""}>
@@ -74,8 +89,13 @@ export default function Home({ events, calendars, onToggleCalendar, onNew, onOpe
           <h3>{demo.count ? t("Stai vedendo i dati di esempio") : t("Vuoi vedere cosa sa fare?")}</h3>
           <p className="muted small">
             {demo.count
-              ? t("{n} meeting inventati, con note, trascrizioni e progetti. Quando hai finito di esplorare puoi toglierli: i tuoi meeting restano.", { n: demo.count })
-              : t("Carica qualche meeting inventato ma realistico: note con tutti i blocchi, trascrizioni, note AI e progetti nella Libreria. Si tolgono con un clic.")}
+              ? t(
+                  "{n} meeting inventati, con note, trascrizioni e progetti. Quando hai finito di esplorare puoi toglierli: i tuoi meeting restano.",
+                  { n: demo.count },
+                )
+              : t(
+                  "Carica qualche meeting inventato ma realistico: note con tutti i blocchi, trascrizioni, note AI e progetti nella Libreria. Si tolgono con un clic.",
+                )}
           </p>
         </div>
         <DemoButton demo={demo} primary={demo.count === 0} />
@@ -108,7 +128,9 @@ export default function Home({ events, calendars, onToggleCalendar, onNew, onOpe
       {upcoming.length === 0 && (
         <p className="muted small">
           {calendars.length === 0
-            ? t("Nessun evento. Aggiungi l'URL iCal del tuo calendario nelle Impostazioni per vedere qui i meeting.")
+            ? t(
+                "Nessun evento. Aggiungi l'URL iCal del tuo calendario nelle Impostazioni per vedere qui i meeting.",
+              )
             : active.length === 0
               ? t("Tutti i calendari sono disattivati.")
               : t("Nessun evento nei prossimi giorni.")}
@@ -128,10 +150,15 @@ export default function Home({ events, calendars, onToggleCalendar, onNew, onOpe
                 <div className="event-body">
                   <div className="event-title">
                     {e.title}
-                    {calendarName(e.calendarId) && <span className="chip tiny event-calendar">{calendarName(e.calendarId)}</span>}
+                    {calendarName(e.calendarId) && (
+                      <span className="chip tiny event-calendar">{calendarName(e.calendarId)}</span>
+                    )}
                   </div>
                   {e.attendees.length > 0 && (
-                    <div className="muted small ellipsis">{e.attendees.slice(0, 5).join(", ")}{e.attendees.length > 5 ? ` +${e.attendees.length - 5}` : ""}</div>
+                    <div className="muted small ellipsis">
+                      {e.attendees.slice(0, 5).join(", ")}
+                      {e.attendees.length > 5 ? ` +${e.attendees.length - 5}` : ""}
+                    </div>
                   )}
                 </div>
                 <button className={"btn small" + (live ? " primary" : "")} onClick={() => onOpenEvent(e)}>

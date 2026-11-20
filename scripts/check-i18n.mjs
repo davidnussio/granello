@@ -21,9 +21,16 @@ for (const f of files("src")) {
 
 // chiavi calcolate a runtime (t(variabile)): elencate qui perché l'analisi statica non le vede
 const dynamic = [
-  "Titolo", "Sezione", "Sottosezione",
-  "Italiano", "Tedesco", "Francese", "Inglese", "Rilevamento automatico",
-  "Altro", "Server personalizzato",
+  "Titolo",
+  "Sezione",
+  "Sottosezione",
+  "Italiano",
+  "Tedesco",
+  "Francese",
+  "Inglese",
+  "Rilevamento automatico",
+  "Altro",
+  "Server personalizzato",
 ];
 
 const dictSrc = readFileSync("src/i18n/en.ts", "utf8");

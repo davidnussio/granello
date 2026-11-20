@@ -32,8 +32,16 @@ const LinkCard = Node.create({
   draggable: true,
   addAttributes() {
     return {
-      url: { default: "", parseHTML: (el) => el.getAttribute("data-url") ?? "", renderHTML: (a) => ({ "data-url": a.url }) },
-      title: { default: "", parseHTML: (el) => el.getAttribute("data-title") ?? "", renderHTML: (a) => ({ "data-title": a.title }) },
+      url: {
+        default: "",
+        parseHTML: (el) => el.getAttribute("data-url") ?? "",
+        renderHTML: (a) => ({ "data-url": a.url }),
+      },
+      title: {
+        default: "",
+        parseHTML: (el) => el.getAttribute("data-title") ?? "",
+        renderHTML: (a) => ({ "data-title": a.title }),
+      },
     };
   },
   parseHTML() {
@@ -73,7 +81,8 @@ const LinkCard = Node.create({
           .then((title) => {
             const at = position();
             // la scheda potrebbe essere stata tolta o cambiata nel frattempo
-            if (title && at !== null && editor.view.state.doc.nodeAt(at)?.attrs.url === url) setAttrs({ url, title });
+            if (title && at !== null && editor.view.state.doc.nodeAt(at)?.attrs.url === url)
+              setAttrs({ url, title });
           })
           .catch(() => {});
       };
@@ -142,7 +151,13 @@ const LinkCard = Node.create({
             once(md, "link-card", () => {
               replaceParagraphs(md, "link_card", (inline) => {
                 const c = inline.children ?? [];
-                if (c.length !== 3 || c[0].type !== "link_open" || c[1].type !== "text" || c[2].type !== "link_close") return null;
+                if (
+                  c.length !== 3 ||
+                  c[0].type !== "link_open" ||
+                  c[1].type !== "text" ||
+                  c[2].type !== "link_close"
+                )
+                  return null;
                 if (c[0].attrGet("title") !== "preview") return null;
                 const url = c[0].attrGet("href") ?? "";
                 return `<div data-link-card data-url="${escAttr(url)}" data-title="${escAttr(c[1].content)}"></div>`;

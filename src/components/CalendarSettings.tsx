@@ -16,7 +16,10 @@ export default function CalendarSettings({ calendars, onSave }: Props) {
   const [rows, setRows] = useState<Calendar[]>(calendars);
 
   useEffect(() => {
-    setRows((prev) => [...calendars, ...prev.filter((r) => !r.url.trim() && !calendars.some((c) => c.id === r.id))]);
+    setRows((prev) => [
+      ...calendars,
+      ...prev.filter((r) => !r.url.trim() && !calendars.some((c) => c.id === r.id)),
+    ]);
   }, [calendars]);
 
   const commit = (next: Calendar[]) => {
@@ -25,7 +28,8 @@ export default function CalendarSettings({ calendars, onSave }: Props) {
     const same = JSON.stringify(complete) === JSON.stringify(calendars);
     if (!same) onSave(complete);
   };
-  const edit = (id: string, patch: Partial<Calendar>) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
+  const edit = (id: string, patch: Partial<Calendar>) =>
+    rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
 
   return (
     // non è un .field: il nome del calendario ha lo stile sobrio dei nomi dei provider
@@ -44,7 +48,10 @@ export default function CalendarSettings({ calendars, onSave }: Props) {
               onBlur={() => commit(rows)}
             />
             <div className="spacer" />
-            <label className="calendar-enabled" title={t("Un calendario disattivato resta configurato ma non mostra eventi né notifiche.")}>
+            <label
+              className="calendar-enabled"
+              title={t("Un calendario disattivato resta configurato ma non mostra eventi né notifiche.")}
+            >
               <input
                 type="checkbox"
                 checked={c.enabled}
@@ -52,7 +59,10 @@ export default function CalendarSettings({ calendars, onSave }: Props) {
               />
               {t("Attivo")}
             </label>
-            <button className="btn small ghost danger" onClick={() => commit(rows.filter((r) => r.id !== c.id))}>
+            <button
+              className="btn small ghost danger"
+              onClick={() => commit(rows.filter((r) => r.id !== c.id))}
+            >
               {t("Rimuovi")}
             </button>
           </div>
@@ -80,7 +90,9 @@ export default function CalendarSettings({ calendars, onSave }: Props) {
         </button>
       </div>
       <small className="muted">
-        {t("Google Calendar: Impostazioni del calendario → \"Indirizzo segreto in formato iCal\". Outlook: Calendario → Pubblica calendario → link ICS.")}
+        {t(
+          'Google Calendar: Impostazioni del calendario → "Indirizzo segreto in formato iCal". Outlook: Calendario → Pubblica calendario → link ICS.',
+        )}
       </small>
     </div>
   );

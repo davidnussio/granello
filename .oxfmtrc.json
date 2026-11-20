@@ -1,0 +1,4 @@
+{
+  "printWidth": 110,
+  "ignorePatterns": ["dist/**", "src-tauri/**", "*.md"]
+}

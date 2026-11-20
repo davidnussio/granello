@@ -10,13 +10,28 @@ interface Timeline {
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const clean = (s: string) => s.replace(/\s+/g, " ").trim();
-const sorted = (items: Timeline["items"]) => [...items].sort((a, b) => a.date.localeCompare(b.date));
+const sorted = (items: Timeline["items"]) => items.toSorted((a, b) => a.date.localeCompare(b.date));
+
+const pad = (n: number) => String(n).padStart(2, "0");
 
 function today(): string {
   const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+const dateInput = (value: string, onChange: (date: string) => void, label: string) =>
+  h("input", {
+    type: "date",
+    value,
+    class: "timeline-date-input",
+    attrs: { "aria-label": label },
+    on: {
+      change: (e) => {
+        const picked = (e.target as HTMLInputElement).value;
+        if (ISO.test(picked)) onChange(picked);
+      },
+    },
+  });
 
 function render(view: BlockView<Timeline>) {
   const items = sorted(view.data.items);
@@ -24,20 +39,6 @@ function render(view: BlockView<Timeline>) {
   // la prossima tappa: la prima che non è ancora passata
   const next = items.findIndex((i) => i.date >= now);
   const save = (list: Timeline["items"], focus?: string) => view.set({ items: sorted(list) }, focus);
-
-  const dateInput = (value: string, onChange: (date: string) => void, label: string) =>
-    h("input", {
-      type: "date",
-      value,
-      class: "timeline-date-input",
-      attrs: { "aria-label": label },
-      on: {
-        change: (e) => {
-          const picked = (e.target as HTMLInputElement).value;
-          if (ISO.test(picked)) onChange(picked);
-        },
-      },
-    });
 
   let newDate = now;
   view.dom.replaceChildren(
@@ -53,7 +54,11 @@ function render(view: BlockView<Timeline>) {
             "label",
             { class: "timeline-date", title: t("Cambia la data") },
             dayLabel(new Date(`${item.date}T12:00:00`).getTime()),
-            dateInput(item.date, (date) => save(items.map((x, j) => (j === i ? { ...x, date } : x))), t("Cambia la data")),
+            dateInput(
+              item.date,
+              (date) => save(items.map((x, j) => (j === i ? { ...x, date } : x))),
+              t("Cambia la data"),
+            ),
           ),
           field(item.text, (text) => save(items.map((x, j) => (j === i ? { ...x, text: clean(text) } : x))), {
             placeholder: t("Tappa"),
@@ -102,7 +107,8 @@ const TimelineBlock = dataBlock<Timeline>({
   empty: { items: [] },
   autofocus: "new",
   ai: {
-    format: "::: timeline\n- 2026-11-26 Rilascio\n- 2026-12-10 Go-live\n:::\n\nUna tappa per riga: la data in formato AAAA-MM-GG, uno spazio, il titolo.",
+    format:
+      "::: timeline\n- 2026-11-26 Rilascio\n- 2026-12-10 Go-live\n:::\n\nUna tappa per riga: la data in formato AAAA-MM-GG, uno spazio, il titolo.",
   },
   format: {
     kind: "container",

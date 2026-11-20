@@ -103,7 +103,13 @@ export default function Sidebar(p: Props) {
                       </span>
                     ))}
                     {m.tags.length > 2 && (
-                      <span className="side-tag more" title={m.tags.slice(2).map((x) => "#" + x).join(" ")}>
+                      <span
+                        className="side-tag more"
+                        title={m.tags
+                          .slice(2)
+                          .map((x) => "#" + x)
+                          .join(" ")}
+                      >
                         +{m.tags.length - 2}
                       </span>
                     )}
@@ -118,7 +124,9 @@ export default function Sidebar(p: Props) {
       {p.rec.meetingId && p.rec.meetingId !== selectedId && (
         <button
           className="rec-pill"
-          title={p.rec.importing ? t("Apri il meeting in trascrizione") : t("Apri il meeting in registrazione")}
+          title={
+            p.rec.importing ? t("Apri il meeting in trascrizione") : t("Apri il meeting in registrazione")
+          }
           onClick={() => p.setView({ kind: "meeting", id: p.rec.meetingId! })}
         >
           {p.rec.importing ? t("● Trascrizione del file in corso") : t("● Registrazione in corso")}
@@ -126,10 +134,16 @@ export default function Sidebar(p: Props) {
       )}
 
       <div className="sidebar-bottom">
-        <button className={navCls(p.view.kind === "templates")} onClick={() => p.setView({ kind: "templates" })}>
+        <button
+          className={navCls(p.view.kind === "templates")}
+          onClick={() => p.setView({ kind: "templates" })}
+        >
           {t("☰ Template")}
         </button>
-        <button className={navCls(p.view.kind === "settings")} onClick={() => p.setView({ kind: "settings" })}>
+        <button
+          className={navCls(p.view.kind === "settings")}
+          onClick={() => p.setView({ kind: "settings" })}
+        >
           {t("⚙ Impostazioni")}
         </button>
       </div>
@@ -142,7 +156,10 @@ function navCls(active: boolean) {
 }
 
 function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  );
 }
 
 function highlight(snippet: string) {

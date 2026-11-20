@@ -51,7 +51,12 @@ const Toc = Node.create({
             item.textContent = h.text;
             item.addEventListener("mousedown", (e) => {
               e.preventDefault();
-              editor.chain().focus().setTextSelection(h.pos + 1).scrollIntoView().run();
+              editor
+                .chain()
+                .focus()
+                .setTextSelection(h.pos + 1)
+                .scrollIntoView()
+                .run();
             });
             return item;
           }),

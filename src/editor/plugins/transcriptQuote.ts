@@ -99,7 +99,10 @@ const QuoteBlock = dataBlock<TranscriptQuote>({
       const ms = m ? parseTime(m[1]) : null;
       return { ms: ms ?? 0, who: ms === null ? info : m![2], text: oneLine(lines.join(" ")) };
     },
-    write: (data) => ({ info: `${mmss(data.ms)} ${data.who}`, lines: data.text.trim() ? [oneLine(data.text)] : [] }),
+    write: (data) => ({
+      info: `${mmss(data.ms)} ${data.who}`,
+      lines: data.text.trim() ? [oneLine(data.text)] : [],
+    }),
   },
   render,
 });

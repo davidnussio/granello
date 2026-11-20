@@ -20,6 +20,16 @@ export function totals(data: Matrix): number[] {
   return data.options.map((_, i) => data.criteria.reduce((sum, c) => sum + c.weight * (c.scores[i] ?? 0), 0));
 }
 
+// "-" è come si scrive un nome lasciato vuoto
+const cellName = (cell: string | undefined) => (cell === "-" ? "" : (cell ?? ""));
+const tableRow = (values: string[]) => `| ${values.join(" | ")} |`;
+const num = (value: number, onCommit: (n: number) => void, label: string) =>
+  field(show(value), (v) => onCommit(number(v)), {
+    class: "matrix-num",
+    inputMode: "decimal",
+    attrs: { "aria-label": label },
+  });
+
 function render(view: BlockView<Matrix>) {
   const { data } = view;
   const sums = totals(data);
@@ -28,9 +38,6 @@ function render(view: BlockView<Matrix>) {
     ...data,
     criteria: data.criteria.map((c, j) => (j === i ? { ...c, ...patch } : c)),
   });
-  const num = (value: number, onCommit: (n: number) => void, label: string) =>
-    field(show(value), (v) => onCommit(number(v)), { class: "matrix-num", inputMode: "decimal", attrs: { "aria-label": label } });
-
   view.dom.replaceChildren(
     h(
       "table",
@@ -47,10 +54,15 @@ function render(view: BlockView<Matrix>) {
             h(
               "th",
               {},
-              field(option, (name) => view.set({ ...data, options: data.options.map((o, j) => (j === i ? clean(name) : o)) }), {
-                placeholder: t("Opzione {n}", { n: i + 1 }),
-                attrs: { "data-focus": `option-${i}`, "aria-label": t("Opzione {n}", { n: i + 1 }) },
-              }),
+              field(
+                option,
+                (name) =>
+                  view.set({ ...data, options: data.options.map((o, j) => (j === i ? clean(name) : o)) }),
+                {
+                  placeholder: t("Opzione {n}", { n: i + 1 }),
+                  attrs: { "data-focus": `option-${i}`, "aria-label": t("Opzione {n}", { n: i + 1 }) },
+                },
+              ),
               h(
                 "button",
                 {
@@ -61,7 +73,10 @@ function render(view: BlockView<Matrix>) {
                     click: () =>
                       view.set({
                         options: data.options.filter((_, j) => j !== i),
-                        criteria: data.criteria.map((c) => ({ ...c, scores: c.scores.filter((_, j) => j !== i) })),
+                        criteria: data.criteria.map((c) => ({
+                          ...c,
+                          scores: c.scores.filter((_, j) => j !== i),
+                        })),
                       }),
                   },
                 },
@@ -87,14 +102,23 @@ function render(view: BlockView<Matrix>) {
                 attrs: { "data-focus": `criterion-${i}`, "aria-label": t("Criterio") },
               }),
             ),
-            h("td", { class: "matrix-weight" }, num(c.weight, (weight) => view.set(withCriterion(i, { weight })), t("Peso"))),
+            h(
+              "td",
+              { class: "matrix-weight" },
+              num(c.weight, (weight) => view.set(withCriterion(i, { weight })), t("Peso")),
+            ),
             ...data.options.map((option, j) =>
               h(
                 "td",
                 {},
                 num(
                   c.scores[j] ?? 0,
-                  (score) => view.set(withCriterion(i, { scores: data.options.map((_, k) => (k === j ? score : c.scores[k] ?? 0)) })),
+                  (score) =>
+                    view.set(
+                      withCriterion(i, {
+                        scores: data.options.map((_, k) => (k === j ? score : (c.scores[k] ?? 0))),
+                      }),
+                    ),
                   `${c.name} · ${option}`,
                 ),
               ),
@@ -108,7 +132,9 @@ function render(view: BlockView<Matrix>) {
                   type: "button",
                   class: "block-btn remove",
                   title: t("Togli il criterio"),
-                  on: { click: () => view.set({ ...data, criteria: data.criteria.filter((_, j) => j !== i) }) },
+                  on: {
+                    click: () => view.set({ ...data, criteria: data.criteria.filter((_, j) => j !== i) }),
+                  },
                 },
                 "×",
               ),
@@ -124,7 +150,9 @@ function render(view: BlockView<Matrix>) {
           {},
           h("td", {}, t("Totale")),
           h("td", { class: "matrix-weight" }),
-          ...sums.map((sum) => h("td", { class: "matrix-total" + (sum > 0 && sum === best ? " best" : "") }, show(sum))),
+          ...sums.map((sum) =>
+            h("td", { class: "matrix-total" + (sum > 0 && sum === best ? " best" : "") }, show(sum)),
+          ),
           h("td", { class: "matrix-end" }),
         ),
       ),
@@ -140,7 +168,10 @@ function render(view: BlockView<Matrix>) {
           on: {
             click: () =>
               view.set(
-                { ...data, criteria: [...data.criteria, { name: "", weight: 1, scores: data.options.map(() => 0) }] },
+                {
+                  ...data,
+                  criteria: [...data.criteria, { name: "", weight: 1, scores: data.options.map(() => 0) }],
+                },
                 `criterion-${data.criteria.length}`,
               ),
           },
@@ -155,7 +186,10 @@ function render(view: BlockView<Matrix>) {
           on: {
             click: () =>
               view.set(
-                { options: [...data.options, ""], criteria: data.criteria.map((c) => ({ ...c, scores: [...c.scores, 0] })) },
+                {
+                  options: [...data.options, ""],
+                  criteria: data.criteria.map((c) => ({ ...c, scores: [...c.scores, 0] })),
+                },
                 `option-${data.options.length}`,
               ),
           },
@@ -189,7 +223,8 @@ const MatrixBlock = dataBlock<Matrix>({
   tag: "matrix",
   empty: { options: [], criteria: [] },
   ai: {
-    format: "::: matrix\n| Criterio | Peso | Opzione A | Opzione B |\n| --- | --- | --- | --- |\n| Costo | 3 | 4 | 2 |\n| Tempi | 2 | 3 | 5 |\n:::\n\nUna tabella: le prime due colonne sono il criterio e il suo peso (da 1 a 5), le altre sono le opzioni a confronto. In ogni cella il voto dell'opzione su quel criterio, da 0 a 5. Il totale non va scritto: lo calcola l'app.",
+    format:
+      "::: matrix\n| Criterio | Peso | Opzione A | Opzione B |\n| --- | --- | --- | --- |\n| Costo | 3 | 4 | 2 |\n| Tempi | 2 | 3 | 5 |\n:::\n\nUna tabella: le prime due colonne sono il criterio e il suo peso (da 1 a 5), le altre sono le opzioni a confronto. In ogni cella il voto dell'opzione su quel criterio, da 0 a 5. Il totale non va scritto: lo calcola l'app.",
   },
   format: {
     kind: "container",
@@ -197,23 +232,30 @@ const MatrixBlock = dataBlock<Matrix>({
       const rows = lines.filter((l) => l.trim().startsWith("|")).map(cells);
       const [head, ...rest] = rows;
       if (!head) return { options: [], criteria: [] };
-      // "-" è come si scrive un nome lasciato vuoto
-      const name = (cell: string | undefined) => (cell === "-" ? "" : cell ?? "");
-      const options = head.slice(2).map(name);
+      const options = head.slice(2).map(cellName);
       return {
         options,
         criteria: rest
           .filter((r) => !r.every((c) => /^:?-+:?$/.test(c)))
-          .map((r) => ({ name: name(r[0]), weight: number(r[1] ?? "1"), scores: options.map((_, i) => number(r[i + 2] ?? "0")) })),
+          .map((r) => ({
+            name: cellName(r[0]),
+            weight: number(r[1] ?? "1"),
+            scores: options.map((_, i) => number(r[i + 2] ?? "0")),
+          })),
       };
     },
     write: (data) => {
-      const row = (values: string[]) => `| ${values.join(" | ")} |`;
       return {
         lines: [
-          row([t("Criterio"), t("Peso"), ...data.options.map((o) => clean(o) || "-")]),
-          row(["---", "---", ...data.options.map(() => "---")]),
-          ...data.criteria.map((c) => row([clean(c.name) || "-", show(c.weight), ...data.options.map((_, i) => show(c.scores[i] ?? 0))])),
+          tableRow([t("Criterio"), t("Peso"), ...data.options.map((o) => clean(o) || "-")]),
+          tableRow(["---", "---", ...data.options.map(() => "---")]),
+          ...data.criteria.map((c) =>
+            tableRow([
+              clean(c.name) || "-",
+              show(c.weight),
+              ...data.options.map((_, i) => show(c.scores[i] ?? 0)),
+            ]),
+          ),
         ],
       };
     },

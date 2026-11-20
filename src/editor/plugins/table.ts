@@ -39,7 +39,10 @@ const NoteTable = Table.extend({
               if (j) state.write(" | ");
               const from = state.out.length;
               if (cellNode.firstChild?.textContent.trim()) state.renderInline(cellNode.firstChild);
-              const text = state.out.slice(from).replace(/\\?\|/g, "\\|").replace(/\s*\n\s*/g, " ");
+              const text = state.out
+                .slice(from)
+                .replace(/\\?\|/g, "\\|")
+                .replace(/\s*\n\s*/g, " ");
               state.out = state.out.slice(0, from) + text;
             });
             state.write(" |");
@@ -82,11 +85,36 @@ export const table: EditorPlugin = {
     TableCell.extend({ content: "paragraph" }),
   ],
   commands: [
-    cell("table-row-add", "+", () => t("Aggiungi riga sotto"), (e) => e.chain().focus().addRowAfter().run()),
-    cell("table-col-add", "+", () => t("Aggiungi colonna a destra"), (e) => e.chain().focus().addColumnAfter().run()),
-    cell("table-row-del", "−", () => t("Elimina riga"), (e) => e.chain().focus().deleteRow().run()),
-    cell("table-col-del", "−", () => t("Elimina colonna"), (e) => e.chain().focus().deleteColumn().run()),
-    cell("table-del", "✕", () => t("Elimina tabella"), (e) => e.chain().focus().deleteTable().run()),
+    cell(
+      "table-row-add",
+      "+",
+      () => t("Aggiungi riga sotto"),
+      (e) => e.chain().focus().addRowAfter().run(),
+    ),
+    cell(
+      "table-col-add",
+      "+",
+      () => t("Aggiungi colonna a destra"),
+      (e) => e.chain().focus().addColumnAfter().run(),
+    ),
+    cell(
+      "table-row-del",
+      "−",
+      () => t("Elimina riga"),
+      (e) => e.chain().focus().deleteRow().run(),
+    ),
+    cell(
+      "table-col-del",
+      "−",
+      () => t("Elimina colonna"),
+      (e) => e.chain().focus().deleteColumn().run(),
+    ),
+    cell(
+      "table-del",
+      "✕",
+      () => t("Elimina tabella"),
+      (e) => e.chain().focus().deleteTable().run(),
+    ),
     {
       id: "table",
       get title() {

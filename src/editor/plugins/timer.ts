@@ -19,7 +19,8 @@ interface Running {
 }
 
 const MAX = 24 * 60 * 60;
-const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+const clock = (s: number) =>
+  `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
 /** "5" = 5 minuti, "1:30" = un minuto e mezzo. */
 export function parseDuration(text: string): number | null {
@@ -96,11 +97,19 @@ function render(view: BlockView<Timer>) {
     ),
     running || s.left !== s.duration
       ? h("span", { class: "timer-time" }, clock(s.left))
-      : field(clock(duration), (text) => {
-          const seconds = parseDuration(text);
-          if (seconds) view.set({ seconds });
-          else render(view);
-        }, { class: "timer-time", title: t("Durata: minuti, o minuti:secondi"), attrs: { "data-focus": "time", "aria-label": t("Durata del timer") } }),
+      : field(
+          clock(duration),
+          (text) => {
+            const seconds = parseDuration(text);
+            if (seconds) view.set({ seconds });
+            else render(view);
+          },
+          {
+            class: "timer-time",
+            title: t("Durata: minuti, o minuti:secondi"),
+            attrs: { "data-focus": "time", "aria-label": t("Durata del timer") },
+          },
+        ),
     h("span", { class: "timer-bar" }, h("span", { style: `width: ${share}%` })),
     h(
       "button",

@@ -76,9 +76,16 @@ function render(view: BlockView<Kanban>) {
                 },
               },
               // su più righe: il testo di una scheda va a capo invece di essere tagliato
-              area(card, (text) => view.set(withColumn(ci, { cards: column.cards.map((c, j) => (j === i ? clean(text) : c)) })), {
-                attrs: { "aria-label": t("Scheda") },
-              }),
+              area(
+                card,
+                (text) =>
+                  view.set(
+                    withColumn(ci, { cards: column.cards.map((c, j) => (j === i ? clean(text) : c)) }),
+                  ),
+                {
+                  attrs: { "aria-label": t("Scheda") },
+                },
+              ),
               // chi non trascina sposta con le frecce
               h(
                 "button",
@@ -108,7 +115,9 @@ function render(view: BlockView<Kanban>) {
                   type: "button",
                   class: "block-btn remove",
                   title: t("Elimina la scheda"),
-                  on: { click: () => view.set(withColumn(ci, { cards: column.cards.filter((_, j) => j !== i) })) },
+                  on: {
+                    click: () => view.set(withColumn(ci, { cards: column.cards.filter((_, j) => j !== i) })),
+                  },
                 },
                 "×",
               ),
@@ -119,7 +128,8 @@ function render(view: BlockView<Kanban>) {
             placeholder: t("+ Scheda"),
             attrs: { "data-focus": `new-${ci}`, "aria-label": t("Nuova scheda") },
             onEnter: (text) => {
-              if (clean(text)) view.set(withColumn(ci, { cards: [...column.cards, clean(text)] }), `new-${ci}`);
+              if (clean(text))
+                view.set(withColumn(ci, { cards: [...column.cards, clean(text)] }), `new-${ci}`);
             },
           }),
         ),
@@ -143,7 +153,8 @@ const KanbanBlock = dataBlock<Kanban>({
   empty: { columns: [] },
   autofocus: "new-0",
   ai: {
-    format: "::: kanban\n## Da fare\n- Una scheda\n- Un'altra scheda\n## In corso\n## Fatto\n- Scheda conclusa\n:::\n\nOgni riga \"## Titolo\" apre una colonna; le righe \"- testo\" sotto sono le sue schede, una riga ciascuna.",
+    format:
+      '::: kanban\n## Da fare\n- Una scheda\n- Un\'altra scheda\n## In corso\n## Fatto\n- Scheda conclusa\n:::\n\nOgni riga "## Titolo" apre una colonna; le righe "- testo" sotto sono le sue schede, una riga ciascuna.',
   },
   format: {
     kind: "container",

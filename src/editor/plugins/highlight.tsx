@@ -16,7 +16,8 @@ const Highlight = Mark.create({
     return {
       color: {
         default: "yellow",
-        parseHTML: (el) => (isColor(el.getAttribute("data-color")) ? el.getAttribute("data-color") : "yellow"),
+        parseHTML: (el) =>
+          isColor(el.getAttribute("data-color")) ? el.getAttribute("data-color") : "yellow",
         renderHTML: (attrs) => ({ "data-color": attrs.color }),
       },
     };
@@ -45,7 +46,8 @@ const Highlight = Mark.create({
             once(md, "highlight", () => {
               md.inline.ruler.before("emphasis", "highlight", (state, silent) => {
                 const start = state.pos;
-                if (state.src.charCodeAt(start) !== 0x3d || state.src.charCodeAt(start + 1) !== 0x3d) return false;
+                if (state.src.charCodeAt(start) !== 0x3d || state.src.charCodeAt(start + 1) !== 0x3d)
+                  return false;
                 const end = state.src.indexOf("==", start + 2);
                 if (end < 0 || end + 2 > state.posMax) return false;
                 const inner = state.src.slice(start + 2, end);

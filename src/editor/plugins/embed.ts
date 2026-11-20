@@ -33,27 +33,47 @@ export function embedSource(raw: string): Source | null {
   const path = url.pathname;
 
   if (host === "youtu.be" || host === "youtube.com" || host === "m.youtube.com") {
-    const id = host === "youtu.be" ? path.slice(1) : url.searchParams.get("v") ?? /^\/(?:embed|shorts|live)\/([\w-]+)/.exec(path)?.[1];
+    const id =
+      host === "youtu.be"
+        ? path.slice(1)
+        : (url.searchParams.get("v") ?? /^\/(?:embed|shorts|live)\/([\w-]+)/.exec(path)?.[1]);
     if (!id || !/^[\w-]{6,20}$/.test(id)) return null;
     // senza cookie finché non si preme play
     return { provider: "YouTube", src: `https://www.youtube-nocookie.com/embed/${id}`, ratio: 9 / 16 };
   }
   if (host === "vimeo.com") {
     const id = /^\/(\d+)/.exec(path)?.[1];
-    return id ? { provider: "Vimeo", src: `https://player.vimeo.com/video/${id}?dnt=1`, ratio: 9 / 16 } : null;
+    return id
+      ? { provider: "Vimeo", src: `https://player.vimeo.com/video/${id}?dnt=1`, ratio: 9 / 16 }
+      : null;
   }
   if (host === "loom.com") {
     const id = /^\/(?:share|embed)\/([a-f0-9]{20,})/.exec(path)?.[1];
     return id ? { provider: "Loom", src: `https://www.loom.com/embed/${id}`, ratio: 9 / 16 } : null;
   }
   if (host === "figma.com" && /^\/(file|design|proto|board)\//.test(path)) {
-    return { provider: "Figma", src: `https://www.figma.com/embed?embed_host=granello&url=${encodeURIComponent(raw)}`, ratio: 0.62 };
+    return {
+      provider: "Figma",
+      src: `https://www.figma.com/embed?embed_host=granello&url=${encodeURIComponent(raw)}`,
+      ratio: 0.62,
+    };
   }
-  if ((host === "google.com" || host === "maps.google.com") && (path.startsWith("/maps") || host === "maps.google.com")) {
+  if (
+    (host === "google.com" || host === "maps.google.com") &&
+    (path.startsWith("/maps") || host === "maps.google.com")
+  ) {
     const at = /@(-?\d+\.\d+),(-?\d+\.\d+)/.exec(path);
     const place = /\/maps\/place\/([^/]+)/.exec(path)?.[1];
-    const q = url.searchParams.get("q") ?? (place ? decodeURIComponent(place.replace(/\+/g, " ")) : at ? `${at[1]},${at[2]}` : null);
-    return q ? { provider: "Google Maps", src: `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`, ratio: 0.6 } : null;
+    const q =
+      url.searchParams.get("q") ??
+      (place ? decodeURIComponent(place.replace(/\+/g, " ")) : at ? `${at[1]},${at[2]}` : null);
+    return q
+      ? {
+          provider: "Google Maps",
+          src: `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`,
+          ratio: 0.6,
+        }
+      : null;
   }
   if (host === "openstreetmap.org") {
     const m = /map=(\d+)\/(-?\d+\.?\d*)\/(-?\d+\.?\d*)/.exec(url.hash);
@@ -61,7 +81,11 @@ export function embedSource(raw: string): Source | null {
     const [zoom, lat, lon] = [Number(m[1]), Number(m[2]), Number(m[3])];
     const span = 360 / 2 ** zoom;
     const box = [lon - span, lat - span / 2, lon + span, lat + span / 2].map((n) => n.toFixed(5)).join(",");
-    return { provider: "OpenStreetMap", src: `https://www.openstreetmap.org/export/embed.html?bbox=${box}&layer=mapnik&marker=${lat},${lon}`, ratio: 0.6 };
+    return {
+      provider: "OpenStreetMap",
+      src: `https://www.openstreetmap.org/export/embed.html?bbox=${box}&layer=mapnik&marker=${lat},${lon}`,
+      ratio: 0.6,
+    };
   }
   return null;
 }
@@ -78,8 +102,16 @@ const Embed = Node.create({
   draggable: true,
   addAttributes() {
     return {
-      url: { default: "", parseHTML: (el) => el.getAttribute("data-url") ?? "", renderHTML: (a) => ({ "data-url": a.url }) },
-      title: { default: "", parseHTML: (el) => el.getAttribute("data-title") ?? "", renderHTML: (a) => ({ "data-title": a.title }) },
+      url: {
+        default: "",
+        parseHTML: (el) => el.getAttribute("data-url") ?? "",
+        renderHTML: (a) => ({ "data-url": a.url }),
+      },
+      title: {
+        default: "",
+        parseHTML: (el) => el.getAttribute("data-title") ?? "",
+        renderHTML: (a) => ({ "data-title": a.title }),
+      },
     };
   },
   parseHTML() {
@@ -108,7 +140,12 @@ const Embed = Node.create({
         const tr = editor.view.state.tr;
         if (!source) {
           // un link che non sappiamo incorporare resta un link normale
-          if (url) tr.replaceWith(pos, pos + current.nodeSize, editor.schema.nodes.paragraph.create(null, editor.schema.text(url)));
+          if (url)
+            tr.replaceWith(
+              pos,
+              pos + current.nodeSize,
+              editor.schema.nodes.paragraph.create(null, editor.schema.text(url)),
+            );
           else tr.delete(pos, pos + current.nodeSize);
         } else {
           tr.setNodeMarkup(pos, undefined, { url, title: source.provider });
@@ -146,7 +183,10 @@ const Embed = Node.create({
           dom.replaceChildren(h("a", { href: url, class: "embed-fallback" }, title || url));
           return;
         }
-        const frame = h("div", { class: "embed-frame", style: `padding-top: ${(source.ratio * 100).toFixed(1)}%` });
+        const frame = h("div", {
+          class: "embed-frame",
+          style: `padding-top: ${(source.ratio * 100).toFixed(1)}%`,
+        });
         const load = h(
           "button",
           {
@@ -202,7 +242,13 @@ const Embed = Node.create({
             once(md, "embed", () => {
               replaceParagraphs(md, "embed", (inline) => {
                 const c = inline.children ?? [];
-                if (c.length !== 3 || c[0].type !== "link_open" || c[1].type !== "text" || c[2].type !== "link_close") return null;
+                if (
+                  c.length !== 3 ||
+                  c[0].type !== "link_open" ||
+                  c[1].type !== "text" ||
+                  c[2].type !== "link_close"
+                )
+                  return null;
                 if (c[0].attrGet("title") !== "embed") return null;
                 return `<div data-embed data-url="${escAttr(c[0].attrGet("href") ?? "")}" data-title="${escAttr(c[1].content)}"></div>`;
               });

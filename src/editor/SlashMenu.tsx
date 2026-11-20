@@ -122,7 +122,9 @@ export function SlashMenu({ bridge }: { bridge: SlashBridge }) {
   let lastGroup = "";
   return createPortal(
     <div className="slash-menu" style={style} ref={list} role="listbox" aria-label={t("Comandi")}>
-      {items.length === 0 && <div className="slash-empty">{t("Nessun comando per \"{query}\"", { query })}</div>}
+      {items.length === 0 && (
+        <div className="slash-empty">{t('Nessun comando per "{query}"', { query })}</div>
+      )}
       {items.map((item, i) => {
         const header = item.group !== lastGroup ? item.group : null;
         lastGroup = item.group;

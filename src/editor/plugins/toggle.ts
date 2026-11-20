@@ -17,7 +17,11 @@ const ToggleSummary = Node.create({
   renderHTML({ HTMLAttributes }) {
     return [
       "div",
-      mergeAttributes(HTMLAttributes, { "data-toggle-summary": "", class: "toggle-summary", "data-placeholder": t("Titolo della sezione") }),
+      mergeAttributes(HTMLAttributes, {
+        "data-toggle-summary": "",
+        class: "toggle-summary",
+        "data-placeholder": t("Titolo della sezione"),
+      }),
       0,
     ];
   },

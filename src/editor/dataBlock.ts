@@ -2,7 +2,15 @@ import { Node, mergeAttributes } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type MarkdownIt from "markdown-it";
-import { CONTAINERS, escAttr, focusSoon, once, rawContainer, replaceParagraphs, type MdState } from "./markdown";
+import {
+  CONTAINERS,
+  escAttr,
+  focusSoon,
+  once,
+  rawContainer,
+  replaceParagraphs,
+  type MdState,
+} from "./markdown";
 import { NEEDS_PARAGRAPH_AFTER } from "./trailing";
 import { askAi } from "./aiContext";
 import { micButton } from "./dictation";
@@ -32,7 +40,11 @@ export interface BlockView<T> {
 /** Come il blocco si scrive in Markdown. */
 type Format<T> =
   /** `::: nome info` + righe + `:::` */
-  | { kind: "container"; parse(info: string, lines: string[]): T; write(data: T): { info?: string; lines: string[] } }
+  | {
+      kind: "container";
+      parse(info: string, lines: string[]): T;
+      write(data: T): { info?: string; lines: string[] };
+    }
   /** una riga a sé, es. `[[timer:05:00]]` */
   | { kind: "line"; match: RegExp; parse(match: RegExpExecArray): T; write(data: T): string }
   /** un blocco di codice con quel linguaggio, es. ```mermaid */
@@ -89,13 +101,21 @@ function aiControls<T>(view: BlockView<T>, spec: DataBlockSpec<T>) {
   const state = { open: false, busy: false };
   const input = h("input", { type: "text", class: "block-ai-input" });
   const mic = micButton(input);
-  const bar = h("div", { class: "block-ai-bar" }, h("span", { class: "block-ai-mark", attrs: { "aria-hidden": "true" } }, sparklesEl()), input, mic.button);
+  const bar = h(
+    "div",
+    { class: "block-ai-bar" },
+    h("span", { class: "block-ai-mark", attrs: { "aria-hidden": "true" } }, sparklesEl()),
+    input,
+    mic.button,
+  );
   const button = h("button", { type: "button", class: "block-ai-btn" }, sparklesEl());
   const refresh = () => {
     button.title = t("Crea o modifica con l'AI");
     button.classList.toggle("on", state.open);
     input.disabled = state.busy;
-    input.placeholder = state.busy ? t("L'AI sta scrivendo…") : t("Chiedi all'AI: cosa creare o cosa cambiare");
+    input.placeholder = state.busy
+      ? t("L'AI sta scrivendo…")
+      : t("Chiedi all'AI: cosa creare o cosa cambiare");
     input.setAttribute("aria-label", t("Richiesta per l'AI"));
     bar.classList.toggle("busy", state.busy);
     if (state.open) view.dom.append(bar);

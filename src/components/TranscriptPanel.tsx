@@ -22,7 +22,7 @@ interface Picked {
 }
 
 /** Posizione in caratteri (non in unità UTF-16, che per le emoji sono due): è così che conta il backend. */
-const chars = (text: string, offset: number) => [...text.slice(0, offset)].length;
+const chars = (text: string, offset: number) => Array.from(text.slice(0, offset)).length;
 
 export default function TranscriptPanel({
   segments,
@@ -105,7 +105,11 @@ export default function TranscriptPanel({
       first ??= span;
       bubbles.add(span.closest<HTMLElement>(".bubble")!);
       const whole = from === 0 && to === text.length;
-      parts.push(whole ? { id: Number(span.dataset.seg) } : { id: Number(span.dataset.seg), start: chars(text, from), end: chars(text, to) });
+      parts.push(
+        whole
+          ? { id: Number(span.dataset.seg) }
+          : { id: Number(span.dataset.seg), start: chars(text, from), end: chars(text, to) },
+      );
     }
     const text = sel.toString().replace(/\s+/g, " ").trim();
     if (!parts.length || !first || !text) return setPicked(null);
@@ -113,7 +117,10 @@ export default function TranscriptPanel({
     const rect = range.getBoundingClientRect();
     setPicked({
       parts,
-      quote: bubbles.size === 1 ? { ms: Number(first.dataset.ms ?? 0), source: bubble.dataset.source as Source, text } : null,
+      quote:
+        bubbles.size === 1
+          ? { ms: Number(first.dataset.ms ?? 0), source: bubble.dataset.source as Source, text }
+          : null,
       top: rect.bottom - el.getBoundingClientRect().top + el.scrollTop + 4,
     });
   };
@@ -159,18 +166,32 @@ export default function TranscriptPanel({
       {pending.length > 0 && (
         <div className="review-banner" role="status">
           <strong>
-            {pending.length === 1 ? t("1 parte da verificare") : t("{n} parti da verificare", { n: pending.length })}
+            {pending.length === 1
+              ? t("1 parte da verificare")
+              : t("{n} parti da verificare", { n: pending.length })}
           </strong>
-          <span>{t("Finché ce ne sono, questo meeting non viene inviato a modelli online. Per ognuna scegli Oscura oppure Va bene.")}</span>
+          <span>
+            {t(
+              "Finché ce ne sono, questo meeting non viene inviato a modelli online. Per ognuna scegli Oscura oppure Va bene.",
+            )}
+          </span>
         </div>
       )}
       {kept && (
         <div className="review-banner kept-audio" role="status">
-          <strong>{kept.refining ? t("Affino la trascrizione online…") : t("Audio conservato per l'affinamento online")}</strong>
+          <strong>
+            {kept.refining
+              ? t("Affino la trascrizione online…")
+              : t("Audio conservato per l'affinamento online")}
+          </strong>
           <span>
             {kept.refining
-              ? t("L'audio è in elaborazione su Gladia: quando torna, la trascrizione avrà i parlanti e l'audio verrà cancellato.")
-              : t("Caricandolo su Gladia ottieni una trascrizione con i parlanti. In ogni caso l'audio non resta: viene cancellato dopo il caricamento, o subito se lo elimini.")}
+              ? t(
+                  "L'audio è in elaborazione su Gladia: quando torna, la trascrizione avrà i parlanti e l'audio verrà cancellato.",
+                )
+              : t(
+                  "Caricandolo su Gladia ottieni una trascrizione con i parlanti. In ogni caso l'audio non resta: viene cancellato dopo il caricamento, o subito se lo elimini.",
+                )}
           </span>
           {!kept.refining && (
             <span className="row gap">
@@ -197,7 +218,9 @@ export default function TranscriptPanel({
         <div
           key={i}
           ref={i === focused ? focusedEl : undefined}
-          className={"bubble " + (isSpeaker(g.source) ? "speaker" : g.source) + (i === focused ? " focused" : "")}
+          className={
+            "bubble " + (isSpeaker(g.source) ? "speaker" : g.source) + (i === focused ? " focused" : "")
+          }
           data-source={g.source}
         >
           <div className="bubble-meta">
@@ -218,7 +241,11 @@ export default function TranscriptPanel({
                 }}
               />
             ) : isSpeaker(g.source) && onRename ? (
-              <button className="speaker-name" title={t("Dai un nome a questo parlante: vale per tutta la trascrizione")} onClick={() => setRenaming(g.source + i)}>
+              <button
+                className="speaker-name"
+                title={t("Dai un nome a questo parlante: vale per tutta la trascrizione")}
+                onClick={() => setRenaming(g.source + i)}
+              >
                 {g.source}
               </button>
             ) : (
@@ -235,10 +262,16 @@ export default function TranscriptPanel({
               </span>
               {s.review && (
                 <span className="tseg-actions">
-                  <button onClick={() => onRedact?.([{ id: s.id }])} title={t("Oscura questa parte per sempre")}>
+                  <button
+                    onClick={() => onRedact?.([{ id: s.id }])}
+                    title={t("Oscura questa parte per sempre")}
+                  >
                     {t("Oscura")}
                   </button>
-                  <button onClick={() => onReview?.([s.id], false)} title={t("Va bene così: non è più da verificare")}>
+                  <button
+                    onClick={() => onReview?.([s.id], false)}
+                    title={t("Va bene così: non è più da verificare")}
+                  >
                     {t("Va bene")}
                   </button>
                 </span>
@@ -266,7 +299,11 @@ export default function TranscriptPanel({
             </button>
           )}
           {onAssign && !asking && (
-            <button className="btn small" title={t("Indica chi ha detto il testo selezionato")} onClick={() => setAsking(true)}>
+            <button
+              className="btn small"
+              title={t("Indica chi ha detto il testo selezionato")}
+              onClick={() => setAsking(true)}
+            >
               {t("Chi parla…")}
             </button>
           )}
@@ -277,7 +314,10 @@ export default function TranscriptPanel({
                   key={name}
                   className="btn small"
                   onClick={() => {
-                    onAssign(picked.parts.map((p) => p.id), name);
+                    onAssign(
+                      picked.parts.map((p) => p.id),
+                      name,
+                    );
                     done();
                   }}
                 >
@@ -292,7 +332,10 @@ export default function TranscriptPanel({
                 onKeyDown={(e) => {
                   const name = e.currentTarget.value.trim();
                   if (e.key === "Enter" && name) {
-                    onAssign(picked.parts.map((p) => p.id), name);
+                    onAssign(
+                      picked.parts.map((p) => p.id),
+                      name,
+                    );
                     done();
                   } else if (e.key === "Escape") setAsking(false);
                 }}
@@ -304,7 +347,10 @@ export default function TranscriptPanel({
               className="btn small"
               title={t("Resta leggibile, ma il meeting non va a modelli online finché non decidi")}
               onClick={() => {
-                onReview(picked.parts.map((p) => p.id), true);
+                onReview(
+                  picked.parts.map((p) => p.id),
+                  true,
+                );
                 done();
               }}
             >

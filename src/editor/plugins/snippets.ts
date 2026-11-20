@@ -49,7 +49,12 @@ export const snippets: EditorPlugin = {
         return t("Meeting");
       },
       keywords: ["ora", "orario", "time", "adesso"],
-      run: (e) => e.chain().focus().insertContent(`${time(Date.now())} `).run(),
+      run: (e) =>
+        e
+          .chain()
+          .focus()
+          .insertContent(`${time(Date.now())} `)
+          .run(),
     },
   ],
 };

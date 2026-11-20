@@ -37,12 +37,12 @@ export default function NoteEditor({
   onChangeRef.current = onChange;
 
   const { extensions, toolbar, bridge } = useMemo(() => {
-    const bridge = new SlashBridge();
-    const resolved = resolvePlugins(plugins, { placeholder, menu: bridge });
+    const slashBridge = new SlashBridge();
+    const resolved = resolvePlugins(plugins, { placeholder, menu: slashBridge });
     return {
-      extensions: [...resolved.extensions, slashExtension(resolved.commands, bridge)],
+      extensions: [...resolved.extensions, slashExtension(resolved.commands, slashBridge)],
       toolbar: resolved.toolbar,
-      bridge,
+      bridge: slashBridge,
     };
     // il placeholder è fisso per istanza: ricreare l'editor quando cambia farebbe perdere il cursore
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,7 +54,7 @@ export default function NoteEditor({
       content: value,
       editable,
       editorProps: { attributes: { spellcheck: "true" } },
-      onUpdate: ({ editor }) => onChangeRef.current(getMarkdown(editor)),
+      onUpdate: ({ editor: ed }) => onChangeRef.current(getMarkdown(ed)),
     },
     [extensions],
   );

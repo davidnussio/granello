@@ -56,10 +56,12 @@ const Callout = Node.create({
               md.core.ruler.push("callout", (state) => {
                 const tokens = state.tokens;
                 for (let i = tokens.length - 3; i >= 0; i--) {
-                  if (tokens[i].type !== "blockquote_open" || tokens[i + 1].type !== "paragraph_open") continue;
+                  if (tokens[i].type !== "blockquote_open" || tokens[i + 1].type !== "paragraph_open")
+                    continue;
                   const inline = tokens[i + 2];
                   const first = inline.children?.[0];
-                  const marker = first?.type === "text" ? /^\[!([A-Za-z]+)\]$/.exec(first.content.trim()) : null;
+                  const marker =
+                    first?.type === "text" ? /^\[!([A-Za-z]+)\]$/.exec(first.content.trim()) : null;
                   const second = inline.children?.[1];
                   if (!marker || (second && second.type !== "softbreak")) continue;
                   tokens[i].attrSet("data-callout", kindOf(marker[1]));
@@ -84,7 +86,13 @@ function set(kind: Kind) {
   };
 }
 
-const command = (kind: Kind, icon: string, title: () => string, hint: () => string, keywords: string[]): CommandItem => ({
+const command = (
+  kind: Kind,
+  icon: string,
+  title: () => string,
+  hint: () => string,
+  keywords: string[],
+): CommandItem => ({
   id: `callout-${kind}`,
   get title() {
     return title();
@@ -104,8 +112,26 @@ export const callout: EditorPlugin = {
   name: "callout",
   extensions: () => [Callout],
   commands: [
-    command("note", "ⓘ", () => t("Nota in evidenza"), () => t("! + spazio"), ["nota", "note", "info"]),
-    command("warning", "⚠", () => t("Attenzione"), () => t("Un rischio o un punto critico"), ["attenzione", "warning", "rischio"]),
-    command("decision", "✓", () => t("Riquadro decisione"), () => t("Una decisione, ben visibile"), ["decisione", "decision", "deciso"]),
+    command(
+      "note",
+      "ⓘ",
+      () => t("Nota in evidenza"),
+      () => t("! + spazio"),
+      ["nota", "note", "info"],
+    ),
+    command(
+      "warning",
+      "⚠",
+      () => t("Attenzione"),
+      () => t("Un rischio o un punto critico"),
+      ["attenzione", "warning", "rischio"],
+    ),
+    command(
+      "decision",
+      "✓",
+      () => t("Riquadro decisione"),
+      () => t("Una decisione, ben visibile"),
+      ["decisione", "decision", "deciso"],
+    ),
   ],
 };

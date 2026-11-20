@@ -15,7 +15,11 @@ export default function RecordingsSettings({
   toast: (text: string) => void;
 }) {
   const [info, setInfo] = useState<RecordingsInfo | null>(null);
-  const load = () => api.recordingsInfo().then(setInfo).catch(() => {});
+  const load = () =>
+    api
+      .recordingsInfo()
+      .then(setInfo)
+      .catch(() => {});
   useEffect(() => {
     load();
   }, [settings.recordingsDir]);
@@ -33,10 +37,16 @@ export default function RecordingsSettings({
     <section className="card">
       <h3>{t("Registrazioni")}</h3>
       <p className="muted small">
-        {t("Di norma l'audio viene trascritto e scartato. Attivando il salvataggio, l'audio di ogni riunione resta in una cartella di questo Mac e si riascolta dalla Libreria o dal meeting. Non viene inviato a nessuno.")}
+        {t(
+          "Di norma l'audio viene trascritto e scartato. Attivando il salvataggio, l'audio di ogni riunione resta in una cartella di questo Mac e si riascolta dalla Libreria o dal meeting. Non viene inviato a nessuno.",
+        )}
       </p>
       <label className="row gap check">
-        <input type="checkbox" checked={settings.saveRecordings} onChange={(e) => save({ saveRecordings: e.target.checked })} />
+        <input
+          type="checkbox"
+          checked={settings.saveRecordings}
+          onChange={(e) => save({ saveRecordings: e.target.checked })}
+        />
         <span>{t("Salva le registrazioni")}</span>
       </label>
       <label className="field">
@@ -49,18 +59,27 @@ export default function RecordingsSettings({
             {t("Cambia…")}
           </button>
           {settings.recordingsDir && (
-            <button className="btn small" onClick={() => save({ recordingsDir: null })} title={info?.defaultDir}>
+            <button
+              className="btn small"
+              onClick={() => save({ recordingsDir: null })}
+              title={info?.defaultDir}
+            >
               {t("Predefinita")}
             </button>
           )}
           {info && (
-            <button className="btn small" onClick={() => revealItemInDir(info.dir).catch((e) => toast(errorText(e)))}>
+            <button
+              className="btn small"
+              onClick={() => revealItemInDir(info.dir).catch((e) => toast(errorText(e)))}
+            >
               {t("Mostra nel Finder")}
             </button>
           )}
         </span>
       </label>
-      <p className="muted small">{t("Cambiando cartella, le registrazioni già fatte restano dov'erano e si continuano a riascoltare.")}</p>
+      <p className="muted small">
+        {t("Cambiando cartella, le registrazioni già fatte restano dov'erano e si continuano a riascoltare.")}
+      </p>
       <label className="row gap check">
         <input
           type="checkbox"
@@ -72,8 +91,12 @@ export default function RecordingsSettings({
       </label>
       <p className="muted small">
         {info && !info.ffmpeg
-          ? t("Serve ffmpeg, che su questo Mac non c'è (si installa con: brew install ffmpeg). Senza, le registrazioni restano in WAV, circa 115 MB all'ora.")
-          : t("Con ffmpeg le registrazioni vengono compresse (circa 20 MB all'ora). Togliendo le pause, i minuti dell'audio non corrispondono più a quelli della trascrizione.")}
+          ? t(
+              "Serve ffmpeg, che su questo Mac non c'è (si installa con: brew install ffmpeg). Senza, le registrazioni restano in WAV, circa 115 MB all'ora.",
+            )
+          : t(
+              "Con ffmpeg le registrazioni vengono compresse (circa 20 MB all'ora). Togliendo le pause, i minuti dell'audio non corrispondono più a quelli della trascrizione.",
+            )}
       </p>
     </section>
   );

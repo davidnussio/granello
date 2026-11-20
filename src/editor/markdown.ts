@@ -124,7 +124,11 @@ export function useContainer(md: MarkdownIt, name: string, open: (info: string) 
  * (le opzioni di un sondaggio, le schede di una lavagna…): `toHtml` riceve il testo dopo il
  * nome e le righe fino alla chiusura.
  */
-export function rawContainer(md: MarkdownIt, name: string, toHtml: (info: string, lines: string[]) => string) {
+export function rawContainer(
+  md: MarkdownIt,
+  name: string,
+  toHtml: (info: string, lines: string[]) => string,
+) {
   md.block.ruler.before(
     "fence",
     `raw_${name}`,

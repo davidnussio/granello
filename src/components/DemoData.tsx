@@ -23,7 +23,11 @@ export default function DemoButton({ demo, primary = false }: { demo: Demo; prim
   };
   if (demo.count === 0) {
     return (
-      <button className={"btn small" + (primary ? " primary" : "")} disabled={busy} onClick={() => run(demo.load)}>
+      <button
+        className={"btn small" + (primary ? " primary" : "")}
+        disabled={busy}
+        onClick={() => run(demo.load)}
+      >
         {t("Carica i dati di esempio")}
       </button>
     );

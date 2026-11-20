@@ -35,7 +35,11 @@ const Rating = Node.create({
   },
   addNodeView() {
     return ({ node, getPos, editor }) => {
-      const dom = h("span", { class: "rating", contentEditable: "false", attrs: { role: "radiogroup", "aria-label": t("Valutazione") } });
+      const dom = h("span", {
+        class: "rating",
+        contentEditable: "false",
+        attrs: { role: "radiogroup", "aria-label": t("Valutazione") },
+      });
       const paint = (value: number) => {
         dom.title = t("{n} su 5", { n: value });
         dom.replaceChildren(
@@ -45,7 +49,11 @@ const Rating = Node.create({
               {
                 type: "button",
                 class: "rating-star" + (i < value ? " on" : ""),
-                attrs: { role: "radio", "aria-checked": String(i + 1 === value), "aria-label": t("{n} su 5", { n: i + 1 }) },
+                attrs: {
+                  role: "radio",
+                  "aria-checked": String(i + 1 === value),
+                  "aria-label": t("{n} su 5", { n: i + 1 }),
+                },
                 on: {
                   mousedown: (e) => {
                     e.preventDefault();
@@ -88,7 +96,9 @@ const Rating = Node.create({
               md.inline.ruler.before("link", "rating", (state, silent) => {
                 const m = /^\[\[rating:(\d)\]\]/.exec(state.src.slice(state.pos, state.pos + 13));
                 if (!m) return false;
-                if (!silent) state.push("html_inline", "", 0).content = `<span data-rating="${clamp(Number(m[1]))}"></span>`;
+                if (!silent)
+                  state.push("html_inline", "", 0).content =
+                    `<span data-rating="${clamp(Number(m[1]))}"></span>`;
                 state.pos += m[0].length;
                 return true;
               });
@@ -121,7 +131,10 @@ export const rating: EditorPlugin = {
         e
           .chain()
           .focus()
-          .insertContent([{ type: "rating", attrs: { value: 3 } }, { type: "text", text: " " }])
+          .insertContent([
+            { type: "rating", attrs: { value: 3 } },
+            { type: "text", text: " " },
+          ])
           .run(),
     },
   ],

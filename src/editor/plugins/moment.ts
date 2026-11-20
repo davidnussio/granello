@@ -53,7 +53,12 @@ export function fillMomentsMd(md: string, fills: MomentFill[]): string {
   return md.replace(EMPTY_MOMENT, (whole, prefix: string, time: string) => {
     // in Markdown il tempo è al secondo: si confronta così
     const fill = fills.find((f) => mmss(f.ms) === mmss(parseTime(time) ?? -1));
-    return fill ? momentMd(fill.ms, fill.text).split("\n").map((line) => prefix + line).join("\n") : whole;
+    return fill
+      ? momentMd(fill.ms, fill.text)
+          .split("\n")
+          .map((line) => prefix + line)
+          .join("\n")
+      : whole;
   });
 }
 
@@ -172,7 +177,17 @@ export const moment: EditorPlugin = {
       get group() {
         return t("Meeting");
       },
-      keywords: ["momento", "marcatore", "segna", "moment", "marker", "flag", "bandierina", "timestamp", "minuto"],
+      keywords: [
+        "momento",
+        "marcatore",
+        "segna",
+        "moment",
+        "marker",
+        "flag",
+        "bandierina",
+        "timestamp",
+        "minuto",
+      ],
       run: (e) => {
         e.commands.focus();
         window.dispatchEvent(new CustomEvent<Editor>(MOMENT_EVENTS.mark, { detail: e }));

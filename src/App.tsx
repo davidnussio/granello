@@ -31,11 +31,19 @@ export default function App() {
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [calendars, setCalendars] = useState<CalendarInfo[]>([]);
-  const [rec, setRec] = useState<RecordingStatus>({ meetingId: null, recording: false, importing: false, pendingChunks: 0 });
+  const [rec, setRec] = useState<RecordingStatus>({
+    meetingId: null,
+    recording: false,
+    importing: false,
+    pendingChunks: 0,
+  });
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   useEffect(() => {
-    api.listProjects().then(setProjects).catch(() => {});
+    api
+      .listProjects()
+      .then(setProjects)
+      .catch(() => {});
   }, []);
   const [setup, setSetup] = useState<SetupStatus | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -68,8 +76,8 @@ export default function App() {
 
   const toast = useCallback((text: string, action?: Toast["action"]) => {
     const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, text, action }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), action ? 15000 : 6000);
+    setToasts((list) => [...list, { id, text, action }]);
+    setTimeout(() => setToasts((list) => list.filter((x) => x.id !== id)), action ? 15000 : 6000);
   }, []);
 
   // avvisi da punti dell'app che non ricevono `toast` (i plugin dell'editor, l'apertura dei link)
@@ -80,7 +88,10 @@ export default function App() {
   }, [toast]);
 
   const refreshMeetings = useCallback(() => {
-    api.listMeetings(query).then(setMeetings).catch((e) => toast(errorText(e)));
+    api
+      .listMeetings(query)
+      .then(setMeetings)
+      .catch((e) => toast(errorText(e)));
   }, [query, toast]);
 
   const refreshEvents = useCallback(
@@ -94,7 +105,9 @@ export default function App() {
           // l'aggiornamento l'ha chiesto l'utente
           const failed = overview.calendars.filter((c) => c.error);
           if (force && failed.length) {
-            toast(t("Calendario: {error}", { error: failed.map((c) => `${c.name}: ${c.error}`).join(" · ") }));
+            toast(
+              t("Calendario: {error}", { error: failed.map((c) => `${c.name}: ${c.error}`).join(" · ") }),
+            );
           }
         })
         .catch((e) => {
@@ -119,7 +132,10 @@ export default function App() {
   );
 
   const refreshRec = useCallback(() => {
-    api.recordingStatus().then(setRec).catch(() => {});
+    api
+      .recordingStatus()
+      .then(setRec)
+      .catch(() => {});
   }, []);
 
   const refreshSetup = useCallback(() => {
@@ -140,8 +156,8 @@ export default function App() {
   }, [view.kind, refreshSetup]);
 
   useEffect(() => {
-    const t = setTimeout(refreshMeetings, 150);
-    return () => clearTimeout(t);
+    const timer = setTimeout(refreshMeetings, 150);
+    return () => clearTimeout(timer);
   }, [refreshMeetings]);
 
   useEffect(() => {
@@ -160,11 +176,21 @@ export default function App() {
       on("recording-warning", (e) => toast(e.message)),
       on("recording-error", (e) => {
         // il dispositivo audio è sparito: la cattura si è già fermata, si chiude la sessione
-        toast(t("Registrazione interrotta: {error}. La parte già registrata viene trascritta.", { error: e.message }));
-        api.stopRecording().catch(() => {}).finally(refreshRec);
+        toast(
+          t("Registrazione interrotta: {error}. La parte già registrata viene trascritta.", {
+            error: e.message,
+          }),
+        );
+        api
+          .stopRecording()
+          .catch(() => {})
+          .finally(refreshRec);
       }),
       on("meeting-starting", (e) =>
-        toast(t("Sta per iniziare: {title}", { title: e.title }), { label: t("Prendi note"), run: () => openEvent(e) }),
+        toast(t("Sta per iniziare: {title}", { title: e.title }), {
+          label: t("Prendi note"),
+          run: () => openEvent(e),
+        }),
       ),
     ];
     return () => {
@@ -177,7 +203,10 @@ export default function App() {
   // dati di esempio: meeting inventati per provare l'app, riconoscibili dall'id
   const [demoCount, setDemoCount] = useState(0);
   useEffect(() => {
-    api.demoStatus().then(setDemoCount).catch(() => {});
+    api
+      .demoStatus()
+      .then(setDemoCount)
+      .catch(() => {});
   }, []);
   const demo: Demo = {
     count: demoCount,
@@ -187,7 +216,11 @@ export default function App() {
         setDemoCount(count);
         setProjects(await api.listProjects());
         refreshMeetings();
-        toast(t("{n} meeting di esempio caricati. Sfogliali dalla Libreria o dall'elenco a sinistra.", { n: count }));
+        toast(
+          t("{n} meeting di esempio caricati. Sfogliali dalla Libreria o dall'elenco a sinistra.", {
+            n: count,
+          }),
+        );
         setView({ kind: "library" });
       } catch (e) {
         toast(errorText(e));
@@ -310,7 +343,9 @@ export default function App() {
             toast={toast}
             big
             title={t("Chiedi a tutti i tuoi meeting")}
-            subtitle={t("Granello cerca i meeting più pertinenti alla domanda e risponde citando titolo e data.")}
+            subtitle={t(
+              "Granello cerca i meeting più pertinenti alla domanda e risponde citando titolo e data.",
+            )}
             suggestions={[
               t("Quali azioni sono rimaste aperte questa settimana?"),
               t("Cosa abbiamo deciso nell'ultimo meeting con il cliente?"),

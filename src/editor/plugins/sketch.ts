@@ -21,13 +21,21 @@ interface Sketch {
 const SVG = "http://www.w3.org/2000/svg";
 const SIZE = { width: 680, height: 320 };
 /** "ink" segue il tema (scuro su chiaro, chiaro su scuro); gli altri sono colori fissi. */
-const COLORS: Record<string, string> = { ink: "var(--text)", red: "#d64545", green: "#4a9c63", blue: "#3f7fbf" };
+const COLORS: Record<string, string> = {
+  ink: "var(--text)",
+  red: "#d64545",
+  green: "#4a9c63",
+  blue: "#3f7fbf",
+};
 const colorOf = (name: string) => COLORS[name] ?? COLORS.ink;
 
 function polyline(stroke: Stroke): SVGElement {
   const line = document.createElementNS(SVG, "polyline");
   // un solo punto non si vedrebbe: diventa un trattino minimo
-  const points = stroke.points.length === 1 ? [stroke.points[0], [stroke.points[0][0] + 0.1, stroke.points[0][1]]] : stroke.points;
+  const points =
+    stroke.points.length === 1
+      ? [stroke.points[0], [stroke.points[0][0] + 0.1, stroke.points[0][1]]]
+      : stroke.points;
   line.setAttribute("points", points.map((p) => p.join(",")).join(" "));
   line.setAttribute("fill", "none");
   line.setAttribute("stroke", colorOf(stroke.color));
@@ -36,6 +44,8 @@ function polyline(stroke: Stroke): SVGElement {
   line.setAttribute("stroke-linejoin", "round");
   return line;
 }
+
+const clamp = (v: number, max: number) => Math.round(Math.min(max, Math.max(0, v)));
 
 /** Lo schizzo come PNG (base64), con tratti scuri su fondo bianco: così lo legge un modello che vede. */
 async function toPng(data: Sketch): Promise<string> {
@@ -49,8 +59,8 @@ async function toPng(data: Sketch): Promise<string> {
   const svg = `<svg xmlns="${SVG}" width="${data.width}" height="${data.height}" viewBox="0 0 ${data.width} ${data.height}"><rect width="100%" height="100%" fill="#ffffff"/>${lines}</svg>`;
   const image = new Image();
   await new Promise<void>((resolve, reject) => {
-    image.onload = () => resolve();
-    image.onerror = () => reject(new Error("svg"));
+    image.addEventListener("load", () => resolve(), { once: true });
+    image.addEventListener("error", () => reject(new Error("svg")), { once: true });
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   });
   const scale = 2;
@@ -96,7 +106,6 @@ function render(view: BlockView<Sketch>) {
   let drawing: { stroke: Stroke; line: SVGElement } | null = null;
   const at = (e: PointerEvent): Point => {
     const box = svg.getBoundingClientRect();
-    const clamp = (v: number, max: number) => Math.round(Math.min(max, Math.max(0, v)));
     return [
       clamp(((e.clientX - box.left) / box.width) * data.width, data.width),
       clamp(((e.clientY - box.top) / box.height) * data.height, data.height),
@@ -133,22 +142,19 @@ function render(view: BlockView<Sketch>) {
       "div",
       { class: "sketch-tools" },
       ...Object.keys(COLORS).map((name) =>
-        h(
-          "button",
-          {
-            type: "button",
-            class: "sketch-color" + (name === color ? " on" : ""),
-            title: t("Colore del tratto"),
-            style: `background: ${colorOf(name)}`,
-            attrs: { "aria-pressed": String(name === color) },
-            on: {
-              click: () => {
-                view.local.color = name;
-                view.redraw();
-              },
+        h("button", {
+          type: "button",
+          class: "sketch-color" + (name === color ? " on" : ""),
+          title: t("Colore del tratto"),
+          style: `background: ${colorOf(name)}`,
+          attrs: { "aria-pressed": String(name === color) },
+          on: {
+            click: () => {
+              view.local.color = name;
+              view.redraw();
             },
           },
-        ),
+        }),
       ),
       h(
         "button",
@@ -162,7 +168,12 @@ function render(view: BlockView<Sketch>) {
       ),
       h(
         "button",
-        { type: "button", class: "block-add", disabled: data.strokes.length === 0, on: { click: () => view.set({ ...data, strokes: [] }) } },
+        {
+          type: "button",
+          class: "block-add",
+          disabled: data.strokes.length === 0,
+          on: { click: () => view.set({ ...data, strokes: [] }) },
+        },
         t("Pulisci"),
       ),
       h(
@@ -208,7 +219,10 @@ const SketchBlock = dataBlock<Sketch>({
       };
     },
     write: (data) =>
-      [`${data.width}x${data.height}`, ...data.strokes.map((s) => `${s.color} ${s.size} ${s.points.map((p) => p.join(",")).join(" ")}`)].join("\n"),
+      [
+        `${data.width}x${data.height}`,
+        ...data.strokes.map((s) => `${s.color} ${s.size} ${s.points.map((p) => p.join(",")).join(" ")}`),
+      ].join("\n"),
   },
   render,
 });

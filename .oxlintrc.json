@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "ignorePatterns": ["dist/**", "src-tauri/**"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+    // Elenchi e menu con ruoli ARIA (listbox, option, group) al posto dei controlli nativi, per lo stile.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Gli sfondi dei pannelli si chiudono col clic; da tastiera c'è Esc.
+    "jsx-a11y/no-static-element-interactions": "off",
+    "jsx-a11y/no-noninteractive-element-interactions": "off",
+    "jsx-a11y/click-events-have-key-events": "off",
+    // Il primo campo di un pannello prende il fuoco di proposito.
+    "jsx-a11y/no-autofocus": "off",
+    "typescript/no-explicit-any": "warn",
+    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css"] }],
+    "no-underscore-dangle": "off",
+    // Regole in stile React Compiler: il progetto usa React 18 senza compilatore, non si applicano.
+    "react/refs": "off",
+    "react/purity": "off",
+    "react/immutability": "off",
+    "react/set-state-in-effect": "off",
+    "react/exhaustive-effect-dependencies": "off",
+    // I pacchetti TipTap si importano con l'export predefinito, come nella documentazione.
+    "import/no-named-as-default": "off",
+    "import/no-named-as-default-member": "off"
+  }
+}

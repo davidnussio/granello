@@ -15,7 +15,13 @@ export function setAiMeeting(id: string | null) {
 }
 
 /** Chiede all'AI; note e trascrizione del meeting corrente fanno da contesto. */
-export function askAi(request: { kind: AssistKind; instruction: string; current?: string; format?: string; image?: string }): Promise<string> {
+export function askAi(request: {
+  kind: AssistKind;
+  instruction: string;
+  current?: string;
+  format?: string;
+  image?: string;
+}): Promise<string> {
   return api.aiAssist({ meetingId, ...request });
 }
 

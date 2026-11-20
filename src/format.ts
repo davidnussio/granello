@@ -1,7 +1,12 @@
 import { locale, t } from "./i18n";
 
 // i formatter dipendono dalla lingua dell'interfaccia: si ricreano solo quando cambia
-let cached: { loc: string; hour12: boolean | undefined; day: Intl.DateTimeFormat; time: Intl.DateTimeFormat } | null = null;
+let cached: {
+  loc: string;
+  hour12: boolean | undefined;
+  day: Intl.DateTimeFormat;
+  time: Intl.DateTimeFormat;
+} | null = null;
 
 /** Ore in formato 12 (AM/PM) o 24; `undefined` lascia decidere la lingua dell'interfaccia. */
 let hour12: boolean | undefined;
@@ -11,13 +16,17 @@ let hour12: boolean | undefined;
  * macOS. `system` è ciò che il sistema dice di sé: una scelta forzata, oppure lingua e regione
  * (es. "en-CH") da cui si ricava l'uso del posto.
  */
-export function setTimeFormat(setting: string, system?: { hour12: boolean | null; locale: string | null } | null) {
+export function setTimeFormat(
+  setting: string,
+  system?: { hour12: boolean | null; locale: string | null } | null,
+) {
   if (setting === "24") hour12 = false;
   else if (setting === "12") hour12 = true;
   else if (system && system.hour12 !== null) hour12 = system.hour12;
   else {
     try {
-      hour12 = new Intl.DateTimeFormat(system?.locale ?? undefined, { hour: "numeric" }).resolvedOptions().hour12;
+      hour12 = new Intl.DateTimeFormat(system?.locale ?? undefined, { hour: "numeric" }).resolvedOptions()
+        .hour12;
     } catch {
       hour12 = undefined;
     }

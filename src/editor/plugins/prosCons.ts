@@ -24,9 +24,13 @@ function render(view: BlockView<ProsCons>) {
           "div",
           { class: "pc-item" },
           h("span", { class: "pc-sign" }, sign),
-          field(item, (text) => view.set({ ...data, [side]: data[side].map((x, j) => (j === i ? clean(text) : x)) }), {
-            attrs: { "aria-label": title },
-          }),
+          field(
+            item,
+            (text) => view.set({ ...data, [side]: data[side].map((x, j) => (j === i ? clean(text) : x)) }),
+            {
+              attrs: { "aria-label": title },
+            },
+          ),
           h(
             "button",
             {
@@ -82,7 +86,8 @@ const ProsConsBlock = dataBlock<ProsCons>({
   empty: { pros: [], cons: [], verdict: "" },
   autofocus: "new-pros",
   ai: {
-    format: "::: pros-cons\n+ Un pro\n+ Un altro pro\n- Un contro\n= Il verdetto, in una riga\n:::\n\nLe righe con \"+\" sono i pro, quelle con \"-\" i contro; la riga con \"=\" è il verdetto (facoltativa, una sola).",
+    format:
+      '::: pros-cons\n+ Un pro\n+ Un altro pro\n- Un contro\n= Il verdetto, in una riga\n:::\n\nLe righe con "+" sono i pro, quelle con "-" i contro; la riga con "=" è il verdetto (facoltativa, una sola).',
   },
   format: {
     kind: "container",

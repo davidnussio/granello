@@ -21,7 +21,10 @@ export default function OnlineTranscription({
   const [hasKey, setHasKey] = useState(false);
   const [key, setKey] = useState("");
   useEffect(() => {
-    api.hasApiKey(KEY_ID).then(setHasKey).catch(() => {});
+    api
+      .hasApiKey(KEY_ID)
+      .then(setHasKey)
+      .catch(() => {});
   }, []);
 
   const saveKey = async (value: string) => {
@@ -38,13 +41,19 @@ export default function OnlineTranscription({
     <section className="card">
       <h3>{t("Trascrizione online con i parlanti")}</h3>
       <p className="muted small">
-        {t("A fine riunione l'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla; la trascrizione locale viene sostituita. Per farlo l'audio della riunione viene tenuto su questo Mac fino al caricamento e poi cancellato. Non vale per i meeting con privacy \"audio locale\" o \"blindata\", né finché ci sono parti da verificare.")}
+        {t(
+          'A fine riunione l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla; la trascrizione locale viene sostituita. Per farlo l\'audio della riunione viene tenuto su questo Mac fino al caricamento e poi cancellato. Non vale per i meeting con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.',
+        )}
       </p>
       <label className="row gap check">
         <input type="checkbox" checked={enabled} onChange={(e) => onChange(e.target.checked)} />
         <span>{t("Affina la trascrizione online dopo la riunione")}</span>
       </label>
-      {enabled && !hasKey && <p className="warn small">{t("Senza la chiave di Gladia l'audio non viene conservato e non parte niente.")}</p>}
+      {enabled && !hasKey && (
+        <p className="warn small">
+          {t("Senza la chiave di Gladia l'audio non viene conservato e non parte niente.")}
+        </p>
+      )}
       <label className="field">
         <span>{t("Chiave API di Gladia")}</span>
         <span className="row gap">

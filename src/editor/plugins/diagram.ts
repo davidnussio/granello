@@ -7,7 +7,8 @@ interface Diagram {
   code: string;
 }
 
-const SAMPLE = "flowchart LR\n  A[Richiesta] --> B{Approvata?}\n  B -- Sì --> C[Rilascio]\n  B -- No --> D[Revisione]";
+const SAMPLE =
+  "flowchart LR\n  A[Richiesta] --> B{Approvata?}\n  B -- Sì --> C[Rilascio]\n  B -- No --> D[Revisione]";
 
 /** Mermaid è grande: si carica solo quando una nota contiene davvero un diagramma. */
 let library: Promise<typeof import("mermaid").default> | null = null;
@@ -40,7 +41,9 @@ async function draw(code: string, target: HTMLElement, stillCurrent: () => boole
   } catch (e) {
     if (!stillCurrent()) return;
     const message = e instanceof Error ? e.message.split("\n")[0] : String(e);
-    target.replaceChildren(h("span", { class: "diagram-note error" }, t("Diagramma non valido: {error}", { error: message })));
+    target.replaceChildren(
+      h("span", { class: "diagram-note error" }, t("Diagramma non valido: {error}", { error: message })),
+    );
   }
 }
 
@@ -145,7 +148,12 @@ export const diagram: EditorPlugin = {
         return t("Strumenti");
       },
       keywords: ["diagramma", "mermaid", "flusso", "flowchart", "sequenza", "gantt", "schema"],
-      run: (e) => e.chain().focus().insertContent({ type: "diagram", attrs: { data: { code: SAMPLE } } }).run(),
+      run: (e) =>
+        e
+          .chain()
+          .focus()
+          .insertContent({ type: "diagram", attrs: { data: { code: SAMPLE } } })
+          .run(),
     },
   ],
 };

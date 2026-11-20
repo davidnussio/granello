@@ -35,8 +35,10 @@ function sizeLabel(bytes: number): string {
 function base64(file: File): Promise<string> {
   return new Promise((ok, fail) => {
     const reader = new FileReader();
-    reader.onerror = () => fail(reader.error);
-    reader.onload = () => ok(String(reader.result).replace(/^data:[^,]*,/, ""));
+    reader.addEventListener("error", () => fail(reader.error), { once: true });
+    reader.addEventListener("load", () => ok(String(reader.result).replace(/^data:[^,]*,/, "")), {
+      once: true,
+    });
     reader.readAsDataURL(file);
   });
 }
@@ -45,7 +47,11 @@ function base64(file: File): Promise<string> {
 function contentFor(a: Attachment, image: boolean) {
   if (image) return { type: "image", attrs: { src: a.path, alt: a.name } };
   return [
-    { type: "text", text: `📎 ${a.name} (${sizeLabel(a.size)})`, marks: [{ type: "link", attrs: { href: a.path } }] },
+    {
+      type: "text",
+      text: `📎 ${a.name} (${sizeLabel(a.size)})`,
+      marks: [{ type: "link", attrs: { href: a.path } }],
+    },
     { type: "text", text: " " },
   ];
 }
@@ -160,7 +166,9 @@ const Image = Node.create({
     return {
       markdown: {
         serialize(state: MdState, node: PMNode) {
-          const alt = String(node.attrs.alt).replace(/[[\]\n]/g, " ").trim();
+          const alt = String(node.attrs.alt)
+            .replace(/[[\]\n]/g, " ")
+            .trim();
           state.write(`![${alt}](${node.attrs.src})`);
           state.closeBlock(node);
         },

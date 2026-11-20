@@ -9,7 +9,11 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
   const [list, setList] = useState<Template[]>([]);
   const [edit, setEdit] = useState<Template | null>(null);
 
-  const load = () => api.listTemplates().then(setList).catch((e) => toast(errorText(e)));
+  const load = () =>
+    api
+      .listTemplates()
+      .then(setList)
+      .catch((e) => toast(errorText(e)));
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -51,7 +55,9 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
         </button>
       </div>
       <p className="muted">
-        {t("Il template dice all'AI come strutturare le note AI. Si sceglie per ogni meeting dall'intestazione.")}
+        {t(
+          "Il template dice all'AI come strutturare le note AI. Si sceglie per ogni meeting dall'intestazione.",
+        )}
       </p>
 
       <div className="tpl-grid">
@@ -67,7 +73,13 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
       {edit && (
         <div className="modal-bg" onClick={() => setEdit(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{edit.id ? (edit.builtin ? t("{name} (modifica = copia)", { name: edit.name }) : t("Modifica template")) : t("Nuovo template")}</h3>
+            <h3>
+              {edit.id
+                ? edit.builtin
+                  ? t("{name} (modifica = copia)", { name: edit.name })
+                  : t("Modifica template")
+                : t("Nuovo template")}
+            </h3>
             <label className="field">
               <span>{t("Nome")}</span>
               <input
@@ -78,7 +90,10 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
             </label>
             <label className="field">
               <span>{t("Descrizione")}</span>
-              <input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} />
+              <input
+                value={edit.description}
+                onChange={(e) => setEdit({ ...edit, description: e.target.value })}
+              />
             </label>
             <label className="field">
               <span>{t("Istruzioni per l'AI")}</span>
@@ -86,7 +101,9 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
                 rows={10}
                 value={edit.instructions}
                 onChange={(e) => setEdit({ ...edit, instructions: e.target.value })}
-                placeholder={t("Usa queste sezioni:\n### Cosa è andato bene\n### Cosa migliorare\n### Azioni")}
+                placeholder={t(
+                  "Usa queste sezioni:\n### Cosa è andato bene\n### Cosa migliorare\n### Azioni",
+                )}
               />
             </label>
             <div className="row gap">

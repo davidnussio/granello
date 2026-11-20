@@ -25,7 +25,13 @@ const LANGS: [string, string][] = [
   ["auto", "Rilevamento automatico"],
 ];
 
-export default function SettingsView({ toast, demo, onCalendarChanged, onLangChanged, onTimeFormatChanged }: Props) {
+export default function SettingsView({
+  toast,
+  demo,
+  onCalendarChanged,
+  onLangChanged,
+  onTimeFormatChanged,
+}: Props) {
   const [savedAt, setSavedAt] = useState(0);
   const [s, setS] = useState<Settings | null>(null);
   const [devices, setDevices] = useState<string[]>([]);
@@ -33,14 +39,27 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
   const [dl, setDl] = useState<Record<string, ModelDownload>>({});
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
-  const loadPeople = () => api.listPeople().then(setPeople).catch(() => {});
+  const loadPeople = () =>
+    api
+      .listPeople()
+      .then(setPeople)
+      .catch(() => {});
 
   const loadModels = () => api.listWhisperModels().then(setModels);
 
   useEffect(() => {
-    api.getSettings().then(setS).catch((e) => toast(errorText(e)));
-    api.listAudioDevices().then(setDevices).catch(() => {});
-    api.appInfo().then(setInfo).catch(() => {});
+    api
+      .getSettings()
+      .then(setS)
+      .catch((e) => toast(errorText(e)));
+    api
+      .listAudioDevices()
+      .then(setDevices)
+      .catch(() => {});
+    api
+      .appInfo()
+      .then(setInfo)
+      .catch(() => {});
     loadPeople();
     loadModels().catch(() => {});
     return on("model-download", (d) => {
@@ -68,7 +87,10 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
     } catch (e) {
       toast(errorText(e));
       // valore rifiutato: si torna a quello realmente salvato
-      api.getSettings().then(setS).catch(() => {});
+      api
+        .getSettings()
+        .then(setS)
+        .catch(() => {});
       return false;
     }
   };
@@ -143,7 +165,9 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
       <section className="card">
         <h3>{t("Trascrizione locale")}</h3>
         {!models.some((m) => m.name === s.whisperModel && m.downloaded) && (
-          <p className="warn small">{t("Il modello selezionato non è ancora scaricato: senza non si può registrare.")}</p>
+          <p className="warn small">
+            {t("Il modello selezionato non è ancora scaricato: senza non si può registrare.")}
+          </p>
         )}
         <label className="field">
           <span>{t("Lingua del meeting")}</span>
@@ -170,6 +194,7 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
                     <input
                       type="radio"
                       name="model"
+                      aria-label={m.name}
                       checked={s.whisperModel === m.name}
                       onChange={() => save({ whisperModel: m.name })}
                     />
@@ -206,7 +231,11 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
 
       <RecordingsSettings settings={s} save={save} toast={toast} />
 
-      <OnlineTranscription enabled={s.onlineTranscription} onChange={(onlineTranscription) => save({ onlineTranscription })} toast={toast} />
+      <OnlineTranscription
+        enabled={s.onlineTranscription}
+        onChange={(onlineTranscription) => save({ onlineTranscription })}
+        toast={toast}
+      />
 
       <section className="card">
         <h3>{t("Audio")}</h3>
@@ -221,7 +250,10 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
         </label>
         <label className="field">
           <span>{t("Audio degli altri partecipanti")}</span>
-          <select value={s.systemDevice ?? ""} onChange={(e) => save({ systemDevice: e.target.value || null })}>
+          <select
+            value={s.systemDevice ?? ""}
+            onChange={(e) => save({ systemDevice: e.target.value || null })}
+          >
             <option value="">{t("Nessuno (solo microfono)")}</option>
             <option value={SYSTEM_AUDIO}>{t("Audio di sistema (consigliato)")}</option>
             {devices.map((d) => (
@@ -229,7 +261,9 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
             ))}
           </select>
           <small className="muted">
-            {t("\"Audio di sistema\" registra quello che esce dal computer (Teams, Zoom, Meet…) senza installare nulla: serve macOS 14.6 o successivo e, la prima volta, il permesso di registrare l'audio di sistema. \"Microsoft Teams Audio\" non contiene le voci della call. Con le cuffie eviti che il microfono riprenda anche gli altri.")}
+            {t(
+              '"Audio di sistema" registra quello che esce dal computer (Teams, Zoom, Meet…) senza installare nulla: serve macOS 14.6 o successivo e, la prima volta, il permesso di registrare l\'audio di sistema. "Microsoft Teams Audio" non contiene le voci della call. Con le cuffie eviti che il microfono riprenda anche gli altri.',
+            )}
           </small>
         </label>
       </section>
@@ -255,10 +289,14 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
           {t("Persone")} <span className="muted small">{people.length}</span>
         </h3>
         <p className="muted small">
-          {t("Chi ha partecipato ai tuoi meeting: Granello le propone quando aggiungi i partecipanti. Toglierne una non modifica i meeting.")}
+          {t(
+            "Chi ha partecipato ai tuoi meeting: Granello le propone quando aggiungi i partecipanti. Toglierne una non modifica i meeting.",
+          )}
         </p>
         {people.length === 0 ? (
-          <p className="muted small">{t("Ancora nessuna persona: si aggiungono da sole con i partecipanti dei meeting.")}</p>
+          <p className="muted small">
+            {t("Ancora nessuna persona: si aggiungono da sole con i partecipanti dei meeting.")}
+          </p>
         ) : (
           <div className="people-list">
             {people.map((person) => (
@@ -271,7 +309,12 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
                   className="chip-x"
                   aria-label={t("Rimuovi {name}", { name: person.name })}
                   title={t("Rimuovi {name}", { name: person.name })}
-                  onClick={() => api.deletePerson(person.id).then(loadPeople).catch((e) => toast(errorText(e)))}
+                  onClick={() =>
+                    api
+                      .deletePerson(person.id)
+                      .then(loadPeople)
+                      .catch((e) => toast(errorText(e)))
+                  }
                 >
                   ×
                 </button>
@@ -285,14 +328,22 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
         <section className="card">
           <h3>{t("Dati e privacy")}</h3>
           <p className="muted small">
-            {t("Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e scartato. Fanno eccezione due opzioni, spente finché non le attivi: il salvataggio delle registrazioni, che tiene l'audio in una cartella di questo Mac, e la trascrizione online, che lo tiene fino al caricamento su Gladia e poi lo cancella. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.")}
+            {t(
+              "Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e scartato. Fanno eccezione due opzioni, spente finché non le attivi: il salvataggio delle registrazioni, che tiene l'audio in una cartella di questo Mac, e la trascrizione online, che lo tiene fino al caricamento su Gladia e poi lo cancella. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.",
+            )}
           </p>
           <div className="row gap">
-            <button className="btn small" onClick={() => revealItemInDir(info.dataDir).catch((e) => toast(errorText(e)))}>
+            <button
+              className="btn small"
+              onClick={() => revealItemInDir(info.dataDir).catch((e) => toast(errorText(e)))}
+            >
               {t("Mostra i dati nel Finder")}
             </button>
             {info.logDir && (
-              <button className="btn small" onClick={() => revealItemInDir(info.logDir).catch((e) => toast(errorText(e)))}>
+              <button
+                className="btn small"
+                onClick={() => revealItemInDir(info.logDir).catch((e) => toast(errorText(e)))}
+              >
                 {t("Mostra i log")}
               </button>
             )}

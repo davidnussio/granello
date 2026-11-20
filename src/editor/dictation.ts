@@ -59,10 +59,15 @@ const MIC_ICON =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
 
 export const micTitle = (phase: DictationPhase) =>
-  phase === "listening" ? t("Ferma e scrivi quello che ho detto") : phase === "transcribing" ? t("Trascrivo…") : t("Detta la richiesta a voce");
+  phase === "listening"
+    ? t("Ferma e scrivi quello che ho detto")
+    : phase === "transcribing"
+      ? t("Trascrivo…")
+      : t("Detta la richiesta a voce");
 
 /** Il contenuto del pulsante in ogni fase (HTML fisso, non testo dell'utente). */
-export const micContent = (phase: DictationPhase) => (phase === "listening" ? "■" : phase === "transcribing" ? "…" : MIC_ICON);
+export const micContent = (phase: DictationPhase) =>
+  phase === "listening" ? "■" : phase === "transcribing" ? "…" : MIC_ICON;
 
 /** Pulsante microfono per un campo di testo: quello che si detta viene aggiunto al campo. */
 export function micButton(input: HTMLInputElement): { button: HTMLButtonElement; cancel(): void } {

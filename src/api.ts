@@ -214,10 +214,7 @@ type Events = {
   "meeting-starting": CalendarEvent;
 };
 
-export function on<K extends keyof Events>(
-  event: K,
-  cb: (payload: Events[K]) => void,
-): () => void {
+export function on<K extends keyof Events>(event: K, cb: (payload: Events[K]) => void): () => void {
   let un: UnlistenFn | undefined;
   let cancelled = false;
   listen<Events[K]>(event, (e) => cb(e.payload)).then((u) => {

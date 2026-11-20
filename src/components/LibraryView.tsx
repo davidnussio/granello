@@ -43,13 +43,19 @@ function groupBy(meetings: MeetingSummary[], keys: (m: MeetingSummary) => string
       map.set(key, group);
     }
   }
-  return [...map.values()].sort((a, b) => b.meetings.length - a.meetings.length || a.label.localeCompare(b.label));
+  return [...map.values()].toSorted(
+    (a, b) => b.meetings.length - a.meetings.length || a.label.localeCompare(b.label),
+  );
 }
 
 /** Questa settimana, poi un gruppo per mese, dal più recente. */
 function byPeriod(meetings: MeetingSummary[]): Group[] {
   const now = new Date();
-  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime();
+  const monday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - ((now.getDay() + 6) % 7),
+  ).getTime();
   const month = new Intl.DateTimeFormat(locale(), { month: "long", year: "numeric" });
   const out: Group[] = [];
   const week = meetings.filter((m) => m.createdAt >= monday);
@@ -59,24 +65,36 @@ function byPeriod(meetings: MeetingSummary[]): Group[] {
     const d = new Date(m.createdAt);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     const label = month.format(d);
-    const group = months.get(key) ?? { key, label: label.charAt(0).toUpperCase() + label.slice(1), meetings: [] };
+    const group = months.get(key) ?? {
+      key,
+      label: label.charAt(0).toUpperCase() + label.slice(1),
+      meetings: [],
+    };
     group.meetings.push(m);
     months.set(key, group);
   }
-  return [...out, ...[...months.values()].sort((a, b) => b.key.localeCompare(a.key))];
+  return [...out, ...[...months.values()].toSorted((a, b) => b.key.localeCompare(a.key))];
 }
 
 /** Ciò che l'anteprima mostra di un meeting, ricavato dalle sue note. */
 function digest(meeting: Meeting) {
   const md = (meeting.enhancedMd?.trim() || meeting.notesMd)
     // i blocchi fatti di dati (citazioni, sondaggi, lavagne…) si contano, non si leggono in anteprima
-    .replace(/^[ \t>]*:{3,} *(quote|moment|poll|kanban|timeline|pros-cons|matrix)\b[\s\S]*?^[ \t>]*:{3,} *$/gm, "");
+    .replace(
+      /^[ \t>]*:{3,} *(quote|moment|poll|kanban|timeline|pros-cons|matrix)\b[\s\S]*?^[ \t>]*:{3,} *$/gm,
+      "",
+    );
   const lines = md
     .split("\n")
     .map((l) => l.trim())
     // i blocchi dell'editor (::: …, recinti di codice, tabelle) non sono testo da leggere in anteprima
     .filter((l) => l && !/^(:{3,}|```|\||\[\[|!\[)/.test(l))
-    .map((l) => l.replace(/^(#{1,6}|[-*+]|\d+\.|>)\s+/, "").replace(/^\[[ xX]\]\s+/, "").replace(/[*_`=]{1,2}/g, ""))
+    .map((l) =>
+      l
+        .replace(/^(#{1,6}|[-*+]|\d+\.|>)\s+/, "")
+        .replace(/^\[[ xX]\]\s+/, "")
+        .replace(/[*_`=]{1,2}/g, ""),
+    )
     .filter(Boolean);
   const all = `${meeting.notesMd}\n${meeting.enhancedMd ?? ""}`;
   const count = (re: RegExp) => (all.match(re) ?? []).length;
@@ -102,7 +120,10 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.listMeetings().then(setMeetings).catch((e) => toast(errorText(e)));
+    api
+      .listMeetings()
+      .then(setMeetings)
+      .catch((e) => toast(errorText(e)));
   }, [toast]);
 
   const groups = useMemo<Group[]>(() => {
@@ -115,8 +136,13 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
     // un progetto resta in elenco anche prima di avere meeting
     return projects
       .filter((p) => showArchived || !p.archived || p.tag === groupKey)
-      .map((p) => ({ key: p.tag, label: p.tag, meetings: tags.find((g) => g.key === p.tag)?.meetings ?? [], archived: p.archived }))
-      .sort((a, b) => Number(a.archived) - Number(b.archived) || a.label.localeCompare(b.label));
+      .map((p) => ({
+        key: p.tag,
+        label: p.tag,
+        meetings: tags.find((g) => g.key === p.tag)?.meetings ?? [],
+        archived: p.archived,
+      }))
+      .toSorted((a, b) => Number(a.archived) - Number(b.archived) || a.label.localeCompare(b.label));
   }, [dim, meetings, projects, showArchived, groupKey]);
 
   const group = groups.find((g) => g.key === groupKey) ?? groups[0] ?? null;
@@ -126,7 +152,7 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
     const items = (group?.meetings ?? []).filter(
       (m) => !q || [m.title, ...m.attendees, ...m.tags].some((s) => s.toLowerCase().includes(q)),
     );
-    return [...items].sort((a, b) => (oldestFirst ? a.createdAt - b.createdAt : b.createdAt - a.createdAt));
+    return items.toSorted((a, b) => (oldestFirst ? a.createdAt - b.createdAt : b.createdAt - a.createdAt));
   }, [group, filter, oldestFirst]);
 
   const current = listed.find((m) => m.id === meetingId) ?? listed[0] ?? null;
@@ -142,6 +168,7 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
     return () => {
       alive = false;
     };
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- conta solo l'id: ricaricare il dettaglio a ogni nuovo oggetto `current` lo azzererebbe
   }, [current?.id]);
 
   const setProject = useCallback(
@@ -173,7 +200,10 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
         return;
       }
       if (col === 0) {
-        const next = move(DIMS, DIMS.findIndex((d) => d.id === dim));
+        const next = move(
+          DIMS,
+          DIMS.findIndex((d) => d.id === dim),
+        );
         if (next) {
           setDim(next.id);
           setGroupKey(null);
@@ -196,7 +226,9 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
 
   // la riga selezionata resta in vista mentre si scorre con le frecce
   useEffect(() => {
-    root.current?.querySelectorAll(".lib-row.on, .lib-meeting.on").forEach((el) => el.scrollIntoView({ block: "nearest" }));
+    root.current
+      ?.querySelectorAll(".lib-row.on, .lib-meeting.on")
+      .forEach((el) => el.scrollIntoView({ block: "nearest" }));
   }, [dim, group?.key, current?.id]);
 
   useEffect(() => root.current?.focus(), []);
@@ -205,9 +237,17 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
   const info = detail && current && detail.id === current.id ? digest(detail) : null;
   const facts = info
     ? [
-        info.openTasks ? (info.openTasks === 1 ? t("1 azione aperta") : t("{n} azioni aperte", { n: info.openTasks })) : null,
+        info.openTasks
+          ? info.openTasks === 1
+            ? t("1 azione aperta")
+            : t("{n} azioni aperte", { n: info.openTasks })
+          : null,
         info.quotes ? (info.quotes === 1 ? t("1 citazione") : t("{n} citazioni", { n: info.quotes })) : null,
-        info.moments ? (info.moments === 1 ? t("1 momento segnato") : t("{n} momenti segnati", { n: info.moments })) : null,
+        info.moments
+          ? info.moments === 1
+            ? t("1 momento segnato")
+            : t("{n} momenti segnati", { n: info.moments })
+          : null,
       ].filter((f): f is string => !!f)
     : [];
 
@@ -223,13 +263,21 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
           aria-label={t("Filtra i meeting elencati")}
           placeholder={group ? t("Filtra in {name}", { name: group.label }) : t("Filtra i meeting elencati")}
         />
-        <button className="btn small ghost" onClick={() => setOldestFirst((v) => !v)} title={t("Cambia l'ordine dei meeting")}>
+        <button
+          className="btn small ghost"
+          onClick={() => setOldestFirst((v) => !v)}
+          title={t("Cambia l'ordine dei meeting")}
+        >
           {oldestFirst ? t("↑ Più vecchi") : t("↓ Più recenti")}
         </button>
       </header>
 
       <div className="lib-cols">
-        <div className={"lib-col" + (col === 0 ? " focus" : "")} role="listbox" aria-label={t("Raggruppa per")}>
+        <div
+          className={"lib-col" + (col === 0 ? " focus" : "")}
+          role="listbox"
+          aria-label={t("Raggruppa per")}
+        >
           {DIMS.map((d) => (
             <button
               key={d.id}
@@ -256,9 +304,17 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
           </div>
         )}
 
-        <div hidden={dim === "recordings"} className={"lib-col" + (col === 1 ? " focus" : "")} role="listbox" aria-label={DIMS.find((d) => d.id === dim)!.label()}>
+        <div
+          hidden={dim === "recordings"}
+          className={"lib-col" + (col === 1 ? " focus" : "")}
+          role="listbox"
+          aria-label={DIMS.find((d) => d.id === dim)!.label()}
+        >
           {groups.map((g) => (
-            <div key={g.key} className={"lib-row" + (g.key === group?.key ? " on" : "") + (g.archived ? " archived" : "")}>
+            <div
+              key={g.key}
+              className={"lib-row" + (g.key === group?.key ? " on" : "") + (g.archived ? " archived" : "")}
+            >
               <button
                 role="option"
                 aria-selected={g.key === group?.key}
@@ -275,7 +331,11 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
                 <span className="lib-count">{g.meetings.length}</span>
               </button>
               {dim === "tags" && (
-                <button className="lib-act" onClick={() => setProject(g.key, false)} title={t("Rendi questo tag un progetto")}>
+                <button
+                  className="lib-act"
+                  onClick={() => setProject(g.key, false)}
+                  title={t("Rendi questo tag un progetto")}
+                >
                   {t("Progetto")}
                 </button>
               )}
@@ -284,11 +344,19 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
                   <button
                     className="lib-act"
                     onClick={() => setProject(g.key, !g.archived)}
-                    title={g.archived ? t("Riporta il progetto tra quelli attivi") : t("Archivia: il progetto è chiuso, i meeting restano")}
+                    title={
+                      g.archived
+                        ? t("Riporta il progetto tra quelli attivi")
+                        : t("Archivia: il progetto è chiuso, i meeting restano")
+                    }
                   >
                     {g.archived ? t("Riattiva") : t("Archivia")}
                   </button>
-                  <button className="lib-act" onClick={() => setProject(g.key, null)} title={t("Torna un tag normale: i meeting restano")}>
+                  <button
+                    className="lib-act"
+                    onClick={() => setProject(g.key, null)}
+                    title={t("Torna un tag normale: i meeting restano")}
+                  >
                     ×
                   </button>
                 </>
@@ -313,7 +381,12 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
           )}
         </div>
 
-        <div hidden={dim === "recordings"} className={"lib-col lib-meetings" + (col === 2 ? " focus" : "")} role="listbox" aria-label={t("Meeting")}>
+        <div
+          hidden={dim === "recordings"}
+          className={"lib-col lib-meetings" + (col === 2 ? " focus" : "")}
+          role="listbox"
+          aria-label={t("Meeting")}
+        >
           {listed.map((m) => (
             <button
               key={m.id}
@@ -329,14 +402,18 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
               <span className="lib-meeting-title">{m.title || t("Senza titolo")}</span>
               <span className="lib-meeting-meta">
                 {dayLabel(m.createdAt)}
-                {m.attendees.length ? ` · ${m.attendees.slice(0, 3).join(", ")}${m.attendees.length > 3 ? "…" : ""}` : ""}
+                {m.attendees.length
+                  ? ` · ${m.attendees.slice(0, 3).join(", ")}${m.attendees.length > 3 ? "…" : ""}`
+                  : ""}
                 {m.hasEnhanced && sparkle(" · ✦")}
               </span>
             </button>
           ))}
           {group && listed.length === 0 && (
             <p className="muted small lib-empty">
-              {filter ? t("Nessun risultato") : t("Nessun meeting qui: aggiungi il tag #{tag} a un meeting.", { tag: group.label })}
+              {filter
+                ? t("Nessun risultato")
+                : t("Nessun meeting qui: aggiungi il tag #{tag} a un meeting.", { tag: group.label })}
             </p>
           )}
         </div>

@@ -3,14 +3,22 @@ import { t } from "../i18n";
 
 /** Il livello in due parole, per le etichette. */
 export const privacyLabel = (privacy: Privacy) =>
-  privacy === "hardened" ? t("Privacy: blindata") : privacy === "audio" ? t("Privacy: audio locale") : t("Privacy: standard");
+  privacy === "hardened"
+    ? t("Privacy: blindata")
+    : privacy === "audio"
+      ? t("Privacy: audio locale")
+      : t("Privacy: standard");
 
 /** Cosa comporta il livello, per chi sta per registrare. */
 export const privacyHint = (privacy: Privacy) =>
   privacy === "hardened"
-    ? t("Blindata: non esce niente da questo Mac. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.")
+    ? t(
+        "Blindata: non esce niente da questo Mac. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.",
+      )
     : privacy === "audio"
-      ? t("Audio locale: l'audio si trascrive solo su questo Mac. Il testo può andare al provider AI configurato.")
+      ? t(
+          "Audio locale: l'audio si trascrive solo su questo Mac. Il testo può andare al provider AI configurato.",
+        )
       : t("Standard: valgono le impostazioni generali.");
 
 /**
@@ -20,7 +28,16 @@ export const privacyHint = (privacy: Privacy) =>
 export default function PrivacyIcon({ privacy }: { privacy: Privacy }) {
   const eye = "M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z";
   return (
-    <svg className={"privacy-icon " + privacy} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      className={"privacy-icon " + privacy}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       {privacy === "audio" ? (
         // occhio socchiuso: la palpebra abbassata, con le ciglia
         <>

@@ -85,7 +85,10 @@ function render(view: BlockView<LiveAi>) {
   const live = transcriptState().live;
 
   const body = h("div", { class: "ai-result md" });
-  if (data.result) body.innerHTML = DOMPurify.sanitize(marked.parse(data.result, { async: false, gfm: true, breaks: true }) as string);
+  if (data.result)
+    body.innerHTML = DOMPurify.sanitize(
+      marked.parse(data.result, { async: false, gfm: true, breaks: true }) as string,
+    );
   else {
     body.classList.add("empty");
     body.textContent = state.busy
@@ -126,7 +129,13 @@ function render(view: BlockView<LiveAi>) {
       h("span", { class: "ai-mark", attrs: { "aria-hidden": "true" } }, sparklesEl()),
       request,
       ...(editable ? [mic.button] : []),
-      live ? h("span", { class: "ai-live", title: t("Si aggiorna da sola mentre registri, al massimo ogni due minuti") }, t("● dal vivo")) : null,
+      live
+        ? h(
+            "span",
+            { class: "ai-live", title: t("Si aggiorna da sola mentre registri, al massimo ogni due minuti") },
+            t("● dal vivo"),
+          )
+        : null,
       h(
         "button",
         {

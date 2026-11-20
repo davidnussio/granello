@@ -36,7 +36,34 @@ import { ai } from "./plugins/ai";
 
 export type { CommandItem, EditorPlugin, PluginContext, SuggestMenu, ToolbarItem } from "./types";
 export { base, formatting, headings, lists, tasks, blocks, links, snippets };
-export { highlight, mention, date, math, callout, toggle, columns, table, media, linkCard, toc, poll, kanban, timeline, prosCons, matrix, rating, timer, progress, chart, diagram, sketch, embed, moment, transcriptQuote, ai };
+export {
+  highlight,
+  mention,
+  date,
+  math,
+  callout,
+  toggle,
+  columns,
+  table,
+  media,
+  linkCard,
+  toc,
+  poll,
+  kanban,
+  timeline,
+  prosCons,
+  matrix,
+  rating,
+  timer,
+  progress,
+  chart,
+  diagram,
+  sketch,
+  embed,
+  moment,
+  transcriptQuote,
+  ai,
+};
 
 /** Plugin attivi di default. L'ordine determina l'ordine di comandi e pulsanti. */
 export const defaultPlugins: EditorPlugin[] = [
@@ -89,18 +116,20 @@ export function resolvePlugins(plugins: EditorPlugin[], ctx: PluginContext): Res
   return out;
 }
 
+const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
 /** Ricerca per il menu "/": senza distinzione di maiuscole e accenti, su titolo e parole chiave. */
-export function filterCommands<T extends { title: string; keywords?: string[] }>(items: T[], query: string): T[] {
-  const norm = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "");
+export function filterCommands<T extends { title: string; keywords?: string[] }>(
+  items: T[],
+  query: string,
+): T[] {
   const q = norm(query.trim());
   if (!q) return items;
   const starts = items.filter((i) => norm(i.title).startsWith(q));
   const rest = items.filter(
-    (i) => !starts.includes(i) && (norm(i.title).includes(q) || (i.keywords ?? []).some((k) => norm(k).startsWith(q))),
+    (i) =>
+      !starts.includes(i) &&
+      (norm(i.title).includes(q) || (i.keywords ?? []).some((k) => norm(k).startsWith(q))),
   );
   return [...starts, ...rest];
 }
