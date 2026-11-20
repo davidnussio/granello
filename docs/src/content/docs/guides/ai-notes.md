@@ -23,6 +23,17 @@ A template has two parts:
 
 ![Editing a template: instructions for the AI on the left, starting notes on the right](../../../assets/shots/en/templates.webp)
 
+### Set up a template with AI
+
+Below the two columns, **Set up with AI** writes the template for you. Describe it in your own words, for example "sprint retro with what went well, what to improve and action items", then press **Generate** (or Enter).
+
+- The AI writes the instructions and the starting notes. It fills the name and the description only if they are empty, so what you already typed there stays.
+- If the template already has instructions or starting notes, the button becomes **Update**: describe what to change ("add a section for risks") and the rest is kept.
+- Nothing is saved on its own: review the fields, change what you want, then press **Save**. **Undo** puts the fields back as they were before the AI's suggestion.
+- It uses the model chosen for AI notes in **Settings**. If no model is ready, the message says what to set up there.
+
+Your description and the template's current fields go to that model; no meeting is sent. See [what can leave your Mac](/privacy/overview/).
+
 Built-in templates cannot be changed: editing one saves a copy.
 
 You choose the template of each meeting in its header.

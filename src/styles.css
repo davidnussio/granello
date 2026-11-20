@@ -1820,6 +1820,32 @@ h3 {
     overflow-y: auto;
   }
 }
+.tpl-edit-ai {
+  margin: 14px 0 0;
+}
+.tpl-edit-ai-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.field .tpl-edit-ai-row textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 40px;
+  max-height: 160px;
+  line-height: 1.45;
+}
+.tpl-edit-ai-row .btn {
+  flex: none;
+  white-space: nowrap;
+}
+.tpl-edit-ai p {
+  margin: 4px 0 0;
+}
+.tpl-edit-ai-error {
+  color: var(--rec);
+  font-size: 13px;
+}
 .tpl-card {
   display: flex;
   flex-direction: column;

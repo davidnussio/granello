@@ -23,6 +23,17 @@ Un template ha due parti:
 
 ![Modifica di un template: istruzioni per l'AI a sinistra, note di partenza a destra](../../../../assets/shots/it/templates.webp)
 
+### Configurare un template con l'AI
+
+Sotto le due colonne, **Configura con l'AI** scrive il template per te. Descrivilo a parole tue, per esempio "retro di sprint con cosa è andato bene, cosa migliorare e le azioni", poi premi **Genera** (o Invio).
+
+- L'AI scrive le istruzioni e le note di partenza. Riempie nome e descrizione solo se sono vuoti, così quello che hai già scritto lì resta.
+- Se il template ha già istruzioni o note di partenza, il pulsante diventa **Aggiorna**: descrivi cosa cambiare ("aggiungi una sezione per i rischi") e il resto viene conservato.
+- Non si salva nulla da solo: controlla i campi, cambia quello che vuoi, poi premi **Salva**. **Ripristina com'era** riporta i campi a prima della proposta dell'AI.
+- Usa il modello scelto per le note AI nelle **Impostazioni**. Se nessun modello è pronto, il messaggio dice cosa configurare lì.
+
+La tua descrizione e i campi attuali del template vanno a quel modello; nessun meeting viene inviato. Vedi [cosa può uscire dal Mac](/it/privacy/overview/).
+
 I template di sistema non si modificano: modificandone uno si salva una copia.
 
 Il template di ogni meeting si sceglie nella sua intestazione.

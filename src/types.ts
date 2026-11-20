@@ -84,6 +84,14 @@ export interface Template {
   notesMd: string;
 }
 
+/** Ciò che l'AI propone per un template descritto a parole. */
+export interface TemplateDraft {
+  name: string;
+  description: string;
+  instructions: string;
+  notesMd: string;
+}
+
 export interface ChatMessage {
   id: number;
   scope: string;

@@ -17,6 +17,7 @@ Granello è fatto perché quello che si dice in riunione resti tuo. Questa pagin
 | Cosa | Quando | Come evitarlo |
 | --- | --- | --- |
 | Note e trascrizione, come testo | Generi le note AI, fai una domanda in chat o usi ✦ nell'editor, con un provider AI online | Usa un [provider locale](/it/privacy/local-models/), oppure metti il meeting su [blindata](/it/privacy/levels/) |
+| Un template che descrivi all'AI, con i suoi campi attuali | Usi **Configura con l'AI** in un template, con un provider AI online | Usa un [provider locale](/it/privacy/local-models/) per le note AI |
 | L'audio del meeting | Solo con la **trascrizione online** attiva, a fine riunione | Lascia l'opzione spenta (è così di default), oppure metti il meeting su audio locale o blindata |
 | L'indirizzo di un link | Crei l'anteprima di un link: alla pagina viene chiesto il titolo, una volta | Non creare anteprime dei link |
 | Una richiesta di contenuto incorporato | Premi **Carica** su un contenuto incorporato (video, progetto grafico, mappa) | Non premere Carica |

@@ -358,6 +358,102 @@ della domanda. Non usare il trattino lungo.\n",
     s
 }
 
+/// Ciò che l'AI propone per un template descritto a parole. L'interfaccia decide quali campi
+/// usare: nome e descrizione solo se l'utente non li ha ancora scritti.
+#[derive(Debug, Default, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TemplateDraft {
+    pub name: String,
+    pub description: String,
+    pub instructions: String,
+    pub notes_md: String,
+}
+
+/// I segnaposto che separano i campi nella risposta del modello, nell'ordine di `TemplateDraft`.
+const DRAFT_MARKERS: [&str; 4] = ["[[NAME]]", "[[DESCRIPTION]]", "[[INSTRUCTIONS]]", "[[NOTES]]"];
+
+pub fn template_draft_system() -> String {
+    format!(
+        "Sei l'assistente di Granello, un'app per le note di riunione, e aiuti l'utente a configurare un template \
+di meeting. Un template ha quattro parti:\n\
+- Nome: da una a quattro parole.\n\
+- Descrizione: una frase breve che dice per quali meeting serve.\n\
+- Istruzioni per l'AI: come un altro modello dovrà strutturare le note AI di questi meeting, partendo dalle note \
+dell'utente e dalla trascrizione. Elenca le sezioni come titoli Markdown (\"### Titolo\"), una per riga, dopo \
+\"Usa queste sezioni:\", poi poche regole utili (cosa riportare, cosa saltare, il tono). Esempio:\n\
+Usa queste sezioni:\n### Aggiornamenti\n### Blocchi\n### Prossimi passi\nSalta le sezioni vuote. Sii conciso.\n\
+- Note di partenza: ciò che l'utente trova già scritto nelle sue note quando sceglie il template su un meeting \
+vuoto, da completare durante il meeting. Markdown semplice: titoli \"##\" o \"###\", elenchi puntati, checklist \
+\"- [ ] testo\" (sempre con un testo breve, come \"Chi: cosa, entro quando\": una voce vuota non diventa una \
+casella), al massimo una tabella Markdown. Niente fatti, nomi o date inventati, niente blocchi \":::\", niente \
+immagini, niente recinti di codice. Possono restare vuote se non servono.\n\n\
+Se i campi attuali non sono vuoti, la richiesta è una modifica: conserva ciò che non chiede di cambiare.\n\
+Scrivi tutti i testi nella lingua della richiesta dell'utente. Non usare il trattino lungo.\n\
+Rispondi SOLO con le quattro parti, ognuna dopo il suo segnaposto su una riga da solo, in questo ordine e \
+senza nient'altro:\n{}\n(nome)\n{}\n(descrizione)\n{}\n(istruzioni)\n{}\n(note di partenza)",
+        DRAFT_MARKERS[0], DRAFT_MARKERS[1], DRAFT_MARKERS[2], DRAFT_MARKERS[3]
+    )
+}
+
+pub fn template_draft_user(request: &str, current: &Template) -> String {
+    let field = |s: &str| if s.trim().is_empty() { "(vuoto)".to_string() } else { s.trim().to_string() };
+    format!(
+        "## Template attuale\nNome: {}\nDescrizione: {}\n\n### Istruzioni per l'AI\n{}\n\n### Note di partenza\n{}\n\n\
+## Richiesta\n{}",
+        field(&current.name),
+        field(&current.description),
+        field(&current.instructions),
+        field(&current.notes_md),
+        request.trim()
+    )
+}
+
+/// Toglie il recinto di codice (con qualunque linguaggio) in cui il modello ha chiuso la risposta.
+pub fn strip_fence(s: &str) -> String {
+    let t = s.trim();
+    let inner = t.strip_prefix("```").and_then(|rest| rest.strip_suffix("```")).and_then(|rest| rest.split_once('\n'));
+    match inner {
+        Some((_language, body)) => body.trim().to_string(),
+        None => t.to_string(),
+    }
+}
+
+/// Legge la risposta divisa dai segnaposto. Un campo mancante resta vuoto.
+pub fn parse_template_draft(text: &str) -> TemplateDraft {
+    let mut parts: [Vec<&str>; 4] = Default::default();
+    let mut at = None;
+    let text = strip_fence(text);
+    for line in text.lines() {
+        // i modelli piccoli a volte mettono il segnaposto in grassetto o come titolo
+        let key = line.trim().trim_matches(|c: char| matches!(c, '*' | '#' | '`' | ' '));
+        if let Some(i) = DRAFT_MARKERS.iter().position(|m| m.eq_ignore_ascii_case(key)) {
+            at = Some(i);
+        } else if let Some(i) = at {
+            parts[i].push(line);
+        }
+    }
+    let block = |i: usize| {
+        let s = strip_fence(&parts[i].join("\n"));
+        if s == "(vuoto)" || s == "(empty)" {
+            String::new()
+        } else {
+            s
+        }
+    };
+    // nome e descrizione stanno su una riga, senza virgolette attorno
+    let line = |i: usize, max: usize| -> String {
+        block(i)
+            .lines()
+            .map(|l| l.trim().trim_matches(|c: char| matches!(c, '"' | '«' | '»' | '“' | '”' | '*' | '`' | ' ')))
+            .find(|l| !l.is_empty())
+            .unwrap_or_default()
+            .chars()
+            .take(max)
+            .collect()
+    };
+    TemplateDraft { name: line(0, 60), description: line(1, 200), instructions: block(2), notes_md: block(3) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -401,5 +497,38 @@ mod tests {
     fn parses_one_line_per_moment() {
         let out = parse_moments("1: Il prezzo sale a 40: da gennaio.\n**2**: -\n[3] : Rilascio giovedì.\n9: fuori\nchiacchiere", 3);
         assert_eq!(out, vec![Some("Il prezzo sale a 40: da gennaio.".to_string()), None, Some("Rilascio giovedì.".to_string())]);
+    }
+
+    #[test]
+    fn parses_template_draft() {
+        let text = "```markdown\n**[[NAME]]**\n\"Retro di sprint\"\n[[DESCRIPTION]]\nPer la retrospettiva a fine sprint.\n\
+[[INSTRUCTIONS]]\nUsa queste sezioni:\n### Cosa è andato bene\n### Azioni\n\n## [[NOTES]]\n```md\n## Cosa è andato bene\n- \n\
+## Azioni\n- [ ] \n```\n```";
+        let draft = parse_template_draft(text);
+        assert_eq!(draft.name, "Retro di sprint");
+        assert_eq!(draft.description, "Per la retrospettiva a fine sprint.");
+        assert_eq!(draft.instructions, "Usa queste sezioni:\n### Cosa è andato bene\n### Azioni");
+        assert_eq!(draft.notes_md, "## Cosa è andato bene\n- \n## Azioni\n- [ ]");
+        // segnaposto mancanti o campi lasciati vuoti
+        let draft = parse_template_draft("[[INSTRUCTIONS]]\nSii breve.\n[[NOTES]]\n(vuoto)");
+        assert_eq!(draft, TemplateDraft { instructions: "Sii breve.".into(), ..Default::default() });
+        assert_eq!(parse_template_draft("Non so aiutarti."), TemplateDraft::default());
+    }
+
+    #[test]
+    fn template_draft_prompt_carries_the_current_template() {
+        let tpl = Template {
+            id: String::new(),
+            name: "Retro".into(),
+            description: String::new(),
+            instructions: "### Bene".into(),
+            builtin: false,
+            notes_md: String::new(),
+        };
+        let user = template_draft_user("  aggiungi le azioni ", &tpl);
+        assert!(user.contains("Nome: Retro\nDescrizione: (vuoto)"));
+        assert!(user.contains("### Istruzioni per l'AI\n### Bene"));
+        assert!(user.ends_with("## Richiesta\naggiungi le azioni"));
+        assert!(DRAFT_MARKERS.iter().all(|m| template_draft_system().contains(m)));
     }
 }

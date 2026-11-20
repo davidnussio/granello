@@ -17,6 +17,7 @@ Granello is built so that what is said in a meeting stays yours. This page says 
 | What | When | How to prevent it |
 | --- | --- | --- |
 | Notes and transcript, as text | You generate AI notes, ask the chat or use ✦ in the editor, with an online AI provider | Use a [local provider](/privacy/local-models/), or set the meeting to [hardened](/privacy/levels/) |
+| A template you describe to the AI, with its current fields | You use **Set up with AI** in a template, with an online AI provider | Use a [local provider](/privacy/local-models/) for AI notes |
 | The meeting's audio | Only with **online transcription** turned on, when the meeting ends | Leave the option off (the default), or set the meeting to local audio or hardened |
 | The address of a link | You create a link preview: the linked page is asked for its title, once | Do not create link previews |
 | A request for embedded content | You press **Load** on an embed (video, design, map) | Do not press Load |

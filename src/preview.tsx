@@ -119,6 +119,27 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     data.templates = [...(data.templates as { id: string }[]).filter((x) => x.id !== saved.id), saved];
     return saved;
   },
+  // proposta finta dell'AI per il campo "Configura con l'AI" dei template
+  draft_template: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    return lang === "it"
+      ? {
+          name: "Retro di sprint",
+          description: "Retrospettiva a fine sprint con il team",
+          instructions:
+            "Usa queste sezioni:\n### Cosa è andato bene\n### Cosa migliorare\n### Azioni\nNelle azioni indica responsabile e scadenza quando sono dette. Salta le sezioni vuote.",
+          notesMd:
+            "## Cosa è andato bene\n\n- \n\n## Cosa migliorare\n\n- \n\n## Azioni\n\n- [ ] Chi: cosa, entro quando",
+        }
+      : {
+          name: "Sprint retro",
+          description: "End-of-sprint retrospective with the team",
+          instructions:
+            "Use these sections:\n### What went well\n### What to improve\n### Action items\nFor action items, give owner and due date when stated. Skip empty sections.",
+          notesMd:
+            "## What went well\n\n- \n\n## What to improve\n\n- \n\n## Action items\n\n- [ ] Who: what, by when",
+        };
+  },
   get_settings: () => data.settings,
   demo_status: () => data.demoCount,
   list_whisper_models: () => whisperModels,

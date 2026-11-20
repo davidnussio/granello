@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, errorText } from "../api";
 import type { Template } from "../types";
 import { t } from "../i18n";
+import { sparkle } from "../sparkles";
 import NoteEditor from "../editor/NoteEditor";
 import { defaultPlugins } from "../editor";
 
@@ -13,6 +14,23 @@ const TEMPLATE_PLUGINS = defaultPlugins.filter((p) => !["ai", "moment", "transcr
 export default function TemplatesView({ toast }: { toast: (text: string) => void }) {
   const [list, setList] = useState<Template[]>([]);
   const [edit, setEdit] = useState<Template | null>(null);
+  // campo AI: la descrizione a parole del template e lo stato della richiesta
+  const [ask, setAsk] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [askError, setAskError] = useState("");
+  // i campi com'erano prima dell'ultima proposta dell'AI, per tornare indietro
+  const [beforeAi, setBeforeAi] = useState<Template | null>(null);
+  // cambia quando l'AI riscrive le note di partenza: l'editor ricarica il contenuto
+  const [notesRev, setNotesRev] = useState(0);
+  const editRef = useRef(edit);
+  editRef.current = edit;
+
+  const open = (tpl: Template | null) => {
+    setEdit(tpl);
+    setAsk("");
+    setAskError("");
+    setBeforeAi(null);
+  };
 
   const load = () =>
     api
@@ -29,16 +47,50 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
     try {
       const saved = await api.saveTemplate(edit);
       toast(edit.builtin ? t("Salvata una copia: {name}", { name: saved.name }) : t("Template salvato"));
-      setEdit(null);
+      open(null);
       load();
     } catch (e) {
       toast(errorText(e));
     }
   };
 
+  // l'AI propone istruzioni e note di partenza; nome e descrizione solo se mancano. Nulla si salva da solo.
+  const draft = async () => {
+    const current = editRef.current;
+    if (!current || asking || !ask.trim()) return;
+    setAsking(true);
+    setAskError("");
+    try {
+      const proposal = await api.draftTemplate(ask, current);
+      // nel frattempo l'utente può aver chiuso la modifica o aperto un altro template
+      const latest = editRef.current;
+      if (!latest || latest.id !== current.id) return;
+      setBeforeAi(latest);
+      setEdit({
+        ...latest,
+        name: latest.name.trim() ? latest.name : proposal.name,
+        description: latest.description.trim() ? latest.description : proposal.description,
+        instructions: proposal.instructions || latest.instructions,
+        notesMd: proposal.notesMd,
+      });
+      setNotesRev((n) => n + 1);
+    } catch (e) {
+      setAskError(errorText(e));
+    } finally {
+      setAsking(false);
+    }
+  };
+
+  const undoAi = () => {
+    if (!beforeAi) return;
+    setEdit(beforeAi);
+    setBeforeAi(null);
+    setNotesRev((n) => n + 1);
+  };
+
   const remove = async (tpl: Template) => {
     await api.deleteTemplate(tpl.id).catch((e) => toast(errorText(e)));
-    setEdit(null);
+    open(null);
     load();
   };
 
@@ -60,7 +112,7 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
               {t("Elimina")}
             </button>
           )}
-          <button className="btn ghost" onClick={() => setEdit(null)}>
+          <button className="btn ghost" onClick={() => open(null)}>
             {t("Annulla")}
           </button>
           <button className="btn primary" onClick={save}>
@@ -103,7 +155,7 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
             </small>
             <div className="tpl-edit-notes">
               <NoteEditor
-                docKey={"template:" + (edit.id || "nuovo")}
+                docKey={`template:${edit.id || "nuovo"}:${notesRev}`}
                 value={edit.notesMd}
                 plugins={TEMPLATE_PLUGINS}
                 placeholder={t("Un'agenda, i titoli delle sezioni, una checklist… Digita / per i comandi.")}
@@ -111,6 +163,49 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
               />
             </div>
           </div>
+        </div>
+        <div className="field tpl-edit-ai">
+          <span>{sparkle(t("✦ Configura con l'AI"))}</span>
+          <small className="muted">
+            {t(
+              "Descrivi il template che vuoi: l'AI scrive le istruzioni e le note di partenza, e nome e descrizione se sono vuoti. Controlla e salva.",
+            )}
+          </small>
+          <div className="tpl-edit-ai-row">
+            <textarea
+              rows={2}
+              value={ask}
+              aria-label={t("Descrivi il template")}
+              placeholder={t("Es. retro di sprint con cosa è andato bene, cosa migliorare e le azioni")}
+              onChange={(e) => setAsk(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  draft();
+                }
+              }}
+            />
+            <button className="btn" onClick={draft} disabled={asking || !ask.trim()}>
+              {asking
+                ? t("Scrivo il template…")
+                : edit.instructions.trim() || edit.notesMd.trim()
+                  ? sparkle(t("✦ Aggiorna"))
+                  : sparkle(t("✦ Genera"))}
+            </button>
+          </div>
+          {askError && (
+            <p className="tpl-edit-ai-error" role="alert">
+              {askError}
+            </p>
+          )}
+          {beforeAi && !asking && !askError && (
+            <p className="muted small" role="status">
+              {t("Campi aggiornati dall'AI: controllali prima di salvare.")}{" "}
+              <button className="btn ghost small" onClick={undoAi}>
+                {t("Ripristina com'era")}
+              </button>
+            </p>
+          )}
         </div>
       </div>
     );
@@ -121,7 +216,7 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
       <div className="row">
         <h1 className="page-title">{t("Template")}</h1>
         <div className="spacer" />
-        <button className="btn primary" onClick={() => setEdit({ ...EMPTY })}>
+        <button className="btn primary" onClick={() => open({ ...EMPTY })}>
           {t("+ Nuovo template")}
         </button>
       </div>
@@ -133,7 +228,7 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
 
       <div className="tpl-grid">
         {list.map((tpl) => (
-          <button key={tpl.id} className="tpl-card" onClick={() => setEdit({ ...tpl })}>
+          <button key={tpl.id} className="tpl-card" onClick={() => open({ ...tpl })}>
             <strong>{tpl.name}</strong>
             {tpl.builtin && <span className="chip tiny">{t("di sistema")}</span>}
             {tpl.notesMd.trim() && <span className="chip tiny">{t("con note di partenza")}</span>}

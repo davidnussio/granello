@@ -19,6 +19,7 @@ import type {
   RecordingsInfo,
   Settings,
   Template,
+  TemplateDraft,
   TranscriptPart,
   TranscriptSegment,
   WhisperModelInfo,
@@ -139,6 +140,9 @@ export const api = {
   listTemplates: () => invoke<Template[]>("list_templates"),
   saveTemplate: (template: Template) => invoke<Template>("save_template", { template }),
   deleteTemplate: (id: string) => invoke<void>("delete_template", { id }),
+  /** L'AI propone i campi di un template descritto a parole, partendo da quello in modifica. Non salva. */
+  draftTemplate: (request: string, template: Template) =>
+    invoke<TemplateDraft>("draft_template", { request, template }),
 
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),

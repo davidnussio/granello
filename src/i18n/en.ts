@@ -733,6 +733,20 @@ const en: Record<string, string> = {
   "Un'agenda, i titoli delle sezioni, una checklist… Digita / per i comandi.":
     "An agenda, section headings, a checklist… Type / for commands.",
   "con note di partenza": "with starting notes",
+
+  // templates: configuring a template with the AI
+  "✦ Configura con l'AI": "✦ Set up with AI",
+  "Descrivi il template che vuoi: l'AI scrive le istruzioni e le note di partenza, e nome e descrizione se sono vuoti. Controlla e salva.":
+    "Describe the template you want: the AI writes the instructions and the starting notes, plus the name and description if they are empty. Review, then save.",
+  "Descrivi il template": "Describe the template",
+  "Es. retro di sprint con cosa è andato bene, cosa migliorare e le azioni":
+    "E.g. sprint retro with what went well, what to improve and action items",
+  "Scrivo il template…": "Writing the template…",
+  "✦ Aggiorna": "✦ Update",
+  "✦ Genera": "✦ Generate",
+  "Campi aggiornati dall'AI: controllali prima di salvare.":
+    "Fields updated by the AI: review them before saving.",
+  "Ripristina com'era": "Undo",
 };
 
 export default en;

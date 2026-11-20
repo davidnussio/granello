@@ -147,6 +147,7 @@ pub fn run() {
             commands::enhance_notes,
             commands::fill_moments,
             commands::ai_assist,
+            commands::draft_template,
             commands::dictation_start,
             commands::dictation_stop,
             commands::cancel_stream,

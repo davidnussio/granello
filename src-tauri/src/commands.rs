@@ -1362,7 +1362,7 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
     let text = match kind {
         AssistKind::Block => done.text.trim().to_string(),
         // un titolo è una riga sola, senza virgolette né segni di Markdown attorno
-        AssistKind::Title => strip_fence(&done.text)
+        AssistKind::Title => prompts::strip_fence(&done.text)
             .lines()
             .map(|l| l.trim().trim_matches(|c: char| matches!(c, '"' | '«' | '»' | '“' | '”' | '#' | '*' | '`' | ' ')))
             .find(|l| !l.is_empty())
@@ -1371,7 +1371,7 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
             .chars()
             .take(120)
             .collect(),
-        _ => strip_fence(&done.text),
+        _ => prompts::strip_fence(&done.text),
     };
     if text.is_empty() {
         return Err(tr("L'AI non ha risposto. Riprova.", "The AI gave no answer. Try again.").into());
@@ -1379,14 +1379,46 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
     Ok(text)
 }
 
-/// Toglie il recinto di codice (con qualunque linguaggio) in cui il modello ha chiuso la risposta.
-fn strip_fence(s: &str) -> String {
-    let t = s.trim();
-    let inner = t.strip_prefix("```").and_then(|rest| rest.strip_suffix("```")).and_then(|rest| rest.split_once('\n'));
-    match inner {
-        Some((_language, body)) => body.trim().to_string(),
-        None => t.to_string(),
+/// Fa proporre all'AI un template descritto a parole, partendo da quello che l'utente sta
+/// scrivendo. Non salva nulla: i campi li riempie l'interfaccia e l'utente decide se salvare.
+/// La richiesta non contiene meeting, quindi va al modello delle note anche se è online.
+#[tauri::command]
+pub async fn draft_template(state: State<'_, AppState>, request: String, template: Template) -> CmdResult<prompts::TemplateDraft> {
+    if request.trim().is_empty() {
+        return Err(tr(
+            "Descrivi il template che vuoi, per esempio \"retro di sprint con cosa è andato bene, cosa migliorare e azioni\"",
+            "Describe the template you want, for example \"sprint retro with what went well, what to improve and action items\"",
+        )
+        .into());
     }
+    let model = {
+        let db = state.db.lock();
+        let settings = db.get_settings().map_err(err)?;
+        resolve_model(&state, &settings, &settings.notes_model)?
+    };
+    let system = prompts::template_draft_system();
+    let messages = [llm::Msg::user(prompts::template_draft_user(&request, &template))];
+    model.check_context(&system, &messages)?;
+    let cancel = AtomicBool::new(false);
+    let done = llm::stream_message(&state.llm_http, &model.request(&system, &messages, ASSIST_MAX_TOKENS, false), &cancel, |_| {})
+        .await
+        .map_err(err)?;
+    if done.truncated {
+        return Err(tr(
+            "La risposta dell'AI si è interrotta prima della fine: chiedi un template più breve e riprova.",
+            "The AI's answer was cut off: ask for a shorter template and try again.",
+        )
+        .into());
+    }
+    let draft = prompts::parse_template_draft(&done.text);
+    if draft.instructions.is_empty() && draft.notes_md.is_empty() {
+        return Err(tr(
+            "L'AI non ha proposto un template. Riprova descrivendo le sezioni che ti servono.",
+            "The AI did not suggest a template. Try again, describing the sections you need.",
+        )
+        .into());
+    }
+    Ok(draft)
 }
 
 /// Il limite comprende anche il ragionamento del modello, quindi va tenuto largo.
