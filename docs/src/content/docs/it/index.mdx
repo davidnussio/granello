@@ -8,10 +8,10 @@ hero:
   image:
     file: ../../../assets/logo.png
   actions:
+    - text: Leggi la documentazione
+      link: /it/start/install/
     - text: Come funziona la privacy
       link: /it/privacy/overview/
-    - text: Installazione
-      link: /it/start/install/
       variant: secondary
     - text: Codice sorgente
       link: https://github.com/davidnussio/granello
@@ -19,7 +19,7 @@ hero:
       variant: minimal
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components";
 
 ![Un meeting con privacy blindata: le note AI accanto alla trascrizione, con Oscura e Da verificare sulla frase selezionata](../../../assets/shots/it/privacy.webp)
 
@@ -61,3 +61,12 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
 ![La Libreria a colonne: progetti, meeting del progetto e anteprima](../../../assets/shots/it/library.webp)
 
 Granello è in sviluppo: non c'è ancora un rilascio pubblicato. Puoi [compilarlo dal codice](/it/start/install/).
+
+## Documentazione
+
+<CardGrid>
+  <LinkCard title="Per cominciare" description="Installa Granello e registra il tuo primo meeting." href="/it/start/install/" />
+  <LinkCard title="Privacy" description="Cosa resta sul tuo Mac, i livelli di privacy, l'oscuramento e i modelli locali." href="/it/privacy/overview/" />
+  <LinkCard title="Guide" description="Registrazione, note, note AI e template, la Libreria." href="/it/guides/recording/" />
+  <LinkCard title="Comandi /" description="Ogni blocco del menu /, con cosa fa e come si scrive in Markdown." href="/it/reference/slash-commands/" />
+</CardGrid>

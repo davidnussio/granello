@@ -166,6 +166,7 @@ L'interfaccia gira anche nel browser, senza il backend Tauri, sui dati di esempi
 ```bash
 pnpm preview            # http://localhost:1430/preview.html?lang=it (o lang=en)
 pnpm screenshots        # schermate per la vetrina in shots/<lingua>/*.webp, 1440×900, tema scuro
+pnpm screenshots commands  # solo le immagini dei comandi / per la documentazione (docs/src/assets/shots/<lingua>/commands)
 ```
 
 ### Distribuzione

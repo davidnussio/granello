@@ -21,6 +21,7 @@ export default defineConfig({
         it: { label: "Italiano", lang: "it" },
       },
       customCss: ["./src/styles/custom.css"],
+      components: { SocialIcons: "./src/components/SocialIcons.astro" },
       sidebar: [
         {
           label: "Start",
@@ -49,7 +50,12 @@ export default defineConfig({
         {
           label: "Reference",
           translations: { it: "Riferimenti" },
-          items: [{ slug: "reference/shortcuts" }, { slug: "reference/data" }, { slug: "reference/troubleshooting" }],
+          items: [
+            { slug: "reference/slash-commands" },
+            { slug: "reference/shortcuts" },
+            { slug: "reference/data" },
+            { slug: "reference/troubleshooting" },
+          ],
         },
       ],
     }),

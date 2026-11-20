@@ -3,7 +3,7 @@ title: Scrivere le note
 description: L'editor delle note, i suoi blocchi, trova e sostituisci, le citazioni dalla trascrizione e l'AI nell'editor.
 ---
 
-Le note si scrivono in un editor Markdown e si salvano mentre scrivi. Digita `/` per il menu dei comandi; seleziona del testo per la barra di formattazione.
+Le note si scrivono in un editor Markdown e si salvano mentre scrivi. Digita `/` per il [menu dei comandi](/it/reference/slash-commands/); seleziona del testo per la barra di formattazione.
 
 ![Note con indice, citazione dalla trascrizione, momento segnato, pro e contro e una tabella](../../../../assets/shots/it/notes.webp)
 

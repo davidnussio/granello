@@ -3,7 +3,7 @@ title: Write notes
 description: The notes editor, its blocks, find and replace, quotes from the transcript and AI inside the editor.
 ---
 
-Notes are written in a Markdown editor and saved as you type. Type `/` for the command menu; select text for the formatting bar.
+Notes are written in a Markdown editor and saved as you type. Type `/` for the [command menu](/reference/slash-commands/); select text for the formatting bar.
 
 ![Notes with a table of contents, a transcript quote, a marked moment, pros and cons and a table](../../../assets/shots/en/notes.webp)
 

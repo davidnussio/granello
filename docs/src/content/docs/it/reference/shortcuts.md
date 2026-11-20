@@ -15,7 +15,7 @@ description: Le scorciatoie di Granello, nell'app, in una nota e nella Libreria.
 
 | Scorciatoia | Cosa fa |
 | --- | --- |
-| `/` | Menu dei comandi |
+| `/` | [Menu dei comandi](/it/reference/slash-commands/) |
 | ⌘F | Trova e sostituisci |
 | ⌘⇧H | Evidenzia il testo selezionato |
 | `@` | Menziona una persona |

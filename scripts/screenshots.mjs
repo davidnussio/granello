@@ -1,18 +1,23 @@
 // Schermate per la vetrina (dambox.ch), con i dati di esempio e l'anteprima nel browser.
 //   pnpm screenshots            (avvia da sé l'anteprima su http://localhost:1430)
+//   pnpm screenshots commands   (solo le immagini dei comandi "/" per la documentazione)
 // Escono in shots/<lingua>/<schermata>.webp: 1440×900, tema scuro, cwebp -q 82 -m 6.
 // Una copia va in docs/src/assets/shots/<lingua>/, per il sito di documentazione.
+// I comandi "/" (esempi in command-examples.mjs) escono solo in docs/src/assets/shots/<lingua>/commands/,
+// ritagliati sulla nota, a doppia risoluzione.
 // Servono Google Chrome e cwebp (brew install webp).
 import { spawn, execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
+import { commandExamples } from "./command-examples.mjs";
 
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const BASE = "http://localhost:1430/preview.html";
 const PORT = 9341;
 const LANGS = ["it", "en"];
+const ONLY_COMMANDS = process.argv[2] === "commands";
 
 const text = {
   it: {
@@ -81,6 +86,53 @@ const find = (word) => `(async () => {
   ${setValue("HTMLInputElement")}.call(field, ${JSON.stringify(word)});
   field.dispatchEvent(new Event("input", { bubbles: true }));
   await wait(300);
+})()`;
+
+// Comandi "/": la nota prende il Markdown dell'esempio, senza fuoco né selezione; torna il
+// rettangolo da ritagliare (i blocchi della nota, senza il paragrafo vuoto in fondo).
+const PAD = 16;
+const noteRect = `(() => {
+  const note = document.querySelector(".doc .ProseMirror");
+  const blocks = [...note.children].filter((el) => !(el.tagName === "P" && !el.textContent.trim() && !el.querySelector("img")));
+  const box = note.getBoundingClientRect();
+  const top = Math.min(...blocks.map((el) => el.getBoundingClientRect().top));
+  const bottom = Math.max(...blocks.map((el) => el.getBoundingClientRect().bottom));
+  return JSON.stringify({ x: box.left - ${PAD}, y: top - ${PAD}, width: box.width + ${2 * PAD}, height: bottom - top + ${2 * PAD} });
+})()`;
+// Intorno alla nota resta solo lo sfondo: nascosti i fratelli di ogni suo antenato, fino al
+// figlio di <body> (il menu "/" è un portale in <body> e deve restare visibile).
+const isolate = `(() => {
+  for (let el = document.querySelector(".doc .ProseMirror"); el.parentElement !== document.body; el = el.parentElement)
+    for (const sib of el.parentElement.children) if (sib !== el) sib.style.visibility = "hidden";
+})();`;
+const showExample = (md) => `(async () => {
+  ${pause}
+  ${isolate}
+  const note = document.querySelector(".doc .ProseMirror");
+  note.editor.commands.setContent(${JSON.stringify(md)}, false);
+  // il cursore in fondo, poi via il fuoco: nessun blocco resta selezionato (bordo verde)
+  note.editor.commands.focus("end");
+  note.editor.commands.blur();
+  document.activeElement?.blur();
+  // le sezioni richiudibili si aprono chiuse: per la foto si aprono
+  for (const arrow of note.querySelectorAll(".toggle:not(.open) .toggle-arrow"))
+    arrow.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+  note.editor.commands.blur();
+  note.scrollIntoView({ block: "start" });
+  await wait(900);
+})()`;
+// Il menu aperto in una nota vuota: il ritaglio va dalla riga con "/" al fondo del menu.
+const openMenu = `(async () => {
+  ${pause}
+  const note = document.querySelector(".doc .ProseMirror");
+  note.editor.commands.clearContent(true);
+  note.editor.commands.focus();
+  note.editor.commands.insertContent("/");
+  ${isolate}
+  await wait(500);
+  const box = note.getBoundingClientRect();
+  const menu = document.querySelector(".slash-menu").getBoundingClientRect();
+  return JSON.stringify({ x: box.left - ${PAD}, y: box.top - ${PAD}, width: menu.right - box.left + ${2 * PAD}, height: menu.bottom - box.top + ${2 * PAD} });
 })()`;
 
 // Ogni schermata: i passi dopo il caricamento, in ordine. Una stringa è un clic sull'elemento
@@ -195,35 +247,82 @@ try {
     features: [{ name: "prefers-color-scheme", value: "dark" }],
   });
 
+  // Un passo: clic su un testo, oppure codice nella pagina (ne torna il valore).
+  const step = async (label, s) => {
+    if (typeof s === "string") {
+      const { result } = await page.send("Runtime.evaluate", { expression: clickScript(s) });
+      if (!result.value) throw new Error(`${label}: non trovo «${s}»`);
+      return;
+    }
+    const { result, exceptionDetails } = await page.send("Runtime.evaluate", {
+      expression: s.js,
+      awaitPromise: true,
+    });
+    if (exceptionDetails) throw new Error(`${label}: ${exceptionDetails.exception?.description}`);
+    return result.value;
+  };
+  const capture = async (out, clip) => {
+    const { data } = await page.send("Page.captureScreenshot", {
+      format: "png",
+      ...(clip && { clip: { ...clip, scale: 1 } }),
+    });
+    const png = join(profile, "shot.png");
+    writeFileSync(png, Buffer.from(data, "base64"));
+    execFileSync("cwebp", ["-quiet", "-q", "82", "-m", "6", png, "-o", out]);
+    console.log(out);
+  };
+  const open = async (lang, query = "") => {
+    await page.send("Page.navigate", { url: `${BASE}?lang=${lang}&shots${query}` });
+    await sleep(1500);
+  };
+
   for (const lang of LANGS) {
     const dir = join("shots", lang);
     mkdirSync(dir, { recursive: true });
     const docsDir = join("docs", "src", "assets", "shots", lang);
     mkdirSync(docsDir, { recursive: true });
-    for (const shot of shots(lang)) {
-      await page.send("Page.navigate", { url: `${BASE}?lang=${lang}&shots${shot.query ?? ""}` });
-      await sleep(1500);
-      for (const step of shot.steps) {
-        if (typeof step === "string") {
-          const { result } = await page.send("Runtime.evaluate", { expression: clickScript(step) });
-          if (!result.value) throw new Error(`${lang}/${shot.name}: non trovo «${step}»`);
-        } else {
-          const { exceptionDetails } = await page.send("Runtime.evaluate", {
-            expression: step.js,
-            awaitPromise: true,
-          });
-          if (exceptionDetails)
-            throw new Error(`${lang}/${shot.name}: ${exceptionDetails.exception?.description}`);
+    if (!ONLY_COMMANDS) {
+      for (const shot of shots(lang)) {
+        await open(lang, shot.query);
+        for (const s of shot.steps) {
+          await step(`${lang}/${shot.name}`, s);
+          await sleep(700);
         }
-        await sleep(700);
+        await capture(join(dir, `${shot.name}.webp`));
+        copyFileSync(join(dir, `${shot.name}.webp`), join(docsDir, `${shot.name}.webp`));
       }
-      const { data } = await page.send("Page.captureScreenshot", { format: "png" });
-      const png = join(profile, `${shot.name}.png`);
-      writeFileSync(png, Buffer.from(data, "base64"));
-      execFileSync("cwebp", ["-quiet", "-q", "82", "-m", "6", png, "-o", join(dir, `${shot.name}.webp`)]);
-      copyFileSync(join(dir, `${shot.name}.webp`), join(docsDir, `${shot.name}.webp`));
-      console.log(join(dir, `${shot.name}.webp`));
     }
+
+    // I comandi "/": una nota del meeting di esempio, ritagliata, a doppia risoluzione.
+    const commandsDir = join(docsDir, "commands");
+    mkdirSync(commandsDir, { recursive: true });
+    const fixtures = JSON.parse(readFileSync(`preview/fixtures/${lang}.json`, "utf8"));
+    await page.send("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 900,
+      deviceScaleFactor: 2,
+      mobile: false,
+    });
+    await open(lang);
+    await step(`${lang}/commands`, fixtures.details["demo-rinnovo"].meeting.title);
+    await sleep(700);
+    await step(`${lang}/commands`, text[lang].notes);
+    await sleep(700);
+    await capture(join(commandsDir, "menu.webp"), JSON.parse(await step(`${lang}/menu`, { js: openMenu })));
+    const logo = `data:image/png;base64,${readFileSync("docs/src/assets/logo.png").toString("base64")}`;
+    for (const { id, md } of commandExamples(lang, logo)) {
+      await step(`${lang}/${id}`, { js: showExample(md) });
+      await capture(
+        join(commandsDir, `${id}.webp`),
+        JSON.parse(await step(`${lang}/${id}`, { js: noteRect })),
+      );
+    }
+    await page.send("Emulation.setDeviceMetricsOverride", {
+      width: 1440,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
   }
   page.close();
   browser.close();

@@ -15,7 +15,7 @@ description: The shortcuts of Granello, in the app, in a note and in the Library
 
 | Shortcut | What it does |
 | --- | --- |
-| `/` | Command menu |
+| `/` | [Command menu](/reference/slash-commands/) |
 | ⌘F | Find and replace |
 | ⌘⇧H | Highlight the selected text |
 | `@` | Mention a person |

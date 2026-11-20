@@ -169,6 +169,7 @@ The interface also runs in the browser, without the Tauri backend, on the demo d
 ```bash
 pnpm preview            # http://localhost:1430/preview.html?lang=it (or lang=en)
 pnpm screenshots        # showcase images in shots/<lang>/*.webp, 1440×900, dark theme
+pnpm screenshots commands  # only the / command images for the docs (docs/src/assets/shots/<lang>/commands)
 ```
 
 ### Distribution
