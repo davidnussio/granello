@@ -65,7 +65,11 @@ export function field(
  */
 export function area(value: string, onCommit: (value: string) => void, props: Props = {}): HTMLTextAreaElement {
   const text = h("textarea", { rows: 1, value, ...props });
+  // dove il browser sa adattare da solo l'altezza al contenuto (`field-sizing`, vedi il CSS)
+  // non serve misurare: segue anche i cambi di larghezza. Altrimenti si misura a mano.
+  const native = typeof CSS !== "undefined" && CSS.supports("field-sizing", "content");
   const fit = () => {
+    if (native) return;
     text.style.height = "auto";
     text.style.height = `${text.scrollHeight}px`;
   };

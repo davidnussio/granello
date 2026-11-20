@@ -699,7 +699,10 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .kanban-count { font-size: 11px; color: var(--muted); padding-right: 4px; }
 .kanban-card { display: flex; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 3px 2px 3px 4px; cursor: grab; }
 .kanban-card:hover { border-color: var(--accent); }
-.kanban-card input { flex: 1; }
+.kanban-card { align-items: flex-start; }
+.kanban-card textarea { flex: 1; min-width: 0; resize: none; overflow: hidden; border: none; background: none; outline: none; color: inherit; font: inherit; line-height: 1.35; padding: 3px 5px; border-radius: 5px; cursor: text; }
+.kanban-card textarea:focus { background: var(--panel); box-shadow: 0 0 0 1px var(--accent); }
+.data-block textarea { field-sizing: content; }
 .data-block .kanban-new { color: var(--muted); font-size: 13px; }
 /* le schede sono strette: i pulsanti occupano spazio solo quando servono */
 .kanban-card .block-btn.remove { display: none; }

@@ -1,5 +1,5 @@
 import { dataBlock, type BlockView } from "../dataBlock";
-import { field, h } from "../dom";
+import { area, field, h } from "../dom";
 import { t } from "../../i18n";
 import type { EditorPlugin } from "../types";
 
@@ -75,7 +75,8 @@ function render(view: BlockView<Kanban>) {
                   },
                 },
               },
-              field(card, (text) => view.set(withColumn(ci, { cards: column.cards.map((c, j) => (j === i ? clean(text) : c)) })), {
+              // su più righe: il testo di una scheda va a capo invece di essere tagliato
+              area(card, (text) => view.set(withColumn(ci, { cards: column.cards.map((c, j) => (j === i ? clean(text) : c)) })), {
                 attrs: { "aria-label": t("Scheda") },
               }),
               // chi non trascina sposta con le frecce
