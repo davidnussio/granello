@@ -14,7 +14,17 @@ fn now_ms() -> i64 {
 
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
-const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2];
+const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3];
+
+/// Progetti: tag promossi, che la Libreria mostra a parte e che si possono archiviare.
+/// Il legame con i meeting resta il tag: qui c'è solo quali tag sono progetti.
+const SCHEMA_V3: &str = r#"
+CREATE TABLE projects (
+    tag TEXT PRIMARY KEY,
+    archived INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
+"#;
 
 /// Tag sui meeting e rubrica delle persone (popolata con i partecipanti già presenti).
 const SCHEMA_V2: &str = r#"
@@ -290,6 +300,28 @@ impl Db {
         )?;
         let rows = stmt.query_map([], |r| Ok(TagCount { name: r.get(0)?, count: r.get(1)? }))?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    // ---------- progetti ----------
+
+    /// I tag promossi a progetto, in ordine alfabetico.
+    pub fn list_projects(&self) -> Result<Vec<Project>> {
+        let mut stmt = self.conn.prepare("SELECT tag, archived FROM projects ORDER BY tag")?;
+        let rows = stmt.query_map([], |r| Ok(Project { tag: r.get(0)?, archived: r.get(1)? }))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// `Some(archived)`: il tag è un progetto, attivo o archiviato. `None`: torna un tag normale.
+    pub fn set_project(&self, tag: &str, archived: Option<bool>) -> Result<()> {
+        match archived {
+            Some(archived) => self.conn.execute(
+                "INSERT INTO projects (tag, archived, created_at) VALUES (?1, ?2, ?3)
+                 ON CONFLICT(tag) DO UPDATE SET archived = excluded.archived",
+                params![tag, archived, now_ms()],
+            )?,
+            None => self.conn.execute("DELETE FROM projects WHERE tag = ?1", [tag])?,
+        };
+        Ok(())
     }
 
     // ---------- rubrica ----------
@@ -729,6 +761,20 @@ mod tests {
         db.delete_meeting(&m.id).unwrap();
         assert!(db.list_meetings(None).unwrap().is_empty());
         assert!(db.chat_history(&m.id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn projects_are_promoted_tags() {
+        let db = Db::open_in_memory().unwrap();
+        db.set_project("cliente-x", Some(false)).unwrap();
+        db.set_project("rebranding", Some(false)).unwrap();
+        db.set_project("cliente-x", Some(true)).unwrap();
+        assert_eq!(
+            db.list_projects().unwrap(),
+            vec![Project { tag: "cliente-x".into(), archived: true }, Project { tag: "rebranding".into(), archived: false }]
+        );
+        db.set_project("cliente-x", None).unwrap();
+        assert_eq!(db.list_projects().unwrap().len(), 1);
     }
 
     #[test]

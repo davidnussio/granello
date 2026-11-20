@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sparkle } from "./sparkles";
 import { api, errorText, on } from "./api";
-import type { CalendarEvent, CalendarInfo, MeetingSummary, RecordingStatus, View } from "./types";
+import type { CalendarEvent, CalendarInfo, MeetingSummary, Project, RecordingStatus, View } from "./types";
 import Sidebar from "./components/Sidebar";
 import MeetingView from "./components/MeetingView";
 import ChatPanel from "./components/ChatPanel";
 import SettingsView from "./components/SettingsView";
 import TemplatesView from "./components/TemplatesView";
 import Home from "./components/Home";
+import LibraryView from "./components/LibraryView";
 import { getLang, resolveLang, setLang, t } from "./i18n";
 
 export interface SetupStatus {
@@ -30,6 +31,10 @@ export default function App() {
   const [calendars, setCalendars] = useState<CalendarInfo[]>([]);
   const [rec, setRec] = useState<RecordingStatus>({ meetingId: null, recording: false, importing: false, pendingChunks: 0 });
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  useEffect(() => {
+    api.listProjects().then(setProjects).catch(() => {});
+  }, []);
   const [setup, setSetup] = useState<SetupStatus | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   // cambiare lingua ridisegna tutta l'interfaccia: t() legge la lingua corrente
@@ -204,6 +209,7 @@ export default function App() {
         query={query}
         setQuery={setQuery}
         meetings={meetings}
+        projects={projects}
         events={events}
         rec={rec}
         onNew={newMeeting}
@@ -235,6 +241,15 @@ export default function App() {
               setView({ kind: "home" });
               refreshMeetings();
             }}
+          />
+        )}
+        {view.kind === "library" && (
+          <LibraryView
+            project={view.project}
+            projects={projects}
+            onProjectsChanged={setProjects}
+            onOpen={(id) => setView({ kind: "meeting", id })}
+            toast={toast}
           />
         )}
         {view.kind === "chat" && (

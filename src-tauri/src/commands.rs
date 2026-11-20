@@ -250,6 +250,23 @@ fn calendar_people(state: &AppState) -> Vec<(String, Option<String>)> {
 // ---------- tag e persone ----------
 
 #[tauri::command]
+pub fn list_projects(state: State<AppState>) -> CmdResult<Vec<Project>> {
+    state.db.lock().list_projects().map_err(err)
+}
+
+/// Promuove un tag a progetto (`archived` false), lo archivia (true) o lo riporta a tag (assente).
+#[tauri::command]
+pub fn set_project(state: State<AppState>, tag: String, archived: Option<bool>) -> CmdResult<Vec<Project>> {
+    let tag = tag.trim().trim_start_matches('#').to_lowercase();
+    if tag.is_empty() {
+        return Err(tr("Il tag è vuoto", "The tag is empty").into());
+    }
+    let db = state.db.lock();
+    db.set_project(&tag, archived).map_err(err)?;
+    db.list_projects().map_err(err)
+}
+
+#[tauri::command]
 pub fn list_tags(state: State<AppState>) -> CmdResult<Vec<TagCount>> {
     state.db.lock().all_tags().map_err(err)
 }

@@ -8,6 +8,7 @@ import type {
   MeetingDetail,
   MeetingSummary,
   Person,
+  Project,
   PersonSuggestion,
   TagCount,
   Provider,
@@ -41,6 +42,9 @@ export const api = {
     invoke<Meeting>("update_meeting_meta", args),
   deleteMeeting: (id: string) => invoke<void>("delete_meeting", { id }),
 
+  listProjects: () => invoke<Project[]>("list_projects"),
+  /** Promuove un tag a progetto (false), lo archivia (true) o lo riporta a tag normale (null). */
+  setProject: (tag: string, archived: boolean | null) => invoke<Project[]>("set_project", { tag, archived }),
   listTags: () => invoke<TagCount[]>("list_tags"),
   listPeople: () => invoke<Person[]>("list_people"),
   deletePerson: (id: number) => invoke<void>("delete_person", { id }),

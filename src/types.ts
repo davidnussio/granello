@@ -146,9 +146,16 @@ export interface RecordingStatus {
   pendingChunks: number;
 }
 
+/** Un tag promosso a progetto. */
+export interface Project {
+  tag: string;
+  archived: boolean;
+}
+
 export type View =
   | { kind: "meeting"; id: string }
   | { kind: "chat" }
+  | { kind: "library"; project?: string }
   | { kind: "settings" }
   | { kind: "templates" }
   | { kind: "home" };

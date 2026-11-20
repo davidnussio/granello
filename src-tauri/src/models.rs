@@ -58,6 +58,14 @@ pub struct TagCount {
     pub count: i64,
 }
 
+/// Un tag promosso a progetto.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Project {
+    pub tag: String,
+    pub archived: bool,
+}
+
 pub const MAX_TAGS: usize = 12;
 pub const MAX_ATTENDEES: usize = 100;
 

@@ -85,6 +85,8 @@ pub fn run() {
             commands::update_meeting_meta,
             commands::delete_meeting,
             commands::list_tags,
+            commands::list_projects,
+            commands::set_project,
             commands::list_people,
             commands::delete_person,
             commands::suggest_people,
