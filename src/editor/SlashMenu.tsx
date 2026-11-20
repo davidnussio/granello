@@ -80,6 +80,8 @@ export function SlashMenu({ bridge }: { bridge: SlashBridge }) {
   const [state, setState] = useState<MenuState>(null);
   const [selected, setSelected] = useState(0);
   const list = useRef<HTMLDivElement>(null);
+  /** Dove si trovava il mouse l'ultima volta che si è mosso davvero. */
+  const pointer = useRef({ x: -1, y: -1 });
 
   useEffect(() => bridge.subscribe(setState), [bridge]);
 
@@ -142,7 +144,14 @@ export function SlashMenu({ bridge }: { bridge: SlashBridge }) {
               className={"slash-item" + (i === selected ? " on" : "")}
               // un suggerimento lungo viene troncato: passandoci sopra si legge intero
               title={item.hint}
-              onMouseEnter={() => setSelected(i)}
+              // Solo un movimento vero del mouse sceglie la voce. Quando le frecce fanno scorrere
+              // l'elenco, la voce che finisce sotto il mouse fermo riceve gli stessi eventi:
+              // senza questo controllo la selezione saltava lì, a metà elenco.
+              onMouseMove={(e) => {
+                if (e.clientX === pointer.current.x && e.clientY === pointer.current.y) return;
+                pointer.current = { x: e.clientX, y: e.clientY };
+                setSelected(i);
+              }}
               // mousedown: il click toglierebbe il fuoco all'editor chiudendo il menu
               onMouseDown={(e) => {
                 e.preventDefault();
