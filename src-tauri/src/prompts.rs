@@ -185,6 +185,78 @@ pub fn parse_moments(answer: &str, n: usize) -> Vec<Option<String>> {
     out
 }
 
+/// Cosa può chiedere l'editor all'AI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AssistKind {
+    /// Risposta a una domanda sul meeting (blocco AI dal vivo).
+    Answer,
+    /// Crea o modifica un blocco della nota nel suo formato Markdown.
+    Block,
+    /// Riscrive il testo selezionato.
+    Rewrite,
+    /// Trasforma lo schizzo allegato in un diagramma Mermaid.
+    Sketch,
+}
+
+pub fn assist_system(kind: AssistKind, language: &str, format: Option<&str>) -> String {
+    let lang = output_language(language);
+    let common = "Sei l'assistente AI dentro l'editor delle note di Granello, un'app per le note di riunione. \
+Quando la richiesta riguarda il meeting usa solo le note e la trascrizione fornite: non inventare fatti, \
+nomi, numeri o date. La trascrizione è automatica e può contenere errori; \"Altri\" indica gli altri \
+partecipanti, non una persona precisa. Non usare il trattino lungo.";
+    match kind {
+        AssistKind::Answer => format!(
+            "{common}\nL'utente ha messo nella nota una richiesta che viene ricalcolata mentre la riunione procede. \
+Rispondi {lang}, in Markdown breve: bullet densi o poche frasi, senza titoli, senza preamboli e senza \
+ripetere la richiesta. Se la trascrizione non contiene ancora nulla di utile, scrivi una sola riga che lo dice."
+        ),
+        AssistKind::Block => format!(
+            "{common}\nL'utente ti chiede di creare o modificare un blocco della nota. Il blocco ha questo formato:\n\n{}\n\n\
+Rispondi SOLO con il blocco completo in quel formato, pronto da salvare: nessuna spiegazione, nessun testo \
+prima o dopo, nessun recinto di codice aggiuntivo. Scrivi i testi {lang}. Se la richiesta chiede una modifica, \
+conserva il resto del blocco attuale.",
+            format.unwrap_or("Markdown")
+        ),
+        AssistKind::Rewrite => format!(
+            "{common}\nL'utente ha selezionato un pezzo della nota e ti chiede di riscriverlo. Rispondi SOLO con \
+il testo che sostituisce la selezione, in Markdown, senza spiegazioni, senza virgolette attorno e senza recinti \
+di codice. Mantieni la lingua del testo selezionato, a meno che la richiesta non chieda di tradurre."
+        ),
+        AssistKind::Sketch => "Ricevi l'immagine di uno schizzo fatto a mano su una lavagna. Trasformalo in un \
+diagramma Mermaid che ne riproduce la struttura: forme come nodi, frecce e linee come collegamenti, scritte come \
+etichette. Scegli il tipo di diagramma più adatto (di solito flowchart). Se una scritta non si legge, usa \
+un'etichetta breve e neutra. Rispondi SOLO con il codice Mermaid, senza spiegazioni e senza recinti di codice."
+            .to_string(),
+    }
+}
+
+/// `context`: note e trascrizione del meeting, se la richiesta parte da un meeting.
+pub fn assist_user(kind: AssistKind, context: Option<&str>, instruction: &str, current: Option<&str>) -> String {
+    let mut s = String::new();
+    if let Some(context) = context {
+        s.push_str(context);
+        s.push_str("\n\n");
+    }
+    let current = current.map(str::trim).filter(|c| !c.is_empty());
+    match kind {
+        AssistKind::Answer => s.push_str(&format!("## Richiesta\n{instruction}")),
+        AssistKind::Block => {
+            s.push_str(&format!("## Blocco attuale\n{}\n\n## Richiesta\n{instruction}", current.unwrap_or("(vuoto)")));
+        }
+        AssistKind::Rewrite => {
+            s.push_str(&format!("## Testo selezionato\n{}\n\n## Richiesta\n{instruction}", current.unwrap_or("")));
+        }
+        AssistKind::Sketch => {
+            s.push_str("Trasforma questo schizzo in un diagramma Mermaid.");
+            if !instruction.trim().is_empty() {
+                s.push_str(&format!("\n{instruction}"));
+            }
+        }
+    }
+    s
+}
+
 pub fn enhance_system(language: &str) -> String {
     let lang = output_language(language);
     format!(

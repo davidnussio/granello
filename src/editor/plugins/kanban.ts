@@ -141,6 +141,9 @@ const KanbanBlock = dataBlock<Kanban>({
   tag: "kanban",
   empty: { columns: [] },
   autofocus: "new-0",
+  ai: {
+    format: "::: kanban\n## Da fare\n- Una scheda\n- Un'altra scheda\n## In corso\n## Fatto\n- Scheda conclusa\n:::\n\nOgni riga \"## Titolo\" apre una colonna; le righe \"- testo\" sotto sono le sue schede, una riga ciascuna.",
+  },
   format: {
     kind: "container",
     parse: (_info, lines) => {

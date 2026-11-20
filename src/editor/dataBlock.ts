@@ -4,6 +4,11 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import type MarkdownIt from "markdown-it";
 import { CONTAINERS, escAttr, focusSoon, once, rawContainer, replaceParagraphs, type MdState } from "./markdown";
 import { NEEDS_PARAGRAPH_AFTER } from "./trailing";
+import { askAi } from "./aiContext";
+import { micButton } from "./dictation";
+import { h } from "./dom";
+import { errorText, notify } from "../api";
+import { t } from "../i18n";
 
 /** Ciò che un blocco con dati vede di sé mentre si disegna. */
 export interface BlockView<T> {
@@ -15,6 +20,8 @@ export interface BlockView<T> {
   set(next: T, focus?: string): void;
   /** Posizione del blocco nel documento, o null se non è più nel documento. */
   pos(): number | null;
+  /** Ridisegna il blocco con gli stessi dati (è cambiato solo lo stato in `local`). */
+  redraw(): void;
   /** Stato che sopravvive ai ridisegni (un timer in corsa, un modulo caricato…). */
   local: Record<string, unknown>;
   /** Da eseguire quando il blocco viene tolto. */
@@ -41,6 +48,105 @@ export interface DataBlockSpec<T> {
   render(view: BlockView<T>): void;
   /** `data-focus` del campo da cui partire quando il blocco è appena stato inserito vuoto. */
   autofocus?: string;
+  /**
+   * Se presente, il blocco ha il pulsante ✦: l'AI lo crea o lo modifica a richiesta, scrivendolo
+   * nel suo formato Markdown. `format` spiega quel formato al modello, con un esempio.
+   */
+  ai?: { format: string };
+}
+
+/** Il blocco scritto in Markdown, come lo vede l'AI e come finisce nella nota. */
+function toMarkdown<T>(tag: string, format: Format<T>, data: T): string {
+  if (format.kind === "line") return format.write(data);
+  if (format.kind === "fence") return `\`\`\`${tag}\n${format.write(data)}\n\`\`\``;
+  const { info, lines } = format.write(data);
+  return [`::: ${tag}${info ? ` ${info.replace(/\s+/g, " ").trim()}` : ""}`, ...lines, ":::"].join("\n");
+}
+
+/** Rilegge un blocco dal Markdown scritto dall'AI; null se non è nel formato del blocco. */
+function fromMarkdown<T>(tag: string, format: Format<T>, text: string): T | null {
+  const lines = text.trim().split("\n");
+  if (format.kind === "line") {
+    const m = format.match.exec(lines[0]?.trim() ?? "");
+    return m ? format.parse(m) : null;
+  }
+  if (format.kind === "fence") {
+    const open = lines.findIndex((l) => l.trim().startsWith("```"));
+    if (open < 0) return format.parse(text.trim());
+    const close = lines.findIndex((l, i) => i > open && l.trim().startsWith("```"));
+    return format.parse(lines.slice(open + 1, close < 0 ? undefined : close).join("\n"));
+  }
+  const open = lines.findIndex((l) => new RegExp(`^:{3,}\\s*${tag}(\\s|$)`).test(l.trim()));
+  if (open < 0) return null;
+  const info = lines[open].trim().replace(/^:+\s*[\w-]+\s*/, "");
+  const close = lines.findIndex((l, i) => i > open && /^:{3,}\s*$/.test(l.trim()));
+  return format.parse(info, lines.slice(open + 1, close < 0 ? undefined : close));
+}
+
+/** Il pulsante ✦ di un blocco e il campo in cui si scrive la richiesta per l'AI. */
+function aiControls<T>(view: BlockView<T>, spec: DataBlockSpec<T>) {
+  const state = { open: false, busy: false };
+  const input = h("input", { type: "text", class: "block-ai-input" });
+  const mic = micButton(input);
+  const bar = h("div", { class: "block-ai-bar" }, h("span", { class: "block-ai-mark", attrs: { "aria-hidden": "true" } }, "✦"), input, mic.button);
+  const button = h("button", { type: "button", class: "block-ai-btn" }, "✦");
+  const refresh = () => {
+    button.title = t("Crea o modifica con l'AI");
+    button.classList.toggle("on", state.open);
+    input.disabled = state.busy;
+    input.placeholder = state.busy ? t("L'AI sta scrivendo…") : t("Chiedi all'AI: cosa creare o cosa cambiare");
+    input.setAttribute("aria-label", t("Richiesta per l'AI"));
+    bar.classList.toggle("busy", state.busy);
+    if (state.open) view.dom.append(bar);
+    else {
+      mic.cancel();
+      bar.remove();
+    }
+    view.dom.append(button);
+  };
+  const submit = async () => {
+    const instruction = input.value.trim();
+    if (!instruction || state.busy) return;
+    state.busy = true;
+    refresh();
+    try {
+      const answer = await askAi({
+        kind: "block",
+        instruction,
+        current: toMarkdown(spec.tag, spec.format, view.data),
+        format: spec.ai!.format,
+      });
+      const next = fromMarkdown(spec.tag, spec.format, answer);
+      if (next === null) notify(t("L'AI non ha risposto nel formato del blocco. Riprova."));
+      else {
+        input.value = "";
+        state.open = false;
+        view.set(next);
+      }
+    } catch (e) {
+      notify(errorText(e));
+    } finally {
+      state.busy = false;
+      refresh();
+    }
+  };
+  button.addEventListener("click", () => {
+    state.open = !state.open;
+    refresh();
+    if (state.open) input.focus();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      submit();
+    } else if (e.key === "Escape" && !state.busy) {
+      e.preventDefault();
+      state.open = false;
+      refresh();
+    }
+  });
+  view.cleanup.push(() => mic.cancel());
+  return refresh;
 }
 
 /**
@@ -91,6 +197,7 @@ export function dataBlock<T>(spec: DataBlockSpec<T>) {
           data: node.attrs.data as T,
           local: {},
           cleanup: [],
+          redraw: () => paint(),
           pos() {
             const pos = typeof getPos === "function" ? getPos() : undefined;
             return typeof pos === "number" ? pos : null;
@@ -102,8 +209,10 @@ export function dataBlock<T>(spec: DataBlockSpec<T>) {
             editor.view.dispatch(editor.view.state.tr.setNodeMarkup(pos, undefined, { data: next }));
           },
         };
+        const ai = spec.ai && editor.isEditable ? aiControls(view, spec) : null;
         const paint = () => {
           spec.render(view);
+          ai?.();
           if (focusNext) dom.querySelector<HTMLElement>(`[data-focus="${focusNext}"]`)?.focus();
           focusNext = undefined;
         };

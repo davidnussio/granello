@@ -6,7 +6,7 @@ OAuth…) live in the "Next steps" section of the [README](README.md).
 ## Editor components
 
 Blocks that could be added to the notes editor. The classics and the cool ones are
-done; the last group has started with the transcript quote and the moment marker. The editor also has headings, lists, checklists, quote,
+done; the last group has started with the transcript quote, the moment marker and the live AI block. The editor also has headings, lists, checklists, quote,
 code block, divider, links and snippets.
 
 **Storage:** notes are stored as Markdown, and every block has a readable Markdown
@@ -57,7 +57,7 @@ calendar and AI.
 - [ ] **Decision**: a "we decided X" block with who was there and the transcript sentences that back it up. All decisions become searchable across meetings.
 - [ ] **Action item with an owner**: a checklist where each item has a person and a due date, and that reappears on its own in the next meeting with the same people until it is closed.
 - [ ] **Open question**: a question left unanswered, which Granello brings up again at the next meeting with whoever was supposed to answer.
-- [ ] **Live AI block**: a block holding a request ("summarize the client's objections") that recomputes as the transcript grows.
+- [x] **Live AI block**: a block holding a request ("summarize the client's objections") that recomputes as the transcript grows.
 - [ ] **"Since last time"**: at the top of the note, what was decided and what was left open in the last meeting with the same people or the same tag.
 - [ ] **Poll filled in from the transcript**: write the question and the AI suggests who said what, with the minute as evidence. You confirm.
 - [ ] **Who spoke how much**: a bar showing speaking time. Today it only tells "You" from "Others"; per person it would need speaker recognition.

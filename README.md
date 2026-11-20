@@ -8,6 +8,7 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
 
 - **Notes + recording**: Markdown editor (TipTap) with a `/` command menu, a formatting toolbar on selection, links and checklists, autosave, recording with audio levels and a timer, resuming on the same meeting.
 - **Moment markers**: while recording, press ⇧⌘M (or "⚑ Mark") and the note keeps a marker with the minute, without moving your cursor. When the transcription ends, the AI writes in each marker what was being said around that minute; ↗ on a marker opens the transcript at that point. Markers also tell the AI notes which parts mattered to you.
+- **AI inside the editor**: a **live AI block** holds a request ("summarize the client's objections") and its answer, recomputed while you record (at most every two minutes) and once more when the transcription ends. The ✦ button on polls, kanban boards, timelines, pros and cons, decision matrices and Mermaid diagrams creates or edits the block from a request, using the meeting's notes and transcript. "✦ To diagram" on a whiteboard has the AI read the sketch and redraw it as a Mermaid diagram (needs a model that accepts images). ✦ on selected text rewrites it (shorten, translate, expand…). Every AI request field has a microphone: dictate the request and it is transcribed locally by whisper, like the meeting. Each of these sends the notes and the transcript to the AI provider you configured.
 - **Transcript quotes**: select a sentence in the transcript panel and "❝ Quote in notes" turns it into a quote with who said it and the minute. The speaker starts as you or "Others" and can be corrected; ↗ reopens the transcript at that point.
 - **Editor blocks**: tables, callouts, collapsible sections, columns, images (paste a screenshot), file attachments, link previews, LaTeX formulas, a live table of contents, highlighting, `@person` mentions and date pills; plus meeting tools: polls, kanban boards, timelines, pros and cons, decision matrices, star ratings, timers, progress bars, charts, Mermaid diagrams, a freehand whiteboard and embeds. Everything is still saved as readable Markdown:
 
@@ -36,6 +37,7 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
   | Diagram | `/` menu | a `mermaid` code block |
   | Whiteboard | `/` menu | a `sketch` code block, one line per stroke |
   | Embed | `/` menu | `[Title](https://… "embed")` |
+  | Live AI block | `/` menu ("Ask the AI") | `::: ai Request` … answer … `:::` |
   | Transcript quote | select text in the transcript, `/` menu | `::: quote 12:34 Name` … `:::` |
   | Moment marker | ⇧⌘M or "⚑ Mark" while recording, `/` menu | `::: moment 12:34` … `:::` |
 - **Local transcription**: whisper.cpp with Metal on Apple Silicon. Audio is cut on pauses (6-20 s), resampled to 16 kHz and transcribed on a dedicated thread. Typical hallucinations ("Thanks for watching", "[Music]"...) are filtered out. The meeting title and attendees are passed as the initial prompt to improve names and terms.

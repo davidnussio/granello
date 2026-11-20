@@ -66,7 +66,7 @@ function render(view: BlockView<Diagram>) {
     window.clearTimeout(preview);
     view.local.editing = false;
     if (source.value !== code) view.set({ code: source.value });
-    else render(view);
+    else view.redraw();
   };
   source.addEventListener("input", () => {
     // anteprima mentre si scrive, senza salvare a ogni tasto
@@ -95,7 +95,7 @@ function render(view: BlockView<Diagram>) {
             click: () => {
               if (editing) return close();
               view.local.editing = true;
-              render(view);
+              view.redraw();
               view.dom.querySelector<HTMLElement>("[data-focus=source]")?.focus();
             },
           },
@@ -116,6 +116,10 @@ const DiagramBlock = dataBlock<Diagram>({
   name: "diagram",
   tag: "mermaid",
   empty: { code: "" },
+  ai: {
+    format:
+      "Un blocco di codice Mermaid (flowchart, sequenceDiagram, gantt, mindmap, stateDiagram, erDiagram…):\n\n```mermaid\nflowchart LR\n  A[Richiesta] --> B{Approvata?}\n  B -- Sì --> C[Rilascio]\n```\n\nIl codice deve essere Mermaid valido: metti tra virgolette le etichette con parentesi o caratteri speciali.",
+  },
   format: {
     kind: "fence",
     parse: (code) => ({ code }),

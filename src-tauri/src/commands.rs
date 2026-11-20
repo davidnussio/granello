@@ -84,6 +84,8 @@ pub struct AppState {
     pub models_dir: PathBuf,
     pub transcribers: Arc<TranscriberCache>,
     pub session: Mutex<Option<Session>>,
+    /// La dettatura di una richiesta per l'AI, se in corso.
+    pub dictation: Mutex<Option<audio::Dictation>>,
     pub calendar: tokio::sync::Mutex<CalendarCache>,
     pub downloading: Mutex<HashSet<String>>,
     /// Client HTTP condiviso (pool di connessioni, timeout di connessione e di lettura).
@@ -580,6 +582,52 @@ pub fn recording_position(state: State<AppState>, meeting_id: String) -> Option<
     s.as_ref().filter(|s| s.meeting_id == meeting_id).and_then(|s| s.position_ms())
 }
 
+/// Comincia ad ascoltare il microfono per dettare una richiesta. Una dettatura già in corso
+/// viene scartata.
+#[tauri::command]
+pub fn dictation_start(state: State<AppState>) -> CmdResult<()> {
+    let settings = state.db.lock().get_settings().map_err(err)?;
+    if !transcribe::model_path(&state.models_dir, &settings.whisper_model).exists() {
+        return Err(tr(
+            "Per dettare serve il modello di trascrizione: scaricalo dalle Impostazioni",
+            "Dictation needs the transcription model: download it in Settings",
+        )
+        .into());
+    }
+    let mut slot = state.dictation.lock();
+    if let Some(old) = slot.take() {
+        std::thread::spawn(move || drop(old.stop()));
+    }
+    *slot = Some(audio::Dictation::start(settings.mic_device).map_err(err)?);
+    Ok(())
+}
+
+/// Ferma la dettatura e ritorna il testo detto, trascritto in locale. Con `discard` l'audio
+/// viene buttato e torna una stringa vuota.
+#[tauri::command]
+pub async fn dictation_stop(state: State<'_, AppState>, discard: Option<bool>) -> CmdResult<String> {
+    let Some(dictation) = state.dictation.lock().take() else { return Ok(String::new()) };
+    let (settings, cache) = (state.db.lock().get_settings().map_err(err)?, state.transcribers.clone());
+    let model = transcribe::model_path(&state.models_dir, &settings.whisper_model);
+    let discard = discard.unwrap_or(false);
+    tokio::task::spawn_blocking(move || -> CmdResult<String> {
+        let samples = dictation.stop();
+        // meno di tre decimi di secondo: un clic per sbaglio
+        if discard || samples.len() < transcribe::SAMPLE_RATE as usize * 3 / 10 {
+            return Ok(String::new());
+        }
+        let segments = cache.get(&model).and_then(|t| t.transcribe(&samples, &settings.language, "")).map_err(err)?;
+        Ok(segments
+            .iter()
+            .map(|s| s.text.trim())
+            .filter(|t| !transcribe::is_hallucination(t))
+            .collect::<Vec<_>>()
+            .join(" "))
+    })
+    .await
+    .map_err(err)?
+}
+
 // ---------------- AI ----------------
 
 /// Un modello pronto all'uso: provider, indirizzo, chiave e nome del modello.
@@ -749,7 +797,84 @@ pub async fn fill_moments(state: State<'_, AppState>, meeting_id: String, moment
         .collect())
 }
 
+/// Una richiesta dell'editor all'AI: una domanda sul meeting, un blocco da creare o modificare,
+/// un testo da riscrivere, uno schizzo da trasformare in diagramma.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssistRequest {
+    /// Il meeting da cui parte: le sue note e la trascrizione fanno da contesto.
+    meeting_id: Option<String>,
+    kind: prompts::AssistKind,
+    instruction: String,
+    /// Il blocco o il testo su cui lavorare.
+    current: Option<String>,
+    /// Descrizione del formato Markdown del blocco (solo per `block`).
+    format: Option<String>,
+    /// Immagine PNG in base64 (solo per `sketch`).
+    image: Option<String>,
+}
+
+/// Oltre questa dimensione l'immagine non è uno schizzo della lavagna.
+const MAX_IMAGE_BASE64: usize = 6 * 1024 * 1024;
+
+#[tauri::command]
+pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> CmdResult<String> {
+    use prompts::AssistKind;
+    let AssistRequest { meeting_id, kind, instruction, current, format, image } = request;
+    if kind != AssistKind::Sketch && instruction.trim().is_empty() {
+        return Err(tr("Scrivi cosa chiedere all'AI", "Write what to ask the AI").into());
+    }
+    let image = match (kind, image) {
+        (AssistKind::Sketch, Some(png)) if !png.is_empty() && png.len() <= MAX_IMAGE_BASE64 => Some(png),
+        (AssistKind::Sketch, _) => return Err(tr("Lo schizzo è vuoto o troppo grande", "The sketch is empty or too large").into()),
+        _ => None,
+    };
+    let (model, system, user) = {
+        let db = state.db.lock();
+        let settings = db.get_settings().map_err(err)?;
+        // lo schizzo si legge da solo: il meeting non serve
+        let context = match meeting_id.as_deref().filter(|_| kind != AssistKind::Sketch) {
+            Some(id) => {
+                let meeting = db.get_meeting(id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+                let segments = db.segments(id).map_err(err)?;
+                Some(prompts::enhance_user(&meeting, None, &segments, &settings.user_name))
+            }
+            None => None,
+        };
+        let system = prompts::assist_system(kind, &settings.language, format.as_deref());
+        let user = prompts::assist_user(kind, context.as_deref(), instruction.trim(), current.as_deref());
+        (resolve_model(&state, &settings, &settings.notes_model)?, system, user)
+    };
+    let message = llm::Msg::user(user);
+    let messages = [match image {
+        Some(png) => message.with_image(png),
+        None => message,
+    }];
+    model.check_context(&system, &messages)?;
+    let cancel = AtomicBool::new(false);
+    let done = llm::stream_message(&state.llm_http, &model.request(&system, &messages, ASSIST_MAX_TOKENS, false), &cancel, |_| {})
+        .await
+        .map_err(err)?;
+    // il formato di un blocco può essere proprio un recinto di codice: lo legge l'editor
+    let text = if kind == AssistKind::Block { done.text.trim().to_string() } else { strip_fence(&done.text) };
+    if text.is_empty() {
+        return Err(tr("L'AI non ha risposto. Riprova.", "The AI gave no answer. Try again.").into());
+    }
+    Ok(text)
+}
+
+/// Toglie il recinto di codice (con qualunque linguaggio) in cui il modello ha chiuso la risposta.
+fn strip_fence(s: &str) -> String {
+    let t = s.trim();
+    let inner = t.strip_prefix("```").and_then(|rest| rest.strip_suffix("```")).and_then(|rest| rest.split_once('\n'));
+    match inner {
+        Some((_language, body)) => body.trim().to_string(),
+        None => t.to_string(),
+    }
+}
+
 /// Il limite comprende anche il ragionamento del modello, quindi va tenuto largo.
+const ASSIST_MAX_TOKENS: u32 = 8_000;
 const ENHANCE_MAX_TOKENS: u32 = 16_000;
 const MOMENTS_MAX_TOKENS: u32 = 6_000;
 const CHAT_MAX_TOKENS: u32 = 8_000;

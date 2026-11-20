@@ -60,6 +60,19 @@ export const api = {
 
   enhanceNotes: (meetingId: string, streamId: string) =>
     invoke<string>("enhance_notes", { meetingId, streamId }),
+  /** Una richiesta dell'editor all'AI: domanda sul meeting, blocco da creare, testo da riscrivere, schizzo. */
+  aiAssist: (request: {
+    meetingId: string | null;
+    kind: "answer" | "block" | "rewrite" | "sketch";
+    instruction: string;
+    current?: string;
+    format?: string;
+    image?: string;
+  }) => invoke<string>("ai_assist", { request }),
+  /** Comincia ad ascoltare il microfono per dettare una richiesta. */
+  dictationStart: () => invoke<void>("dictation_start"),
+  /** Ferma la dettatura e ritorna il testo, trascritto in locale. `discard`: butta via l'audio. */
+  dictationStop: (discard: boolean) => invoke<string>("dictation_stop", { discard }),
   getChat: (scope: string) => invoke<ChatMessage[]>("get_chat", { scope }),
   clearChat: (scope: string) => invoke<void>("clear_chat", { scope }),
   chat: (scope: string, question: string, streamId: string) =>

@@ -188,6 +188,9 @@ const MatrixBlock = dataBlock<Matrix>({
   name: "matrix",
   tag: "matrix",
   empty: { options: [], criteria: [] },
+  ai: {
+    format: "::: matrix\n| Criterio | Peso | Opzione A | Opzione B |\n| --- | --- | --- | --- |\n| Costo | 3 | 4 | 2 |\n| Tempi | 2 | 3 | 5 |\n:::\n\nUna tabella: le prime due colonne sono il criterio e il suo peso (da 1 a 5), le altre sono le opzioni a confronto. In ogni cella il voto dell'opzione su quel criterio, da 0 a 5. Il totale non va scritto: lo calcola l'app.",
+  },
   format: {
     kind: "container",
     parse: (_info, lines) => {

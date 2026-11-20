@@ -66,14 +66,39 @@ impl std::fmt::Display for LlmError {
 pub struct Msg {
     pub role: String,
     pub content: String,
+    /// Un'immagine PNG (base64) che accompagna il testo, per i modelli che vedono.
+    #[serde(skip)]
+    pub image_png: Option<String>,
 }
 
 impl Msg {
     pub fn user(c: impl Into<String>) -> Self {
-        Self { role: "user".into(), content: c.into() }
+        Self { role: "user".into(), content: c.into(), image_png: None }
     }
     pub fn assistant(c: impl Into<String>) -> Self {
-        Self { role: "assistant".into(), content: c.into() }
+        Self { role: "assistant".into(), content: c.into(), image_png: None }
+    }
+    pub fn with_image(mut self, png_base64: String) -> Self {
+        self.image_png = Some(png_base64);
+        self
+    }
+
+    /// Il messaggio come lo vuole il provider: testo semplice, oppure testo più immagine.
+    fn to_json(&self, kind: ProviderKind) -> Value {
+        let Some(png) = &self.image_png else {
+            return json!({ "role": self.role, "content": self.content });
+        };
+        let content = match kind {
+            ProviderKind::Anthropic => json!([
+                { "type": "image", "source": { "type": "base64", "media_type": "image/png", "data": png } },
+                { "type": "text", "text": self.content },
+            ]),
+            ProviderKind::Openai => json!([
+                { "type": "text", "text": self.content },
+                { "type": "image_url", "image_url": { "url": format!("data:image/png;base64,{png}") } },
+            ]),
+        };
+        json!({ "role": self.role, "content": content })
     }
 }
 
@@ -114,7 +139,7 @@ fn endpoint(req: &Request) -> String {
 fn body(req: &Request) -> Value {
     if req.kind == ProviderKind::Openai {
         let mut messages = vec![json!({ "role": "system", "content": req.system })];
-        messages.extend(req.messages.iter().map(|m| json!({ "role": m.role, "content": m.content })));
+        messages.extend(req.messages.iter().map(|m| m.to_json(req.kind)));
         // Niente limite di token in uscita: il nome del parametro cambia tra server
         // (max_tokens / max_completion_tokens) e senza limite ognuno usa il massimo del modello.
         return json!({ "model": req.model, "messages": messages, "stream": true });
@@ -127,7 +152,7 @@ fn body(req: &Request) -> Value {
         "model": req.model,
         "max_tokens": req.max_tokens,
         "system": [block],
-        "messages": req.messages,
+        "messages": req.messages.iter().map(|m| m.to_json(req.kind)).collect::<Vec<_>>(),
         "stream": true,
     })
 }
@@ -477,6 +502,17 @@ mod tests {
         assert_eq!(parse_sse_line(s).unwrap(), Sse::Stop("max_tokens".into()));
         let e = r#"data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#;
         assert!(matches!(parse_sse_line(e), Err(LlmError::Api { status: 529, .. })));
+    }
+
+    #[test]
+    fn image_messages_follow_the_provider_format() {
+        let msg = Msg::user("guarda").with_image("QUJD".into());
+        let a = msg.to_json(ProviderKind::Anthropic);
+        assert_eq!(a["content"][0]["source"]["data"], "QUJD");
+        assert_eq!(a["content"][1]["text"], "guarda");
+        let o = msg.to_json(ProviderKind::Openai);
+        assert_eq!(o["content"][1]["image_url"]["url"], "data:image/png;base64,QUJD");
+        assert_eq!(Msg::user("ciao").to_json(ProviderKind::Openai)["content"], "ciao");
     }
 
     #[test]

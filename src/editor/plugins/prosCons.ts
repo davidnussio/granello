@@ -81,6 +81,9 @@ const ProsConsBlock = dataBlock<ProsCons>({
   tag: "pros-cons",
   empty: { pros: [], cons: [], verdict: "" },
   autofocus: "new-pros",
+  ai: {
+    format: "::: pros-cons\n+ Un pro\n+ Un altro pro\n- Un contro\n= Il verdetto, in una riga\n:::\n\nLe righe con \"+\" sono i pro, quelle con \"-\" i contro; la riga con \"=\" è il verdetto (facoltativa, una sola).",
+  },
   format: {
     kind: "container",
     parse: (_info, lines) => {

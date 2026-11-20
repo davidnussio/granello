@@ -9,6 +9,7 @@ import ChatPanel from "./ChatPanel";
 import { dayLabel, mmss, time } from "../format";
 import { t } from "../i18n";
 import type { Editor } from "@tiptap/react";
+import { setAiMeeting, setTranscriptState } from "../editor/aiContext";
 import { insertQuote, quoteMd } from "../editor/plugins/transcriptQuote";
 import { MOMENT_EVENTS, emptyMoments, fillMomentsIn, fillMomentsMd, insertMoment, momentMd } from "../editor/plugins/moment";
 
@@ -121,6 +122,15 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     // evento di calendario alla stessa ora: da lì si possono importare i partecipanti
     api.calendarMatch(id).then(setCalEvent).catch(() => {});
   }, [load, id]);
+
+  // l'AI dei blocchi dell'editor lavora su questo meeting e segue la sua trascrizione
+  useEffect(() => {
+    setAiMeeting(id);
+    return () => setAiMeeting(null);
+  }, [id]);
+  useEffect(() => {
+    setTranscriptState({ count: segments.length, live: rec.meetingId === id && !rec.importing });
+  }, [segments.length, rec.meetingId, rec.importing, id]);
 
   const loadDevices = useCallback(() => {
     api.listAudioDevices().then(setDevices).catch(() => {});
@@ -411,6 +421,18 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     (name) => !meeting.attendees.some((a) => a.toLowerCase() === name.toLowerCase()),
   );
 
+  // aprono e chiudono il pannello di destra: a pannello aperto stanno sotto di lui
+  const sideButtons = (
+    <>
+      <button className={"btn small ghost" + (side === "transcript" ? " on" : "")} onClick={() => setSide(side === "transcript" ? "none" : "transcript")}>
+        {t("Trascrizione")} {segments.length ? `(${segments.length})` : ""}
+      </button>
+      <button className={"btn small ghost" + (side === "chat" ? " on" : "")} onClick={() => setSide(side === "chat" ? "none" : "chat")}>
+        {t("✦ Chiedi")}
+      </button>
+    </>
+  );
+
   return (
     <div className={"meeting" + (side !== "none" ? " with-side" : "")}>
       <div className="meeting-main">
@@ -631,12 +653,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
           )}
           {!isRecording && otherRecording && <span className="muted small">{t("Registrazione in corso altrove")}</span>}
           <div className="spacer" />
-          <button className={"btn small ghost" + (side === "transcript" ? " on" : "")} onClick={() => setSide(side === "transcript" ? "none" : "transcript")}>
-            {t("Trascrizione")} {segments.length ? `(${segments.length})` : ""}
-          </button>
-          <button className={"btn small ghost" + (side === "chat" ? " on" : "")} onClick={() => setSide(side === "chat" ? "none" : "chat")}>
-            {t("✦ Chiedi")}
-          </button>
+          {side === "none" && sideButtons}
         </footer>
       </div>
 
@@ -657,6 +674,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               suggestions={[t("Scrivi una email di follow-up"), t("Quali sono le azioni e chi le fa?"), t("Cosa non è stato deciso?")]}
             />
           )}
+          <footer className="recbar side-foot">{sideButtons}</footer>
         </aside>
       )}
     </div>

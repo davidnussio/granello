@@ -1,6 +1,8 @@
 import { dataBlock, type BlockView } from "../dataBlock";
 import { h } from "../dom";
 import { t } from "../../i18n";
+import { askAi } from "../aiContext";
+import { errorText, notify } from "../../api";
 import type { EditorPlugin } from "../types";
 
 type Point = [number, number];
@@ -32,6 +34,52 @@ function polyline(stroke: Stroke): SVGElement {
   line.setAttribute("stroke-linecap", "round");
   line.setAttribute("stroke-linejoin", "round");
   return line;
+}
+
+/** Lo schizzo come PNG (base64), con tratti scuri su fondo bianco: così lo legge un modello che vede. */
+async function toPng(data: Sketch): Promise<string> {
+  const ink: Record<string, string> = { ...COLORS, ink: "#111111" };
+  const lines = data.strokes
+    .map((s) => {
+      const points = s.points.length === 1 ? [s.points[0], [s.points[0][0] + 0.1, s.points[0][1]]] : s.points;
+      return `<polyline points="${points.map((p) => p.join(",")).join(" ")}" fill="none" stroke="${ink[s.color] ?? ink.ink}" stroke-width="${s.size}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    })
+    .join("");
+  const svg = `<svg xmlns="${SVG}" width="${data.width}" height="${data.height}" viewBox="0 0 ${data.width} ${data.height}"><rect width="100%" height="100%" fill="#ffffff"/>${lines}</svg>`;
+  const image = new Image();
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("svg"));
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  });
+  const scale = 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = data.width * scale;
+  canvas.height = data.height * scale;
+  canvas.getContext("2d")!.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/png").split(",")[1] ?? "";
+}
+
+/** Fa leggere lo schizzo all'AI e mette sotto la lavagna il diagramma Mermaid che ne ricava. */
+async function toDiagram(view: BlockView<Sketch>) {
+  if (view.local.converting) return;
+  view.local.converting = true;
+  view.redraw();
+  try {
+    const code = await askAi({ kind: "sketch", instruction: "", image: await toPng(view.data) });
+    const pos = view.pos();
+    const { state } = view.editor;
+    const node = pos === null ? null : state.doc.nodeAt(pos);
+    if (pos !== null && node) {
+      const diagram = state.schema.nodes.diagram.create({ data: { code: code.trim() } });
+      view.editor.view.dispatch(state.tr.insert(pos + node.nodeSize, diagram));
+    }
+  } catch (e) {
+    notify(errorText(e));
+  } finally {
+    view.local.converting = false;
+    view.redraw();
+  }
 }
 
 function render(view: BlockView<Sketch>) {
@@ -95,7 +143,7 @@ function render(view: BlockView<Sketch>) {
             on: {
               click: () => {
                 view.local.color = name;
-                render(view);
+                view.redraw();
               },
             },
           },
@@ -115,6 +163,17 @@ function render(view: BlockView<Sketch>) {
         "button",
         { type: "button", class: "block-add", disabled: data.strokes.length === 0, on: { click: () => view.set({ ...data, strokes: [] }) } },
         t("Pulisci"),
+      ),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "block-add",
+          title: t("L'AI legge lo schizzo e lo ridisegna come diagramma Mermaid, sotto la lavagna"),
+          disabled: data.strokes.length === 0 || view.local.converting === true || !view.editor.isEditable,
+          on: { click: () => toDiagram(view) },
+        },
+        view.local.converting === true ? t("Leggo lo schizzo…") : t("✦ In diagramma"),
       ),
     ),
     svg as unknown as HTMLElement,

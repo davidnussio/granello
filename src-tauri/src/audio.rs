@@ -689,6 +689,56 @@ fn chunk_file(
     failure.map_or(Ok(()), Err)
 }
 
+/// Oltre questa durata una dettatura si ferma da sola: è una richiesta, non una riunione.
+const DICTATION_MAX: Duration = Duration::from_secs(90);
+
+/// Una breve registrazione dal microfono per dettare una richiesta, indipendente dalla
+/// registrazione del meeting (che può essere in corso sullo stesso microfono).
+pub struct Dictation {
+    stop_tx: mpsc::Sender<()>,
+    thread: JoinHandle<(u32, Vec<f32>)>,
+}
+
+impl Dictation {
+    pub fn start(mic: Option<String>) -> Result<Self> {
+        let (stop_tx, stop_rx) = mpsc::channel::<()>();
+        let (ready_tx, ready_rx) = mpsc::channel::<Result<()>>();
+        // gli stream cpal non sono Send: lo stream vive nel suo thread
+        let thread = std::thread::Builder::new().name("granello-dictation".into()).spawn(move || {
+            let buf = Arc::new(Mutex::new(Vec::new()));
+            let opened = find_device(mic.as_deref()).and_then(|d| open_stream(&d, buf.clone(), Default::default()));
+            let (stream, rate) = match opened {
+                Ok(ok) => ok,
+                Err(e) => {
+                    let _ = ready_tx.send(Err(e));
+                    return (0, Vec::new());
+                }
+            };
+            let _ = ready_tx.send(Ok(()));
+            // finisce con lo stop, se chi ascoltava se ne va, o allo scadere del tempo
+            let _ = stop_rx.recv_timeout(DICTATION_MAX);
+            drop(stream);
+            let samples = std::mem::take(&mut *buf.lock());
+            (rate, samples)
+        })?;
+        match ready_rx.recv_timeout(Duration::from_secs(10)) {
+            Ok(Ok(())) => Ok(Self { stop_tx, thread }),
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err(tra!("timeout nell'apertura dei dispositivi audio", "timed out opening the audio devices")),
+        }
+    }
+
+    /// Ferma la registrazione e ritorna l'audio a 16 kHz, pronto per whisper.
+    pub fn stop(self) -> Vec<f32> {
+        let _ = self.stop_tx.send(());
+        let (rate, samples) = self.thread.join().unwrap_or_default();
+        if rate == 0 {
+            return Vec::new();
+        }
+        transcribe::resample_to_16k(&samples, rate)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -98,6 +98,9 @@ const PollBlock = dataBlock<Poll>({
   tag: "poll",
   empty,
   autofocus: "question",
+  ai: {
+    format: "::: poll Domanda del sondaggio\n- [3] Prima opzione\n- [1] Seconda opzione\n:::\n\nTra parentesi quadre il numero di voti di ogni opzione (0 se non si è ancora votato).",
+  },
   format: {
     kind: "container",
     parse: (info, lines) => ({

@@ -101,6 +101,9 @@ const TimelineBlock = dataBlock<Timeline>({
   tag: "timeline",
   empty: { items: [] },
   autofocus: "new",
+  ai: {
+    format: "::: timeline\n- 2026-11-26 Rilascio\n- 2026-12-10 Go-live\n:::\n\nUna tappa per riga: la data in formato AAAA-MM-GG, uno spazio, il titolo.",
+  },
   format: {
     kind: "container",
     parse: (_info, lines) => ({
