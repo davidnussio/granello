@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { api, errorText, on, type AppInfo, type ModelDownload } from "../api";
+import { api, errorText, on, SYSTEM_AUDIO, type AppInfo, type ModelDownload } from "../api";
 import type { Person, Settings, WhisperModelInfo } from "../types";
 import AiSettings from "./AiSettings";
 import CalendarSettings from "./CalendarSettings";
@@ -205,12 +205,13 @@ export default function SettingsView({ toast, onCalendarChanged, onLangChanged }
           <span>{t("Audio degli altri partecipanti")}</span>
           <select value={s.systemDevice ?? ""} onChange={(e) => save({ systemDevice: e.target.value || null })}>
             <option value="">{t("Nessuno (solo microfono)")}</option>
+            <option value={SYSTEM_AUDIO}>{t("Audio di sistema (consigliato)")}</option>
             {devices.map((d) => (
               <option key={d}>{d}</option>
             ))}
           </select>
           <small className="muted">
-            {t("Per catturare l'audio della call installa un dispositivo di loopback (es. BlackHole 2ch), crea in \"Configurazione MIDI Audio\" un dispositivo multi-uscita con cuffie + BlackHole e selezionalo come uscita di Teams/Zoom. Poi scegli BlackHole qui. Con le cuffie eviti che il microfono riprenda anche gli altri.")}
+            {t("\"Audio di sistema\" registra quello che esce dal computer (Teams, Zoom, Meet…) senza installare nulla: serve macOS 14.6 o successivo e, la prima volta, il permesso di registrare l'audio di sistema. \"Microsoft Teams Audio\" non contiene le voci della call. Con le cuffie eviti che il microfono riprenda anche gli altri.")}
           </small>
         </label>
       </section>

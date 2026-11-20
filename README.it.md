@@ -41,7 +41,7 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
   | Citazione dalla trascrizione | selezione del testo nella trascrizione, menu `/` | `::: quote 12:34 Nome` … `:::` |
   | Momento segnato | ⇧⌘M o "⚑ Segna" mentre registri, menu `/` | `::: moment 12:34` … `:::` |
 - **Trascrizione locale**: whisper.cpp con Metal su Apple Silicon. L'audio viene tagliato sulle pause (6-20 s), ricampionato a 16 kHz e trascritto in un thread dedicato. Filtra le allucinazioni tipiche ("Sottotitoli a cura di QTSS", "[Musica]"...). Il titolo e i partecipanti vengono passati come prompt iniziale per migliorare nomi e termini.
-- **Due sorgenti**: microfono ("Tu") e un dispositivo di loopback per l'audio della call ("Altri").
+- **Due sorgenti**: microfono ("Tu") e audio della call ("Altri"), catturato in modo nativo dall'uscita di sistema o da un dispositivo di loopback.
 - **Carica una registrazione**: invece di registrare dal vivo, *Carica audio* trascrive un file esistente (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, o la traccia audio di un video MP4/MOV) con la stessa pipeline, in coda alla trascrizione del meeting. Il file viene letto dov'è, mai copiato. Opus non è supportato.
 - **Note AI**: Claude (streaming) arricchisce le tue note seguendo il template scelto. Le note AI restano modificabili.
 - **Template**: Generale, 1:1, Standup, Colloquio, Meeting cliente + template personalizzati.
@@ -166,7 +166,11 @@ Primo avvio (la Home mostra cosa manca):
 
 ## Audio degli altri partecipanti
 
-Per ora l'audio di sistema passa da un dispositivo di loopback:
+Scegli **Audio di sistema** come "Audio degli altri partecipanti" (nelle Impostazioni o accanto al pulsante Registra): Granello registra quello che esce dal computer (Teams, Zoom, Meet…) con un process tap di Core Audio, senza installare nulla. Serve macOS 14.6 o successivo; la prima volta macOS chiede il permesso di registrare l'audio di sistema (*Impostazioni di Sistema → Privacy e sicurezza → Registrazione schermo e audio di sistema*). Se l'uscita audio cambia durante la call (cuffie collegate), la cattura la segue.
+
+Non scegliere *Microsoft Teams Audio*: è il dispositivo virtuale con cui Teams condivide l'audio del computer e non contiene le voci della call.
+
+Sui sistemi più vecchi, o quando il dispositivo di uscita è anche un ingresso, usa un dispositivo di loopback:
 
 1. `brew install blackhole-2ch`
 2. In *Configurazione MIDI Audio* crea un **dispositivo multi-uscita** con le cuffie + BlackHole 2ch.
@@ -177,7 +181,6 @@ Usa le cuffie: senza cancellazione dell'eco il microfono riprende anche gli altr
 
 ## Prossimi passi
 
-- Cattura nativa dell'audio di sistema con ScreenCaptureKit / Core Audio process tap (macOS 14.2+), senza BlackHole.
 - Cancellazione dell'eco tra microfono e audio di sistema.
 - OAuth Google Calendar al posto dell'URL iCal.
 - Esportazione verso Notion / Google Docs, condivisione delle note.

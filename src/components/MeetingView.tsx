@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, errorText, newStreamId, on } from "../api";
+import { api, errorText, newStreamId, on, SYSTEM_AUDIO } from "../api";
 import type { CalendarEvent, Meeting, RecordingStatus, Template, TranscriptSegment } from "../types";
 import ChipInput, { type ChipSuggestion } from "./ChipInput";
 import NoteEditor from "../editor/NoteEditor";
@@ -664,8 +664,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               title={t("Da dove arriva l'audio degli altri partecipanti. Si può cambiare anche mentre registri.")}
             >
               <option value="">{t("Altri: nessuno")}</option>
+              <option value={SYSTEM_AUDIO}>{t("Altri: audio di sistema")}</option>
               {/* un dispositivo salvato ma ora scollegato resta visibile */}
-              {[...new Set([...(systemDevice ? [systemDevice] : []), ...devices])].map((d) => (
+              {[...new Set([...(systemDevice && systemDevice !== SYSTEM_AUDIO ? [systemDevice] : []), ...devices])].map((d) => (
                 <option key={d} value={d}>
                   {t("Altri: {device}", { device: d })}
                 </option>

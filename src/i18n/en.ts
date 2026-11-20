@@ -136,6 +136,9 @@ const en: Record<string, string> = {
     "Where the other participants' audio comes from. You can change it while recording too.",
   "Altri: nessuno": "Others: none",
   "Altri: {device}": "Others: {device}",
+  "Altri: audio di sistema": "Others: system audio",
+  "Audio di sistema (consigliato)": "System audio (recommended)",
+  "\"Audio di sistema\" registra quello che esce dal computer (Teams, Zoom, Meet…) senza installare nulla: serve macOS 14.6 o successivo e, la prima volta, il permesso di registrare l'audio di sistema. \"Microsoft Teams Audio\" non contiene le voci della call. Con le cuffie eviti che il microfono riprenda anche gli altri.": "\"System audio\" records what the computer plays (Teams, Zoom, Meet…) with nothing to install: it needs macOS 14.6 or later and, the first time, the permission to record system audio. \"Microsoft Teams Audio\" does not carry the voices of the call. Headphones keep the microphone from picking up the others too.",
   "Trascrive un file audio o video invece di registrare dal vivo": "Transcribes an audio or video file instead of recording live",
   "Trascrivo il file… {pct}%": "Transcribing the file… {pct}%",
   "Trascrivo il file… {time}": "Transcribing the file… {time}",
@@ -197,8 +200,6 @@ const en: Record<string, string> = {
   "Predefinito di sistema": "System default",
   "Audio degli altri partecipanti": "Other participants' audio",
   "Nessuno (solo microfono)": "None (microphone only)",
-  "Per catturare l'audio della call installa un dispositivo di loopback (es. BlackHole 2ch), crea in \"Configurazione MIDI Audio\" un dispositivo multi-uscita con cuffie + BlackHole e selezionalo come uscita di Teams/Zoom. Poi scegli BlackHole qui. Con le cuffie eviti che il microfono riprenda anche gli altri.":
-    "To capture the call audio, install a loopback device (e.g. BlackHole 2ch), create a multi-output device with your headphones + BlackHole in \"Audio MIDI Setup\", and select it as the output in Teams/Zoom. Then choose BlackHole here. Wearing headphones keeps your microphone from picking up the others too.",
   "URL iCal": "iCal URL",
   "Calendari (URL iCal)": "Calendars (iCal URLs)",
   "Nome del calendario": "Calendar name",

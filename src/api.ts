@@ -18,6 +18,9 @@ import type {
   WhisperModelInfo,
 } from "./types";
 
+/** Valore di `systemDevice` per l'audio in uscita dal computer (vedi `audio::SYSTEM_AUDIO`). */
+export const SYSTEM_AUDIO = "@system";
+
 export const api = {
   listMeetings: (query?: string) => invoke<MeetingSummary[]>("list_meetings", { query }),
   getMeeting: (id: string) => invoke<MeetingDetail>("get_meeting", { id }),

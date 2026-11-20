@@ -41,7 +41,7 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
   | Transcript quote | select text in the transcript, `/` menu | `::: quote 12:34 Name` … `:::` |
   | Moment marker | ⇧⌘M or "⚑ Mark" while recording, `/` menu | `::: moment 12:34` … `:::` |
 - **Local transcription**: whisper.cpp with Metal on Apple Silicon. Audio is cut on pauses (6-20 s), resampled to 16 kHz and transcribed on a dedicated thread. Typical hallucinations ("Thanks for watching", "[Music]"...) are filtered out. The meeting title and attendees are passed as the initial prompt to improve names and terms.
-- **Two sources**: the microphone ("You") and a loopback device for the call audio ("Others").
+- **Two sources**: the microphone ("You") and the call audio ("Others"), captured natively from the system output or from a loopback device.
 - **Upload a recording**: instead of recording live, *Upload audio* transcribes an existing file (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, or the audio track of an MP4/MOV video) with the same pipeline, appending to the meeting's transcript. The file is read in place, never copied. Opus is not supported.
 - **AI notes**: the model (streaming) enriches your notes following the template you chose. AI notes stay editable.
 - **Templates**: General, 1:1, Standup, Interview, Client meeting, plus your own.
@@ -169,7 +169,11 @@ First launch (the Home screen shows what's missing):
 
 ## Other participants' audio
 
-For now, system audio goes through a loopback device:
+Choose **System audio** as "Other participants' audio" (in Settings or next to the Record button): Granello records what the computer plays (Teams, Zoom, Meet…) with a Core Audio process tap, with nothing to install. It needs macOS 14.6 or later; the first time, macOS asks for permission to record system audio (*System Settings → Privacy & Security → Screen & System Audio Recording*). If the audio output changes during the call (headphones connected), the capture follows it.
+
+Do not pick *Microsoft Teams Audio*: it is the virtual device Teams uses to share computer sound and it does not carry the voices of the call.
+
+On older systems, or when the output device is also an input, use a loopback device:
 
 1. `brew install blackhole-2ch`
 2. In *Audio MIDI Setup* create a **multi-output device** with your headphones + BlackHole 2ch.
@@ -180,7 +184,6 @@ Use headphones: without echo cancellation the microphone also picks up the other
 
 ## Next steps
 
-- Native system-audio capture with ScreenCaptureKit / Core Audio process taps (macOS 14.2+), without BlackHole.
 - Echo cancellation between the microphone and system audio.
 - Google Calendar OAuth instead of the iCal URL.
 - Export to Notion / Google Docs, sharing notes.

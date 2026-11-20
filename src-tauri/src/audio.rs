@@ -1,4 +1,4 @@
-//! Cattura audio (microfono + eventuale dispositivo di loopback per l'audio di sistema),
+//! Cattura audio (microfono + audio di sistema, nativo o da un dispositivo di loopback),
 //! suddivisione in blocchi sulle pause e invio alla trascrizione.
 
 use crate::commands::AppState;
@@ -8,6 +8,7 @@ use crate::i18n::tr;
 use crate::transcribe::{self, TranscriberCache};
 use anyhow::{Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::Sample as _;
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -31,12 +32,20 @@ const IMPORT_QUEUE: usize = 4;
 /// Primo errore segnalato da uno stream cpal (es. dispositivo scollegato).
 type StreamError = Arc<Mutex<Option<String>>>;
 
+/// Valore di `system_device` che indica l'audio in uscita dal computer, catturato senza
+/// dispositivi di loopback (process tap di Core Audio su macOS 14.6+, WASAPI su Windows).
+pub const SYSTEM_AUDIO: &str = "@system";
+
+fn device_name(d: &cpal::Device) -> Option<String> {
+    d.description().ok().map(|desc| desc.name().to_string())
+}
+
 pub fn list_input_devices() -> Vec<String> {
     let host = cpal::default_host();
     let mut names = Vec::new();
     if let Ok(devices) = host.input_devices() {
         for d in devices {
-            if let Ok(n) = d.name() {
+            if let Some(n) = device_name(&d) {
                 if !names.contains(&n) {
                     names.push(n);
                 }
@@ -54,80 +63,119 @@ fn find_device(name: Option<&str>) -> Result<cpal::Device> {
             .ok_or_else(|| tra!("nessun microfono disponibile", "no microphone available")),
         Some(n) => host
             .input_devices()?
-            .find(|d| d.name().map(|dn| dn == n).unwrap_or(false))
+            .find(|d| device_name(d).is_some_and(|dn| dn == n))
             .ok_or_else(|| tra!("dispositivo audio \"{n}\" non trovato", "audio device \"{n}\" not found")),
     }
 }
 
-/// Apre uno stream di input che scrive campioni mono f32 in `buf`.
+/// Apre il dispositivo di input `name` (`None` = microfono predefinito).
+fn open_input(name: Option<&str>, buf: Arc<Mutex<Vec<f32>>>, error: StreamError) -> Result<(cpal::Stream, u32)> {
+    let device = find_device(name)?;
+    let config = device.default_input_config().context("config input")?;
+    open_stream(&device, config, buf, error)
+}
+
+/// L'uscita audio predefinita del computer, se c'è.
+fn default_output_id() -> Option<cpal::DeviceId> {
+    cpal::default_host().default_output_device().and_then(|d| d.id().ok())
+}
+
+/// Apre in ascolto l'uscita audio predefinita: quello che il computer sta riproducendo
+/// (le voci degli altri in Teams, Zoom, Meet…), senza dispositivi di loopback.
+fn open_system_audio(buf: Arc<Mutex<Vec<f32>>>, error: StreamError) -> Result<(cpal::Stream, u32)> {
+    let device = cpal::default_host()
+        .default_output_device()
+        .ok_or_else(|| tra!("nessuna uscita audio disponibile", "no audio output available"))?;
+    // Su macOS cpal ascolta l'uscita solo se il dispositivo non ha anche un ingresso:
+    // altrimenti aprirebbe il suo microfono, registrando la cosa sbagliata senza dirlo.
+    #[cfg(target_os = "macos")]
+    if device.supports_input() {
+        let label = device_name(&device).unwrap_or_default();
+        return Err(tra!(
+            "non riesco a catturare l'audio di sistema dall'uscita \"{label}\": scegli un'altra uscita audio per la call",
+            "cannot capture system audio from the \"{label}\" output: pick another audio output for the call"
+        ));
+    }
+    let config = device.default_output_config().context("config output")?;
+    open_stream(&device, config, buf, error).map_err(|e| {
+        tra!(
+            "cattura dell'audio di sistema non riuscita ({e}). Serve macOS 14.6 o successivo e il permesso in Impostazioni di Sistema → Privacy e sicurezza → Registrazione schermo e audio di sistema.",
+            "could not capture system audio ({e}). It needs macOS 14.6 or later and the permission in System Settings → Privacy & Security → Screen & System Audio Recording."
+        )
+    })
+}
+
+/// Apre la sorgente degli altri partecipanti: l'audio di sistema o un dispositivo di input.
+fn open_others(name: &str, buf: Arc<Mutex<Vec<f32>>>, error: StreamError) -> Result<(cpal::Stream, u32)> {
+    if name == SYSTEM_AUDIO {
+        open_system_audio(buf, error)
+    } else {
+        open_input(Some(name), buf, error)
+    }
+}
+
+/// Apre su `device` uno stream che scrive campioni mono f32 in `buf`.
 fn open_stream(
     device: &cpal::Device,
+    supported: cpal::SupportedStreamConfig,
     buf: Arc<Mutex<Vec<f32>>>,
     error: StreamError,
 ) -> Result<(cpal::Stream, u32)> {
-    let supported = device.default_input_config().context("config input")?;
-    let rate = supported.sample_rate().0;
+    let rate = supported.sample_rate();
     let channels = supported.channels() as usize;
-    let config: cpal::StreamConfig = supported.clone().into();
-    let label = device.name().unwrap_or_else(|_| tr("dispositivo audio", "audio device").into());
-    let err_fn = move |e: cpal::StreamError| {
+    let config: cpal::StreamConfig = supported.config();
+    let label = device_name(device).unwrap_or_else(|| tr("dispositivo audio", "audio device").into());
+    let err_fn = move |e: cpal::Error| {
+        // solo un dispositivo che sparisce ferma la cattura: il resto (xrun, priorità
+        // realtime negata, cambio dell'uscita predefinita) è un avviso
+        if !matches!(e.kind(), cpal::ErrorKind::DeviceNotAvailable | cpal::ErrorKind::StreamInvalidated) {
+            log::warn!("stream audio ({label}): {e}");
+            return;
+        }
         log::error!("errore stream audio ({label}): {e}");
         let mut slot = error.lock();
         if slot.is_none() {
-            *slot = Some(match e {
-                cpal::StreamError::DeviceNotAvailable => trf!("\"{label}\" non è più disponibile", "\"{label}\" is no longer available"),
-                other => format!("{label}: {other}"),
+            *slot = Some(match e.kind() {
+                cpal::ErrorKind::DeviceNotAvailable => trf!("\"{label}\" non è più disponibile", "\"{label}\" is no longer available"),
+                _ => format!("{label}: {e}"),
             });
         }
     };
 
-    fn push_mono<T: Copy>(data: &[T], channels: usize, buf: &Mutex<Vec<f32>>, conv: impl Fn(T) -> f32) {
-        let mut b = buf.lock();
-        for frame in data.chunks(channels.max(1)) {
-            let sum: f32 = frame.iter().map(|s| conv(*s)).sum();
-            b.push(sum / frame.len() as f32);
-        }
+    fn build<T>(
+        device: &cpal::Device,
+        config: cpal::StreamConfig,
+        channels: usize,
+        buf: Arc<Mutex<Vec<f32>>>,
+        err_fn: impl FnMut(cpal::Error) + Send + 'static,
+    ) -> Result<cpal::Stream, cpal::Error>
+    where
+        T: cpal::SizedSample,
+        f32: cpal::FromSample<T>,
+    {
+        device.build_input_stream(
+            config,
+            move |data: &[T], _: &_| {
+                let mut b = buf.lock();
+                for frame in data.chunks(channels.max(1)) {
+                    let sum: f32 = frame.iter().map(|s| f32::from_sample(*s)).sum();
+                    b.push(sum / frame.len() as f32);
+                }
+            },
+            err_fn,
+            None,
+        )
     }
 
+    use cpal::SampleFormat as F;
     let stream = match supported.sample_format() {
-        cpal::SampleFormat::F32 => {
-            let b = buf.clone();
-            device.build_input_stream(
-                &config,
-                move |d: &[f32], _: &_| push_mono(d, channels, &b, |s| s),
-                err_fn.clone(),
-                None,
-            )?
-        }
-        cpal::SampleFormat::I16 => {
-            let b = buf.clone();
-            device.build_input_stream(
-                &config,
-                move |d: &[i16], _: &_| push_mono(d, channels, &b, |s| s as f32 / i16::MAX as f32),
-                err_fn.clone(),
-                None,
-            )?
-        }
-        cpal::SampleFormat::I32 => {
-            let b = buf.clone();
-            device.build_input_stream(
-                &config,
-                move |d: &[i32], _: &_| push_mono(d, channels, &b, |s| s as f32 / i32::MAX as f32),
-                err_fn.clone(),
-                None,
-            )?
-        }
-        cpal::SampleFormat::U16 => {
-            let b = buf.clone();
-            device.build_input_stream(
-                &config,
-                move |d: &[u16], _: &_| {
-                    push_mono(d, channels, &b, |s| (s as f32 - 32768.0) / 32768.0)
-                },
-                err_fn.clone(),
-                None,
-            )?
-        }
+        F::F32 => build::<f32>(device, config, channels, buf, err_fn)?,
+        F::I8 => build::<i8>(device, config, channels, buf, err_fn)?,
+        F::I16 => build::<i16>(device, config, channels, buf, err_fn)?,
+        F::I24 => build::<cpal::I24>(device, config, channels, buf, err_fn)?,
+        F::I32 => build::<i32>(device, config, channels, buf, err_fn)?,
+        F::U8 => build::<u8>(device, config, channels, buf, err_fn)?,
+        F::U16 => build::<u16>(device, config, channels, buf, err_fn)?,
         f => return Err(tra!("formato audio non supportato: {f:?}", "unsupported audio format: {f:?}")),
     };
     stream.play()?;
@@ -385,20 +433,21 @@ impl Session {
                     let mic_buf = Arc::new(Mutex::new(Vec::<f32>::new()));
                     let sys_buf = Arc::new(Mutex::new(Vec::<f32>::new()));
                     let stream_error: StreamError = Arc::new(Mutex::new(None));
+                    // gli errori della sorgente degli altri sono a parte: se è l'audio di
+                    // sistema si riapre (es. cuffie scollegate) invece di chiudere il meeting
+                    let sys_error: StreamError = Arc::new(Mutex::new(None));
 
-                    let mic = find_device(mic_name.as_deref())
-                        .and_then(|d| open_stream(&d, mic_buf.clone(), stream_error.clone()));
-                    let (mic_stream, mic_rate) = match mic {
-                        Ok(v) => v,
-                        Err(e) => {
-                            let _ = ready_tx.send(Err(e));
-                            return;
-                        }
-                    };
-                    let mut sys = match sys_name.as_deref().filter(|n| !n.is_empty()) {
-                        Some(n) => match find_device(Some(n))
-                            .and_then(|d| open_stream(&d, sys_buf.clone(), stream_error.clone()))
-                        {
+                    let (mic_stream, mic_rate) =
+                        match open_input(mic_name.as_deref(), mic_buf.clone(), stream_error.clone()) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                let _ = ready_tx.send(Err(e));
+                                return;
+                            }
+                        };
+                    let mut sys_name = sys_name.filter(|n| !n.is_empty());
+                    let mut sys = match sys_name.as_deref() {
+                        Some(n) => match open_others(n, sys_buf.clone(), sys_error.clone()) {
                             Ok(v) => Some(v),
                             Err(e) => {
                                 let _ = ready_tx.send(Err(e));
@@ -407,6 +456,10 @@ impl Session {
                         },
                         None => None,
                     };
+                    // l'uscita che stiamo ascoltando: se cambia (cuffie collegate a metà
+                    // call) l'audio di sistema va riaperto su quella nuova
+                    let mut sys_output = default_output_id();
+                    let mut ticks = 0u32;
                     let _ = ready_tx.send(Ok(()));
 
                     let mut chunkers = vec![Chunker::new("me", mic_rate, mic_buf, base_ms)];
@@ -427,6 +480,14 @@ impl Session {
                             }
                             Ok(Control::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => true,
                         };
+                        ticks = ticks.wrapping_add(1);
+                        if switch_to.is_none() && sys_name.as_deref() == Some(SYSTEM_AUDIO) {
+                            let failed = sys_error.lock().take();
+                            if failed.is_some() || (ticks.is_multiple_of(10) && default_output_id() != sys_output) {
+                                log::info!("uscita audio cambiata: riapro l'audio di sistema");
+                                switch_to = Some(sys_name.clone());
+                            }
+                        }
                         if let Some(name) = switch_to {
                             // chiude la sorgente attuale consegnando l'audio già catturato...
                             if chunkers.len() > 1 {
@@ -439,12 +500,13 @@ impl Session {
                                 chunkers.truncate(1);
                             }
                             sys = None;
+                            sys_error.lock().take();
+                            sys_name = name.filter(|n| !n.is_empty());
+                            sys_output = default_output_id();
                             // ...e apre quella nuova, che parte dal punto in cui siamo arrivati
-                            if let Some(n) = name.as_deref().filter(|n| !n.is_empty()) {
+                            if let Some(n) = sys_name.as_deref() {
                                 let buf = Arc::new(Mutex::new(Vec::<f32>::new()));
-                                match find_device(Some(n))
-                                    .and_then(|d| open_stream(&d, buf.clone(), stream_error.clone()))
-                                {
+                                match open_others(n, buf.clone(), sys_error.clone()) {
                                     Ok(v) => {
                                         let now_ms = base_ms + started.elapsed().as_millis() as i64;
                                         chunkers.push(Chunker::new("them", v.1, buf, now_ms));
@@ -462,7 +524,7 @@ impl Session {
                         }
                         // Un dispositivo scollegato a metà meeting chiude la sessione in modo
                         // pulito: l'audio già catturato viene comunque trascritto.
-                        let fatal = stream_error.lock().take();
+                        let fatal = stream_error.lock().take().or_else(|| sys_error.lock().take());
                         let stop = stop_requested || fatal.is_some();
                         let mut levels = Vec::new();
                         for c in chunkers.iter_mut() {
@@ -706,7 +768,7 @@ impl Dictation {
         // gli stream cpal non sono Send: lo stream vive nel suo thread
         let thread = std::thread::Builder::new().name("granello-dictation".into()).spawn(move || {
             let buf = Arc::new(Mutex::new(Vec::new()));
-            let opened = find_device(mic.as_deref()).and_then(|d| open_stream(&d, buf.clone(), Default::default()));
+            let opened = open_input(mic.as_deref(), buf.clone(), Default::default());
             let (stream, rate) = match opened {
                 Ok(ok) => ok,
                 Err(e) => {
@@ -851,6 +913,23 @@ mod tests {
         );
         result.unwrap();
         assert!(!text.trim().is_empty());
+    }
+
+    /// Prova a mano della cattura dell'audio di sistema: riproduce un suono e controlla
+    /// che arrivi. cargo test system_audio -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn captures_system_audio() {
+        let buf = Arc::new(Mutex::new(Vec::new()));
+        let (stream, rate) = open_system_audio(buf.clone(), Default::default()).unwrap();
+        std::thread::sleep(Duration::from_millis(500));
+        let _ = std::process::Command::new("afplay").arg("/System/Library/Sounds/Glass.aiff").status();
+        std::thread::sleep(Duration::from_millis(500));
+        drop(stream);
+        let samples = buf.lock();
+        let level = transcribe::rms(&samples);
+        println!("{} campioni a {rate} Hz, rms {level}", samples.len());
+        assert!(level > 0.0, "nessun segnale dall'audio di sistema");
     }
 
     #[test]

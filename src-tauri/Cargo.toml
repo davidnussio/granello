@@ -29,7 +29,7 @@ uuid = { version = "1", features = ["v4"] }
 anyhow = "1"
 thiserror = "1"
 log = "0.4"
-cpal = "0.15"
+cpal = "0.18"
 parking_lot = "0.12"
 tauri-plugin-log = "2"
 tauri-plugin-single-instance = "2"
