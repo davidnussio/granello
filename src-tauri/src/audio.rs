@@ -304,6 +304,9 @@ pub struct SessionConfig {
     pub model_path: PathBuf,
     pub prompt: String,
     pub base_ms: i64,
+    /// Se presente, l'audio della registrazione dal vivo viene anche scritto in questo file,
+    /// per l'affinamento online a fine riunione (vedi `keep`).
+    pub keep_audio: Option<PathBuf>,
 }
 
 pub struct Session {
@@ -340,8 +343,18 @@ fn spawn_transcriber(
     let prompt = cfg.prompt.clone();
     let model_path = cfg.model_path.clone();
     let base_ms = cfg.base_ms;
+    // solo dal vivo: di un file caricato esiste già l'originale
+    let keep_audio = cfg.keep_audio.clone().filter(|_| import.is_none());
     std::thread::Builder::new().name("granello-transcribe".into()).spawn(move || {
+        let mut keeper = keep_audio.and_then(|path| {
+            crate::keep::Keeper::open(&path).map_err(|e| log::error!("audio conservato: {e}")).ok()
+        });
         for chunk in chunk_rx {
+            if let Some(k) = keeper.as_mut() {
+                if let Err(e) = k.add(chunk.start_ms, &chunk.samples) {
+                    log::error!("audio conservato: {e}");
+                }
+            }
             let res = cache
                 .get(&model_path)
                 .and_then(|t| t.transcribe(&chunk.samples, &language, &prompt));

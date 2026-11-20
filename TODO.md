@@ -18,14 +18,25 @@ Browse meetings by project, person, tag and period (cascading columns). Projects
 Today transcription is always local (whisper) and only text goes to the AI provider.
 These tasks add an online option without giving up privacy first.
 
-- [ ] **Online transcription and diarization**: optionally use an online model to transcribe and to tell speakers apart (who said what), instead of the local whisper model. Off by default.
-- [ ] **PRIVACY button in the note**: a per-meeting switch that forces local models, whatever the global settings say. Two levels:
+- [x] **Online transcription and diarization**: optionally use an online model to transcribe and to tell speakers apart (who said what), instead of the local whisper model. Off by default. Done as a pass after the meeting: the audio is kept on disk, uploaded once to Gladia, the transcript is replaced by one with speakers, and the audio is deleted. Never tried against the real service yet.
+  - [ ] Try it on a real Italian recording and compare with another EU-hosted service before settling on Gladia.
+  - [ ] Refine an imported audio file too (today only live recordings are kept).
+  - [ ] Recordings longer than 135 minutes (Gladia's limit for one request).
+- [x] **PRIVACY button in the note**: a per-meeting switch that forces local models, whatever the global settings say. Two levels:
   - **Local audio**: the audio is processed only on this Mac (local transcription, no online diarization); the text can still go to the configured AI provider for notes, chat and the editor's AI.
   - **Hardened**: nothing leaves the Mac. Transcription, AI notes, chat, live AI block, title and every other AI feature use local models only, or are unavailable if no local model is configured.
-- [ ] **Redact parts of the discussion**: an entry to black out pieces of the transcript, in two modes:
+- [x] **Redact parts of the discussion**: an entry to black out pieces of the transcript, in two modes:
   - **Redact now**: the selected part is blacked out immediately and is never sent to any model nor shown again.
   - **Mark to review**: the part is flagged as "to verify" and stays readable until someone decides whether to redact it.
-- [ ] **Pending reviews block non-local processing**: while a meeting has parts marked "to verify", no processing with non-local models runs on it (online transcription, AI notes, chat, editor AI). It resumes once every flagged part has been looked at and either redacted or cleared.
+- [x] **Pending reviews block non-local processing**: while a meeting has parts marked "to verify", no processing with non-local models runs on it (online transcription, AI notes, chat, editor AI). It resumes once every flagged part has been looked at and either redacted or cleared.
+
+## Sync between devices
+
+Today everything lives in one SQLite file on one Mac.
+
+- [ ] **Sync in the style of the Divano app**: a small sync server (Divano's runs on Node, Vercel and Neon) that devices push to and pull from, so the same meetings, notes, tags and projects are on every device. The app keeps working offline and syncs when it can.
+- [ ] **End-to-end encryption**: data is encrypted on the device before it leaves, with a key the server never sees. The server stores and relays opaque blobs and cannot read notes or transcripts. This keeps the privacy-first promise even with sync on, and has to fit with the PRIVACY levels above (a hardened meeting may opt out of sync altogether).
+- [ ] **CRDT for merging**: notes and metadata are stored as a CRDT, so edits made on two devices while offline merge without conflicts and without a server that understands the content (it can't, being encrypted). To decide: which CRDT library, and whether the Markdown note is the CRDT itself or is derived from it.
 
 ## Editor components
 

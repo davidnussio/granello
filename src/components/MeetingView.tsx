@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorText, newStreamId, on, SYSTEM_AUDIO } from "../api";
-import type { CalendarEvent, Meeting, RecordingStatus, Template, TranscriptSegment } from "../types";
+import type { CalendarEvent, Meeting, Privacy, RecordingStatus, Template, TranscriptPart, TranscriptSegment } from "../types";
 import ChipInput, { type ChipSuggestion } from "./ChipInput";
 import NoteEditor from "../editor/NoteEditor";
 import Markdown from "./Markdown";
@@ -97,6 +97,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const fillRef = useRef<(auto: boolean) => void>(() => {});
   const markRef = useRef<(from?: Editor) => void>(() => {});
   const fillingRef = useRef(false);
+  const [keptAudio, setKeptAudio] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const refineRef = useRef<() => void>(() => {});
   const titleInput = useRef<HTMLInputElement>(null);
   const [titling, setTitling] = useState(false);
   const tabRef = useRef<Tab>("notes");
@@ -122,6 +125,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   useEffect(() => {
     load();
     api.listTemplates().then(setTemplates).catch(() => {});
+    api.keptAudio(id).then(setKeptAudio).catch(() => {});
     // evento di calendario alla stessa ora: da lì si possono importare i partecipanti
     api.calendarMatch(id).then(setCalEvent).catch(() => {});
   }, [load, id]);
@@ -178,6 +182,14 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         }
         // ora c'è tutta la trascrizione: l'AI scrive cosa si diceva nei momenti segnati
         fillRef.current(true);
+        // se l'audio è stato conservato, parte da solo l'affinamento online
+        api
+          .keptAudio(id)
+          .then((kept) => {
+            setKeptAudio(kept);
+            if (kept) refineRef.current();
+          })
+          .catch(() => {});
       }),
       on("llm-delta", (d) => {
         if (d.streamId === streamRef.current) setStreaming((s) => (s ?? "") + d.delta);
@@ -214,7 +226,9 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   // Una frase selezionata nella trascrizione diventa una citazione nella nota che si sta guardando.
   const addQuote = useCallback(
     (picked: { ms: number; source: TranscriptSegment["source"]; text: string }) => {
-      const who = picked.source === "me" ? userName.trim() || t("Io") : picked.source === "file" ? "" : t("Altri");
+      // dopo l'affinamento online la sorgente è già il nome del parlante
+      const who =
+        picked.source === "me" ? userName.trim() || t("Io") : picked.source === "file" ? "" : picked.source === "them" ? t("Altri") : picked.source;
       const quote = { ms: picked.ms, who, text: picked.text };
       const editor = tabRef.current === "enhanced" ? enhancedEditor.current : notesEditor.current;
       if (editor && !editor.isDestroyed) insertQuote(editor, quote);
@@ -409,6 +423,53 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
       .map((tag) => ({ value: tag.name, hint: t("{n} meeting", { n: tag.count }) }));
   };
 
+  const changePrivacy = async (privacy: Privacy) => {
+    const previous = meeting?.privacy ?? "open";
+    setMeeting((m) => (m ? { ...m, privacy } : m));
+    try {
+      await api.setMeetingPrivacy(id, privacy);
+      if (privacy !== "open") setKeptAudio(false);
+    } catch (e) {
+      setMeeting((m) => (m ? { ...m, privacy: previous } : m));
+      toast(errorText(e));
+    }
+  };
+
+  // Oscurare cancella il testo per sempre; "da verificare" lo lascia leggibile ma tiene il
+  // meeting lontano dai modelli online finché ogni parte segnata non è stata decisa.
+  const redact = (parts: TranscriptPart[]) =>
+    api
+      .redactTranscript(id, parts)
+      .then((next) => {
+        setSegments(next);
+        // oscurando, l'audio conservato viene cancellato: contiene ancora quelle parole
+        setKeptAudio(false);
+      })
+      .catch((e) => toast(errorText(e)));
+  const review = (ids: number[], flag: boolean) =>
+    api.reviewTranscript(id, ids, flag).then(setSegments).catch((e) => toast(errorText(e)));
+
+  // Affinamento online: l'audio conservato viene caricato su Gladia e la trascrizione locale
+  // lascia il posto a quella con i parlanti. Poi l'audio viene cancellato.
+  const refine = async () => {
+    if (refining) return;
+    setRefining(true);
+    try {
+      setSegments(await api.refineTranscript(id));
+      setKeptAudio(false);
+      toast(t("Trascrizione affinata: ora distingue i parlanti. Clic su un nome per cambiarlo."));
+    } catch (e) {
+      toast(errorText(e));
+    } finally {
+      setRefining(false);
+    }
+  };
+  refineRef.current = refine;
+  const discardAudio = () =>
+    api.discardAudio(id).then(() => setKeptAudio(false)).catch((e) => toast(errorText(e)));
+  const renameSpeaker = (from: string, to: string) =>
+    api.renameSpeaker(id, from, to).then(setSegments).catch((e) => toast(errorText(e)));
+
   const changeTemplate = async (templateId: string) => {
     setMeeting((m) => (m ? { ...m, templateId } : m));
     await api.updateMeeting({ id, templateId }).catch((e) => toast(errorText(e)));
@@ -506,6 +567,23 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
                   ☰ {t.name}
                 </option>
               ))}
+            </select>
+            <select
+              className={"chip select privacy-select" + (meeting.privacy !== "open" ? " on" : "")}
+              value={meeting.privacy}
+              onChange={(e) => changePrivacy(e.target.value as Privacy)}
+              aria-label={t("Privacy di questo meeting")}
+              title={
+                meeting.privacy === "hardened"
+                  ? t("Blindata: non esce niente da questo Mac. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.")
+                  : meeting.privacy === "audio"
+                    ? t("Audio locale: l'audio si trascrive solo su questo Mac. Il testo può andare al provider AI configurato.")
+                    : t("Standard: valgono le impostazioni generali.")
+              }
+            >
+              <option value="open">{t("Privacy: standard")}</option>
+              <option value="audio">{t("Privacy: audio locale")}</option>
+              <option value="hardened">{t("Privacy: blindata")}</option>
             </select>
             {/* lontano dalle azioni di tutti i giorni (registra, trascrizione, chiedi) */}
             <button
@@ -714,7 +792,11 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             </button>
           </div>
           {side === "transcript" ? (
-            <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} focus={transcriptFocus} onQuote={addQuote} />
+            <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} focus={transcriptFocus} onQuote={addQuote} onRedact={redact}
+              onReview={review}
+              onRename={renameSpeaker}
+              kept={keptAudio && !inSession ? { refining, refine, discard: discardAudio } : null}
+            />
           ) : (
             <ChatPanel
               scope={id}

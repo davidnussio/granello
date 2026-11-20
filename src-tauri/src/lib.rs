@@ -9,6 +9,8 @@ mod commands;
 mod db;
 mod decode;
 mod demo;
+mod gladia;
+mod keep;
 mod llm;
 mod models;
 mod prompts;
@@ -85,6 +87,13 @@ pub fn run() {
             commands::update_meeting,
             commands::update_meeting_meta,
             commands::delete_meeting,
+            commands::set_meeting_privacy,
+            commands::redact_transcript,
+            commands::review_transcript,
+            commands::kept_audio,
+            commands::discard_audio,
+            commands::refine_transcript,
+            commands::rename_speaker,
             commands::list_tags,
             commands::demo_status,
             commands::load_demo,

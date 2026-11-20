@@ -14,7 +14,13 @@ fn now_ms() -> i64 {
 
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
-const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3];
+const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4];
+
+/// Privacy: livello per meeting e parti della trascrizione segnate "da verificare".
+const SCHEMA_V4: &str = r#"
+ALTER TABLE meetings ADD COLUMN privacy TEXT NOT NULL DEFAULT 'open';
+ALTER TABLE transcript_segments ADD COLUMN review INTEGER NOT NULL DEFAULT 0;
+"#;
 
 /// Progetti: tag promossi, che la Libreria mostra a parte e che si possono archiviare.
 /// Il legame con i meeting resta il tag: qui c'è solo quali tag sono progetti.
@@ -195,6 +201,7 @@ impl Db {
             template_id: row.get("template_id")?,
             notes_md: row.get("notes_md")?,
             enhanced_md: row.get("enhanced_md")?,
+            privacy: Privacy::parse(&row.get::<_, String>("privacy")?),
         })
     }
 
@@ -633,7 +640,87 @@ impl Db {
             start_ms,
             end_ms,
             text: text.into(),
+            review: false,
         })
+    }
+
+    /// Sostituisce tutta la trascrizione di un meeting (dopo l'affinamento online).
+    /// Ogni riga: sorgente (o nome del parlante), inizio, fine, testo.
+    pub fn replace_segments(&self, meeting_id: &str, rows: &[(String, i64, i64, String)]) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        self.conn.execute("DELETE FROM transcript_segments WHERE meeting_id = ?1", [meeting_id])?;
+        for (source, start_ms, end_ms, text) in rows {
+            self.conn.execute(
+                "INSERT INTO transcript_segments (meeting_id, source, start_ms, end_ms, text) VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![meeting_id, source, start_ms, end_ms, text],
+            )?;
+        }
+        self.reindex(meeting_id)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Dà un nome a un parlante: cambia la sorgente di tutti i suoi segmenti in quel meeting.
+    pub fn rename_source(&self, meeting_id: &str, from: &str, to: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE transcript_segments SET source = ?1 WHERE meeting_id = ?2 AND source = ?3",
+            params![to, meeting_id, from],
+        )?;
+        Ok(())
+    }
+
+    // ---------- privacy ----------
+
+    pub fn set_privacy(&self, id: &str, privacy: Privacy) -> Result<()> {
+        self.conn.execute("UPDATE meetings SET privacy = ?1 WHERE id = ?2", params![privacy.as_str(), id])?;
+        Ok(())
+    }
+
+    /// Quante parti della trascrizione aspettano di essere verificate.
+    pub fn pending_reviews(&self, meeting_id: &str) -> Result<usize> {
+        Ok(self.conn.query_row(
+            "SELECT COUNT(*) FROM transcript_segments WHERE meeting_id = ?1 AND review = 1",
+            [meeting_id],
+            |r| r.get(0),
+        )?)
+    }
+
+    /// Segna (o libera) alcuni segmenti come "da verificare".
+    pub fn set_review(&self, meeting_id: &str, ids: &[i64], review: bool) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        for id in ids {
+            self.conn.execute(
+                "UPDATE transcript_segments SET review = ?1 WHERE id = ?2 AND meeting_id = ?3",
+                params![review, id, meeting_id],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Oscura per sempre parti della trascrizione: del testo originale non resta niente, nemmeno
+    /// nell'indice di ricerca. Ogni parte è un segmento e, se serve, l'intervallo di caratteri.
+    /// Un segmento oscurato non è più "da verificare".
+    pub fn redact(&self, meeting_id: &str, parts: &[(i64, Option<(usize, usize)>)]) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        for (id, range) in parts {
+            let text: Option<String> = self
+                .conn
+                .query_row(
+                    "SELECT text FROM transcript_segments WHERE id = ?1 AND meeting_id = ?2",
+                    params![id, meeting_id],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            let Some(text) = text else { continue };
+            self.conn.execute(
+                "UPDATE transcript_segments SET text = ?1, review = 0 WHERE id = ?2",
+                params![redact_text(&text, *range), id],
+            )?;
+        }
+        self.reindex(meeting_id)?;
+        tx.commit()?;
+        Ok(())
     }
 
     /// Offset (ms) da cui riprendere se si registra di nuovo sullo stesso meeting.
@@ -647,7 +734,7 @@ impl Db {
 
     pub fn segments(&self, meeting_id: &str) -> Result<Vec<TranscriptSegment>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, meeting_id, source, start_ms, end_ms, text FROM transcript_segments
+            "SELECT id, meeting_id, source, start_ms, end_ms, text, review FROM transcript_segments
              WHERE meeting_id = ?1 ORDER BY start_ms, id",
         )?;
         let rows = stmt.query_map([meeting_id], |r| {
@@ -658,6 +745,7 @@ impl Db {
                 start_ms: r.get(3)?,
                 end_ms: r.get(4)?,
                 text: r.get(5)?,
+                review: r.get(6)?,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
@@ -870,6 +958,36 @@ mod tests {
         assert_eq!(left[0].id, mine.id);
         assert_eq!(db.list_projects().unwrap(), vec![Project { tag: "mio".into(), archived: false }]);
         assert_eq!(db.list_people().unwrap().len(), before_people);
+    }
+
+    #[test]
+    fn redaction_is_permanent_and_reviews_are_counted() {
+        let db = Db::open_in_memory().unwrap();
+        let m = db.create_meeting("Riservato", None, &[], None).unwrap();
+        assert_eq!(m.privacy, Privacy::Open);
+        db.set_privacy(&m.id, Privacy::Hardened).unwrap();
+        assert_eq!(db.get_meeting(&m.id).unwrap().unwrap().privacy, Privacy::Hardened);
+
+        let a = db.add_segment(&m.id, "them", 0, 1000, "Lo stipendio di Carla è 4200 franchi.").unwrap();
+        let b = db.add_segment(&m.id, "me", 1000, 2000, "Passiamo al prossimo punto.").unwrap();
+        db.set_review(&m.id, &[a.id, b.id], true).unwrap();
+        assert_eq!(db.pending_reviews(&m.id).unwrap(), 2);
+        db.set_review(&m.id, &[b.id], false).unwrap();
+
+        // "4200 franchi" va dal carattere 24 al 36
+        db.redact(&m.id, &[(a.id, Some((24, 36)))]).unwrap();
+        let segs = db.segments(&m.id).unwrap();
+        assert_eq!(segs[0].text, format!("Lo stipendio di Carla è {REDACTED}."));
+        assert!(!segs[0].review);
+        assert_eq!(db.pending_reviews(&m.id).unwrap(), 0);
+        // nemmeno la ricerca lo trova più
+        assert!(db.list_meetings(Some("4200")).unwrap().is_empty());
+        assert_eq!(db.list_meetings(Some("stipendio")).unwrap().len(), 1);
+
+        db.redact(&m.id, &[(b.id, None)]).unwrap();
+        assert_eq!(db.segments(&m.id).unwrap()[1].text, REDACTED);
+        assert_eq!(redact_text("uno due tre", Some((4, 7))), format!("uno {REDACTED} tre"));
+        assert_eq!(redact_text(&format!("uno {REDACTED} tre"), Some((3, 4))), format!("uno{REDACTED} tre"));
     }
 
     #[test]

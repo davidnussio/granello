@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import OnlineTranscription from "./OnlineTranscription";
 import DemoButton, { type Demo } from "./DemoData";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { api, errorText, on, SYSTEM_AUDIO, type AppInfo, type ModelDownload } from "../api";
@@ -192,6 +193,8 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
         </div>
       </section>
 
+      <OnlineTranscription enabled={s.onlineTranscription} onChange={(onlineTranscription) => save({ onlineTranscription })} toast={toast} />
+
       <section className="card">
         <h3>{t("Audio")}</h3>
         <label className="field">
@@ -269,7 +272,7 @@ export default function SettingsView({ toast, demo, onCalendarChanged, onLangCha
         <section className="card">
           <h3>{t("Dati e privacy")}</h3>
           <p className="muted small">
-            {t("Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e scartato. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.")}
+            {t("Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e scartato. Fa eccezione la trascrizione online, se la attivi: l'audio resta qui fino al caricamento su Gladia e poi viene cancellato. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.")}
           </p>
           <div className="row gap">
             <button className="btn small" onClick={() => revealItemInDir(info.dataDir).catch((e) => toast(errorText(e)))}>

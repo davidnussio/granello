@@ -104,7 +104,9 @@ pub fn transcript_text(segments: &[TranscriptSegment], me: &str) -> String {
             "me" => me,
             // file caricato: una sola traccia con tutte le voci, non attribuibile
             "file" => "Registrazione",
-            _ => "Altri",
+            "them" => "Altri",
+            // dopo l'affinamento online la sorgente è il nome del parlante
+            name => name,
         };
         if s.source != last_source {
             out.push_str(&format!("\n[{}] {}: ", fmt_ts(s.start_ms), who));
@@ -368,6 +370,7 @@ mod tests {
             start_ms: t,
             end_ms: t + 1000,
             text: txt.into(),
+            review: false,
         };
         let out = transcript_text(
             &[seg("me", 0, "Ciao."), seg("me", 1000, "Iniziamo?"), seg("them", 65000, "Sì.")],
@@ -385,6 +388,7 @@ mod tests {
             start_ms: t,
             end_ms: t + 5000,
             text: txt.into(),
+            review: false,
         };
         let segments = [seg(0, "Presto."), seg(60_000, "Il prezzo è 40."), seg(130_000, "Subito dopo."), seg(200_000, "Tardi.")];
         let out = moment_excerpt(&segments, 120_000, "David");

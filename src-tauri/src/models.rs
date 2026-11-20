@@ -16,6 +16,39 @@ pub struct Meeting {
     pub template_id: Option<String>,
     pub notes_md: String,
     pub enhanced_md: Option<String>,
+    #[serde(default)]
+    pub privacy: Privacy,
+}
+
+/// Quanto di un meeting può uscire da questo Mac.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Privacy {
+    /// Valgono le impostazioni generali.
+    #[default]
+    Open,
+    /// L'audio si elabora solo qui (trascrizione locale); il testo può andare al provider AI.
+    Audio,
+    /// Non esce niente: ogni funzione AI usa un modello locale, oppure non è disponibile.
+    Hardened,
+}
+
+impl Privacy {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Privacy::Open => "open",
+            Privacy::Audio => "audio",
+            Privacy::Hardened => "hardened",
+        }
+    }
+
+    pub fn parse(s: &str) -> Self {
+        match s {
+            "audio" => Privacy::Audio,
+            "hardened" => Privacy::Hardened,
+            _ => Privacy::Open,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,6 +146,30 @@ pub struct TranscriptSegment {
     pub start_ms: i64,
     pub end_ms: i64,
     pub text: String,
+    /// Segnato "da verificare": finché lo è, il meeting non va a modelli non locali.
+    #[serde(default)]
+    pub review: bool,
+}
+
+/// Con cosa si sostituisce il testo oscurato. Lunghezza fissa: non dice quanto era lungo.
+pub const REDACTED: &str = "█████";
+
+/// `text` con i caratteri da `start` a `end` (esclusa) oscurati; tutto il testo senza intervallo.
+pub fn redact_text(text: &str, range: Option<(usize, usize)>) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let (start, end) = match range {
+        Some((s, e)) => (s.min(chars.len()), e.min(chars.len())),
+        None => (0, chars.len()),
+    };
+    if start >= end {
+        return text.to_string();
+    }
+    let before: String = chars[..start].iter().collect();
+    let after: String = chars[end..].iter().collect();
+    // due oscuramenti che si toccano diventano uno solo
+    let before = before.trim_end_matches(REDACTED);
+    let after = after.trim_start_matches(REDACTED);
+    format!("{before}{REDACTED}{after}")
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -218,6 +275,9 @@ pub struct Settings {
     pub ics_url: Option<String>,
     pub calendars: Vec<Calendar>,
     pub notify_before_min: i64,
+    /// Affinamento online: a fine riunione l'audio viene caricato su Gladia per una
+    /// trascrizione con i parlanti. Spento di default: è l'unico caso in cui l'audio esce dal Mac.
+    pub online_transcription: bool,
 }
 
 impl Settings {

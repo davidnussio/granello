@@ -10,6 +10,20 @@ export interface Meeting {
   templateId: string | null;
   notesMd: string;
   enhancedMd: string | null;
+  privacy: Privacy;
+}
+
+/**
+ * Quanto di un meeting può uscire da questo Mac: "open" segue le impostazioni, "audio" tiene
+ * l'audio in locale, "hardened" non fa uscire niente (solo modelli locali).
+ */
+export type Privacy = "open" | "audio" | "hardened";
+
+/** Una parte di trascrizione: un segmento intero, oppure i suoi caratteri da `start` a `end`. */
+export interface TranscriptPart {
+  id: number;
+  start?: number;
+  end?: number;
 }
 
 export interface MeetingSummary {
@@ -43,11 +57,16 @@ export interface TagCount {
 export interface TranscriptSegment {
   id: number;
   meetingId: string;
-  /** "me" = microfono, "them" = audio di sistema, "file" = file audio caricato */
-  source: "me" | "them" | "file";
+  /**
+   * "me" = microfono, "them" = audio di sistema, "file" = file audio caricato. Dopo
+   * l'affinamento online è il nome del parlante ("Parlante 1", poi quello che gli si dà).
+   */
+  source: string;
   startMs: number;
   endMs: number;
   text: string;
+  /** Segnato "da verificare": finché lo è, il meeting non va a modelli non locali. */
+  review?: boolean;
 }
 
 export interface MeetingDetail {
@@ -97,6 +116,8 @@ export interface Settings {
   systemDevice: string | null;
   calendars: Calendar[];
   notifyBeforeMin: number;
+  /** A fine riunione l'audio viene caricato su Gladia per una trascrizione con i parlanti. */
+  onlineTranscription: boolean;
 }
 
 /** Un calendario configurato. L'indirizzo iCal è un segreto. */

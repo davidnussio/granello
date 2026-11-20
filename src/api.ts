@@ -8,6 +8,7 @@ import type {
   MeetingDetail,
   MeetingSummary,
   Person,
+  Privacy,
   Project,
   PersonSuggestion,
   TagCount,
@@ -15,6 +16,7 @@ import type {
   RecordingStatus,
   Settings,
   Template,
+  TranscriptPart,
   TranscriptSegment,
   WhisperModelInfo,
 } from "./types";
@@ -41,6 +43,21 @@ export const api = {
   updateMeetingMeta: (args: { id: string; attendees?: string[]; tags?: string[] }) =>
     invoke<Meeting>("update_meeting_meta", args),
   deleteMeeting: (id: string) => invoke<void>("delete_meeting", { id }),
+  setMeetingPrivacy: (id: string, privacy: Privacy) => invoke<void>("set_meeting_privacy", { id, privacy }),
+  /** Oscura per sempre le parti indicate; ritorna la trascrizione aggiornata. */
+  redactTranscript: (meetingId: string, parts: TranscriptPart[]) =>
+    invoke<TranscriptSegment[]>("redact_transcript", { meetingId, parts }),
+  /** C'è dell'audio conservato per l'affinamento online di questo meeting? */
+  keptAudio: (meetingId: string) => invoke<boolean>("kept_audio", { meetingId }),
+  discardAudio: (meetingId: string) => invoke<void>("discard_audio", { meetingId }),
+  /** Carica l'audio su Gladia e sostituisce la trascrizione con quella online, con i parlanti. */
+  refineTranscript: (meetingId: string) => invoke<TranscriptSegment[]>("refine_transcript", { meetingId }),
+  /** Dà un nome a un parlante riconosciuto dall'affinamento online. */
+  renameSpeaker: (meetingId: string, from: string, to: string) =>
+    invoke<TranscriptSegment[]>("rename_speaker", { meetingId, from, to }),
+  /** Segna i segmenti come "da verificare" o li libera; ritorna la trascrizione aggiornata. */
+  reviewTranscript: (meetingId: string, ids: number[], review: boolean) =>
+    invoke<TranscriptSegment[]>("review_transcript", { meetingId, ids, review }),
 
   /** Quanti meeting di esempio sono caricati. */
   demoStatus: () => invoke<number>("demo_status"),

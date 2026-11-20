@@ -3,7 +3,7 @@ use crate::i18n::tr;
 use crate::db::Db;
 use crate::models::*;
 use crate::transcribe::{self, TranscriberCache};
-use crate::{attachments, calendar, llm, prompts, secrets};
+use crate::{attachments, calendar, gladia, keep, llm, prompts, secrets};
 use futures_util::StreamExt;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -366,6 +366,7 @@ pub fn delete_meeting(state: State<AppState>, id: String) -> CmdResult<()> {
     let db = state.db.lock();
     let meeting = db.get_meeting(&id).map_err(err)?;
     db.delete_meeting(&id).map_err(err)?;
+    keep::remove(&state.data_dir, &id);
     // gli allegati citati solo da questo meeting se ne vanno con lui
     if let Some(m) = meeting {
         let text = format!("{}\n{}", m.notes_md, m.enhanced_md.unwrap_or_default());
@@ -376,6 +377,147 @@ pub fn delete_meeting(state: State<AppState>, id: String) -> CmdResult<()> {
         }
     }
     Ok(())
+}
+
+// ---------------- privacy ----------------
+
+#[cfg(test)]
+mod privacy_tests {
+    use super::*;
+
+    #[test]
+    fn only_servers_on_this_mac_are_local() {
+        let provider = |kind, url: &str| Provider { kind, base_url: url.into(), ..Default::default() };
+        for url in ["http://localhost:1234/v1", "http://127.0.0.1:11434/v1", "http://[::1]:8080/v1", "http://ollama.localhost/v1"] {
+            assert!(provider_is_local(&provider(ProviderKind::Openai, url)), "{url}");
+        }
+        for url in ["https://api.openai.com/v1", "http://192.168.1.20:1234/v1", "http://localhost.example.com/v1", "", "non è un indirizzo"] {
+            assert!(!provider_is_local(&provider(ProviderKind::Openai, url)), "{url}");
+        }
+        // Anthropic è sempre online, qualunque indirizzo abbia
+        assert!(!provider_is_local(&provider(ProviderKind::Anthropic, "http://localhost:1234")));
+    }
+}
+
+/// Quanto di questo meeting può uscire dal Mac, a prescindere dalle impostazioni generali.
+#[tauri::command]
+pub fn set_meeting_privacy(state: State<AppState>, id: String, privacy: Privacy) -> CmdResult<()> {
+    state.db.lock().set_privacy(&id, privacy).map_err(err)?;
+    // con un livello di privacy l'audio non deve più poter uscire: quello conservato si cancella
+    if privacy != Privacy::Open {
+        keep::remove(&state.data_dir, &id);
+    }
+    Ok(())
+}
+
+/// Una parte di trascrizione su cui agire: un segmento e, se non è tutto, i caratteri da-a.
+#[derive(serde::Deserialize)]
+pub struct TranscriptPart {
+    id: i64,
+    start: Option<usize>,
+    end: Option<usize>,
+}
+
+/// Oscura subito e per sempre le parti indicate: il testo originale viene cancellato.
+/// Ritorna la trascrizione aggiornata.
+#[tauri::command]
+pub fn redact_transcript(state: State<AppState>, meeting_id: String, parts: Vec<TranscriptPart>) -> CmdResult<Vec<TranscriptSegment>> {
+    let parts: Vec<(i64, Option<(usize, usize)>)> = parts.iter().map(|p| (p.id, p.start.zip(p.end))).collect();
+    let db = state.db.lock();
+    db.redact(&meeting_id, &parts).map_err(err)?;
+    // l'audio conservato contiene ancora ciò che è stato oscurato: non deve più poter uscire
+    keep::remove(&state.data_dir, &meeting_id);
+    db.segments(&meeting_id).map_err(err)
+}
+
+/// Segna i segmenti come "da verificare" (`review` true) oppure li libera (false).
+/// Ritorna la trascrizione aggiornata.
+#[tauri::command]
+pub fn review_transcript(state: State<AppState>, meeting_id: String, ids: Vec<i64>, review: bool) -> CmdResult<Vec<TranscriptSegment>> {
+    let db = state.db.lock();
+    db.set_review(&meeting_id, &ids, review).map_err(err)?;
+    db.segments(&meeting_id).map_err(err)
+}
+
+// ---------------- affinamento online ----------------
+
+fn gladia_key(state: &AppState) -> Option<String> {
+    secrets::get_api_key(&state.data_dir, gladia::KEY_ID).ok().flatten()
+}
+
+/// C'è dell'audio conservato per questo meeting, in attesa dell'affinamento online?
+#[tauri::command]
+pub fn kept_audio(state: State<AppState>, meeting_id: String) -> bool {
+    keep::exists(&state.data_dir, &meeting_id)
+}
+
+/// Cancella l'audio conservato senza caricarlo: la trascrizione locale resta com'è.
+#[tauri::command]
+pub fn discard_audio(state: State<AppState>, meeting_id: String) -> CmdResult<()> {
+    if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == meeting_id) {
+        return Err(tr("Ferma la registrazione prima di eliminare l'audio", "Stop the recording before deleting the audio").into());
+    }
+    keep::remove(&state.data_dir, &meeting_id);
+    Ok(())
+}
+
+/// Carica l'audio conservato su Gladia e sostituisce la trascrizione locale con quella online,
+/// che distingue i parlanti. Poi cancella l'audio. È l'unico punto in cui l'audio esce dal Mac.
+#[tauri::command]
+pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -> CmdResult<Vec<TranscriptSegment>> {
+    let language = {
+        if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == meeting_id) {
+            return Err(tr("Attendi la fine della trascrizione locale", "Wait for the local transcription to finish").into());
+        }
+        let db = state.db.lock();
+        let settings = db.get_settings().map_err(err)?;
+        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+        if !settings.online_transcription {
+            return Err(tr("L'affinamento online è spento nelle Impostazioni", "Online refinement is off in Settings").into());
+        }
+        if meeting.privacy != Privacy::Open {
+            return Err(tr("La privacy di questo meeting tiene l'audio su questo Mac", "This meeting's privacy keeps the audio on this Mac").into());
+        }
+        if db.pending_reviews(&meeting_id).map_err(err)? > 0 {
+            return Err(tr("Ci sono parti da verificare: decidi prima su quelle", "There are parts to review: decide on those first").into());
+        }
+        settings.language
+    };
+    let key = gladia_key(&state).ok_or(tr("Imposta la chiave di Gladia nelle Impostazioni", "Set the Gladia key in Settings"))?;
+    let path = keep::path(&state.data_dir, &meeting_id)
+        .filter(|p| p.is_file())
+        .ok_or(tr("Non c'è audio conservato per questo meeting", "There is no kept audio for this meeting"))?;
+    let utterances = gladia::transcribe(&state.http, gladia::BASE_URL, &key, &path, &language).await.map_err(err)?;
+    if utterances.is_empty() {
+        return Err(tr("Gladia non ha trovato parlato nell'audio: la trascrizione locale resta com'è", "Gladia found no speech in the audio: the local transcript is unchanged").into());
+    }
+    let rows: Vec<(String, i64, i64, String)> = utterances
+        .into_iter()
+        .map(|u| {
+            let who = match u.speaker {
+                Some(n) => trf!("Parlante {}", "Speaker {}", n + 1),
+                None => "them".to_string(),
+            };
+            (who, u.start_ms, u.end_ms, u.text)
+        })
+        .collect();
+    let db = state.db.lock();
+    db.replace_segments(&meeting_id, &rows).map_err(err)?;
+    keep::remove(&state.data_dir, &meeting_id);
+    db.segments(&meeting_id).map_err(err)
+}
+
+/// Dà un nome a un parlante riconosciuto dall'affinamento online (es. "Parlante 1" → "Marco").
+#[tauri::command]
+pub fn rename_speaker(state: State<AppState>, meeting_id: String, from: String, to: String) -> CmdResult<Vec<TranscriptSegment>> {
+    let to = to.split_whitespace().collect::<Vec<_>>().join(" ");
+    const RESERVED: [&str; 3] = ["me", "them", "file"];
+    if to.is_empty() || RESERVED.contains(&to.as_str()) || RESERVED.contains(&from.as_str()) {
+        return Err(tr("Nome del parlante non valido", "Invalid speaker name").into());
+    }
+    let db = state.db.lock();
+    db.rename_source(&meeting_id, &from, &to).map_err(err)?;
+    db.segments(&meeting_id).map_err(err)
 }
 
 // ---------------- allegati ----------------
@@ -520,6 +662,11 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
         model_path: transcribe::model_path(&state.models_dir, &settings.whisper_model),
         prompt,
         base_ms,
+        // l'audio si conserva solo per l'affinamento online: opzione attiva, chiave presente,
+        // meeting senza vincoli di privacy
+        keep_audio: (file.is_none() && settings.online_transcription && meeting.privacy == Privacy::Open && gladia_key(state).is_some())
+            .then(|| keep::path(&state.data_dir, &meeting_id))
+            .flatten(),
     };
     let (db, cache) = (state.db.clone(), state.transcribers.clone());
     let s = match &file {
@@ -679,6 +826,49 @@ struct ResolvedModel {
     model: String,
 }
 
+/// Un provider è locale se il suo server gira su questo Mac: solo così il testo non esce.
+fn provider_is_local(provider: &Provider) -> bool {
+    if provider.kind != ProviderKind::Openai {
+        return false;
+    }
+    let Ok(url) = reqwest::Url::parse(provider.base_url.trim()) else { return false };
+    let Some(host) = url.host_str() else { return false };
+    let host = host.trim_start_matches('[').trim_end_matches(']');
+    host == "localhost" || host.ends_with(".localhost") || host.parse::<std::net::IpAddr>().is_ok_and(|ip| ip.is_loopback())
+}
+
+/// Perché un meeting può essere elaborato solo da un modello locale, se è così:
+/// è in modalità blindata, oppure ha parti della trascrizione ancora da verificare.
+fn local_only(db: &Db, meeting: &Meeting) -> CmdResult<Option<String>> {
+    if meeting.privacy == Privacy::Hardened {
+        return Ok(Some(tr("Questo meeting è in modalità blindata", "This meeting is in hardened mode").into()));
+    }
+    let pending = db.pending_reviews(&meeting.id).map_err(err)?;
+    Ok((pending > 0).then(|| {
+        trf!(
+            "Questo meeting ha {pending} parti della trascrizione da verificare",
+            "This meeting has {pending} transcript parts to review"
+        )
+    }))
+}
+
+/// Il modello da usare per un meeting. Se il meeting chiede un modello locale (`reason`) e
+/// quello scelto non lo è, si ripiega sull'altro modello configurato se è locale; altrimenti
+/// la funzione non è disponibile e l'errore dice perché.
+fn resolve_model_for(state: &AppState, settings: &Settings, which: &ModelRef, reason: Option<String>) -> CmdResult<ResolvedModel> {
+    let Some(reason) = reason else { return resolve_model(state, settings, which) };
+    let local = [which, &settings.notes_model, &settings.chat_model]
+        .into_iter()
+        .find(|m| settings.providers.iter().any(|p| p.id == m.provider_id && provider_is_local(p)));
+    match local {
+        Some(model) => resolve_model(state, settings, model),
+        None => Err(trf!(
+            "{reason}: può elaborarlo solo un modello che gira su questo Mac, e non ce n'è uno configurato.",
+            "{reason}: only a model running on this Mac may process it, and none is configured."
+        )),
+    }
+}
+
 fn resolve_model(state: &AppState, settings: &Settings, which: &ModelRef) -> CmdResult<ResolvedModel> {
     let provider = settings
         .providers
@@ -754,7 +944,7 @@ pub async fn enhance_notes(
             .or_else(|| db.get_template("generale").ok().flatten());
         let system = prompts::enhance_system(&settings.language);
         let user = prompts::enhance_user(&meeting, template.as_ref(), &segments, &settings.user_name);
-        (resolve_model(&state, &settings, &settings.notes_model)?, system, user)
+        (resolve_model_for(&state, &settings, &settings.notes_model, local_only(&db, &meeting)?)?, system, user)
     };
     let messages = [llm::Msg::user(user)];
     model.check_context(&system, &messages)?;
@@ -823,7 +1013,7 @@ pub async fn fill_moments(state: State<'_, AppState>, meeting_id: String, moment
         }
         let system = prompts::moments_system(&settings.language);
         let user = prompts::moments_user(&meeting, &asked);
-        (resolve_model(&state, &settings, &settings.notes_model)?, system, user, asked)
+        (resolve_model_for(&state, &settings, &settings.notes_model, local_only(&db, &meeting)?)?, system, user, asked)
     };
     let messages = [llm::Msg::user(user)];
     model.check_context(&system, &messages)?;
@@ -874,18 +1064,25 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
     let (model, system, user) = {
         let db = state.db.lock();
         let settings = db.get_settings().map_err(err)?;
-        // lo schizzo si legge da solo: il meeting non serve
-        let context = match meeting_id.as_deref().filter(|_| kind != AssistKind::Sketch) {
+        // lo schizzo si legge da solo, senza note né trascrizione; ma anche lui è contenuto
+        // del meeting, quindi il vincolo del modello locale vale per ogni richiesta
+        let mut reason = None;
+        let context = match meeting_id.as_deref() {
             Some(id) => {
                 let meeting = db.get_meeting(id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
-                let segments = db.segments(id).map_err(err)?;
-                Some(prompts::enhance_user(&meeting, None, &segments, &settings.user_name))
+                reason = local_only(&db, &meeting)?;
+                if kind == AssistKind::Sketch {
+                    None
+                } else {
+                    let segments = db.segments(id).map_err(err)?;
+                    Some(prompts::enhance_user(&meeting, None, &segments, &settings.user_name))
+                }
             }
             None => None,
         };
         let system = prompts::assist_system(kind, &settings.language, format.as_deref());
         let user = prompts::assist_user(kind, context.as_deref(), instruction.trim(), current.as_deref());
-        (resolve_model(&state, &settings, &settings.notes_model)?, system, user)
+        (resolve_model_for(&state, &settings, &settings.notes_model, reason)?, system, user)
     };
     let message = llm::Msg::user(user);
     let messages = [match image {
@@ -979,11 +1176,14 @@ pub async fn chat(
     let (model, system, mut history, user_msg_id) = {
         let db = state.db.lock();
         let settings = db.get_settings().map_err(err)?;
-        let model = resolve_model(&state, &settings, &settings.chat_model)?;
-        let system = if scope == "global" {
+        let (model, system) = if scope == "global" {
+            let model = resolve_model(&state, &settings, &settings.chat_model)?;
+            let online = !provider_is_local(&model.provider);
             let meetings = db.relevant_meetings(&question, 8).map_err(err)?;
             let with_tr = meetings
                 .into_iter()
+                // a un modello online non arrivano i meeting blindati né quelli con parti da verificare
+                .filter(|m| !online || !matches!(local_only(&db, m), Ok(Some(_)) | Err(_)))
                 .map(|m| {
                     let segs = db.segments(&m.id).unwrap_or_default();
                     let tr = prompts::transcript_text(&segs, &settings.user_name);
@@ -994,11 +1194,12 @@ pub async fn chat(
             if with_tr.is_empty() {
                 return Err(tr("Non ci sono ancora meeting su cui fare domande", "There are no meetings to ask about yet").into());
             }
-            prompts::chat_system_global(&with_tr)
+            (model, prompts::chat_system_global(&with_tr))
         } else {
             let m = db.get_meeting(&scope).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+            let model = resolve_model_for(&state, &settings, &settings.chat_model, local_only(&db, &m)?)?;
             let segs = db.segments(&scope).map_err(err)?;
-            prompts::chat_system_meeting(&m, &segs, &settings.user_name)
+            (model, prompts::chat_system_meeting(&m, &segs, &settings.user_name))
         };
         let history = db.chat_history(&scope).map_err(err)?;
         let user_msg = db.add_chat_message(&scope, "user", &question).map_err(err)?;
@@ -1190,7 +1391,8 @@ pub fn has_api_key(state: State<AppState>, provider_id: String) -> bool {
 
 #[tauri::command]
 pub fn set_api_key(state: State<AppState>, provider_id: String, key: String) -> CmdResult<()> {
-    let known = state.db.lock().get_settings().map_err(err)?.providers.iter().any(|p| p.id == provider_id);
+    let known = provider_id == gladia::KEY_ID
+        || state.db.lock().get_settings().map_err(err)?.providers.iter().any(|p| p.id == provider_id);
     if !known {
         return Err(tr("Salva il provider prima di impostare la chiave", "Save the provider before setting its key").into());
     }

@@ -834,7 +834,7 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .data-block .tq-who { flex: 0 1 160px; }
 .data-block .tq-time { flex: none; width: 58px; font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
 .transcript { position: relative; }
-.quote-pick { position: absolute; right: 12px; z-index: 2; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
+.pick-actions { position: absolute; right: 12px; z-index: 2; display: flex; gap: 4px; padding: 4px; border-radius: 9px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
 .bubble-meta { user-select: none; -webkit-user-select: none; }
 
 /* AI nei blocchi: pulsante ✦ e campo della richiesta */
@@ -931,3 +931,18 @@ button.lib-row { padding: 6px 9px; gap: 8px; }
 .demo-card > div { flex: 1; min-width: 0; }
 .demo-card h3 { margin: 0 0 4px; }
 .demo-card p { margin: 0; }
+
+/* privacy: livello del meeting e parti della trascrizione da verificare */
+.privacy-select.on { border-color: var(--rec); color: var(--rec); }
+.tseg.review { background: rgba(240, 180, 40, 0.28); border-radius: 3px; box-shadow: 0 0 0 2px rgba(240, 180, 40, 0.28); }
+.tseg-actions { display: inline-flex; gap: 3px; margin-left: 5px; user-select: none; -webkit-user-select: none; vertical-align: 1px; }
+.tseg-actions button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 5px; font-size: 11px; padding: 0 6px; line-height: 17px; }
+.tseg-actions button:hover { border-color: var(--accent); }
+.review-banner { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 9px; border: 1px solid rgba(240, 180, 40, 0.6); background: rgba(240, 180, 40, 0.12); font-size: 12.5px; line-height: 1.4; }
+
+/* parlanti riconosciuti dall'affinamento online e audio conservato */
+.bubble.speaker { align-self: flex-start; }
+.speaker-name { border: none; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
+.speaker-name:hover { text-decoration: underline; }
+.speaker-input { width: 130px; font: inherit; font-size: 11px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); color: var(--text); padding: 0 4px; outline: none; }
+.review-banner.kept-audio { border-color: var(--line); background: var(--card); gap: 6px; }
