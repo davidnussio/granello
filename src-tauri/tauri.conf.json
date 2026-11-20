@@ -52,7 +52,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM0MTg1MkE4MjMxODk2NEEKUldSS2xoZ2pxRklZTkN0NitIV09paW8xcDc3RzBsek9tdkU5bDdLQnRhVzNxN0lXUUxqYjd2MjEK",
       "endpoints": [
         "https://github.com/davidnussio/granello/releases/latest/download/latest.json"
       ]
