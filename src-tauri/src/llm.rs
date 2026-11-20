@@ -654,7 +654,9 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, LlmError::Unreachable { .. }), "{err}");
-        assert!(started.elapsed() < Duration::from_secs(1));
+        // Windows ritenta da sé la connessione rifiutata per circa 2 secondi
+        let limit = Duration::from_secs(if cfg!(windows) { 5 } else { 1 });
+        assert!(started.elapsed() < limit, "{:?}", started.elapsed());
 
         // stream chiuso senza motivo di arresto né [DONE]
         let (base, _server) =
