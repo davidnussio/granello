@@ -128,7 +128,7 @@ impl Transcriber {
                 Ok(t) => t,
                 Err(_) => continue,
             };
-            let text = clean_text(&text);
+            let text = strip_echo(&clean_text(&text), prompt);
             if text.is_empty() || is_hallucination(&text) {
                 continue;
             }
@@ -136,6 +136,15 @@ impl Transcriber {
             let t1 = state.full_get_segment_t1(i).unwrap_or(0) * 10;
             out.push(Segment { start_ms: t0, end_ms: t1, text });
         }
+        // la stessa eco può arrivare un segmento alla volta: due o più di fila si tolgono
+        let echo: Vec<bool> = out.iter().map(|s| is_echo(&s.text, &prompt_words(prompt))).collect();
+        let mut i = 0;
+        out.retain(|_| {
+            let alone = !(i > 0 && echo[i - 1]) && !echo.get(i + 1).copied().unwrap_or(false);
+            let keep = !echo[i] || alone;
+            i += 1;
+            keep
+        });
         Ok(out)
     }
 }
@@ -170,6 +179,62 @@ impl TranscriberCache {
 
 fn clean_text(t: &str) -> String {
     t.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn words(text: &str) -> Vec<String> {
+    text.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(str::to_lowercase).collect()
+}
+
+fn prompt_words(prompt: &str) -> std::collections::HashSet<String> {
+    words(prompt).into_iter().collect()
+}
+
+/// Una frase brevissima fatta solo di parole del prompt iniziale (un nome, di solito).
+fn is_echo(sentence: &str, prompt: &std::collections::HashSet<String>) -> bool {
+    let w = words(sentence);
+    !w.is_empty() && w.len() <= 3 && w.iter().all(|x| prompt.contains(x))
+}
+
+/// Toglie l'eco del prompt iniziale: su rumore e pause whisper ripete le ultime parole
+/// che gli sono state suggerite ("David. David. David."). Una frase sola resta, perché
+/// può essere qualcuno che chiama davvero quella persona; due o più di fila no.
+fn strip_echo(text: &str, prompt: &str) -> String {
+    let prompt = prompt_words(prompt);
+    if prompt.is_empty() {
+        return text.to_string();
+    }
+    // frasi: fino alla parola che finisce con un punto
+    let mut sentences: Vec<String> = Vec::new();
+    let mut open = false;
+    for token in text.split_whitespace() {
+        if open {
+            let last = sentences.last_mut().unwrap();
+            last.push(' ');
+            last.push_str(token);
+        } else {
+            sentences.push(token.to_string());
+        }
+        open = !token.ends_with(['.', '!', '?', '…']);
+    }
+    let echo: Vec<bool> = sentences.iter().map(|s| is_echo(s, &prompt)).collect();
+    let mut out: Vec<String> = Vec::new();
+    for (i, sentence) in sentences.iter().enumerate() {
+        let in_run = echo[i] && ((i > 0 && echo[i - 1]) || echo.get(i + 1).copied().unwrap_or(false));
+        if !in_run {
+            out.push(sentence.clone());
+            continue;
+        }
+        // l'eco comincia spesso in coda alla frase prima: "…il nuovo grafico, David. David. David."
+        let starts_run = i == 0 || !echo[i - 1];
+        if let (true, Some(prev)) = (starts_run, out.last_mut()) {
+            if let Some((head, tail)) = prev.rsplit_once(", ") {
+                if words(tail) == words(sentence) {
+                    *prev = format!("{head}.");
+                }
+            }
+        }
+    }
+    out.join(" ")
 }
 
 /// Frasi che whisper "allucina" sul silenzio o sul rumore (note soprattutto in italiano).
@@ -251,6 +316,26 @@ mod tests {
         assert!(is_hallucination(" [Musica] "));
         assert!(is_hallucination("..."));
         assert!(!is_hallucination("Il deploy è previsto per giovedì."));
+    }
+
+    #[test]
+    fn prompt_echo_is_removed_but_a_single_call_stays() {
+        let prompt = "Partecipanti: David Nussio, Marco Bianchi. Grafico di cura.";
+        assert_eq!(
+            strip_echo("non l'ha fatto, probabilmente ancora... David. David. David. Che abbiamo ipotizzato.", prompt),
+            "non l'ha fatto, probabilmente ancora... Che abbiamo ipotizzato."
+        );
+        assert_eq!(
+            strip_echo("Ma se iniziassimo subito il nuovo grafico, David. David. David. L'area ha bozzato.", prompt),
+            "Ma se iniziassimo subito il nuovo grafico. L'area ha bozzato."
+        );
+        assert_eq!(strip_echo("David. David.", prompt), "");
+        assert_eq!(strip_echo("David Nussio. Marco Bianchi.", prompt), "");
+        // chiamare qualcuno una volta è una frase vera
+        assert_eq!(strip_echo("David. Dopo ve lo faccio vedere.", prompt), "David. Dopo ve lo faccio vedere.");
+        // ripetizioni che non vengono dal prompt non si toccano
+        assert_eq!(strip_echo("No. No. No.", prompt), "No. No. No.");
+        assert_eq!(strip_echo("No. No.", ""), "No. No.");
         assert!(looks_like_ggml(b"lmgg\x01\x00"));
         assert!(!looks_like_ggml(b"<!DOCTYPE html>"));
         assert!(!looks_like_ggml(b"lm"));

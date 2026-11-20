@@ -809,15 +809,20 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
         (settings, meeting, base_ms)
     };
     // Il prompt iniziale aiuta whisper con nomi e termini del meeting.
-    let mut prompt = meeting.title.clone();
-    if !meeting.attendees.is_empty() {
-        prompt.push_str(". Partecipanti: ");
-        prompt.push_str(&meeting.attendees.join(", "));
-    }
+    // Il titolo va per ultimo: su rumore e pause whisper ripete la fine del prompt, e un
+    // nome da solo in coda finiva nella trascrizione ("David. David. David.").
+    let mut names: Vec<&str> = Vec::new();
     if !settings.user_name.is_empty() {
-        prompt.push_str(&format!(". {}", settings.user_name));
+        names.push(&settings.user_name);
     }
-    prompt.push('.');
+    names.extend(meeting.attendees.iter().map(String::as_str).filter(|a| !a.eq_ignore_ascii_case(&settings.user_name)));
+    let mut prompt = String::new();
+    if !names.is_empty() {
+        prompt.push_str(&format!("Partecipanti: {}. ", names.join(", ")));
+    }
+    if !meeting.title.is_empty() {
+        prompt.push_str(&format!("{}.", meeting.title));
+    }
 
     let cfg = SessionConfig {
         meeting_id: meeting_id.clone(),
