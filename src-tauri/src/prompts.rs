@@ -7,6 +7,7 @@ pub fn builtin_templates() -> Vec<Template> {
         description: description.into(),
         instructions: instructions.into(),
         builtin: true,
+        notes_md: String::new(),
     };
     if crate::i18n::lang() == crate::i18n::Lang::En {
         return vec![

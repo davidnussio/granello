@@ -238,8 +238,8 @@ const en: Record<string, string> = {
   "Template salvato": "Template saved",
   Template: "Templates",
   "+ Nuovo template": "+ New template",
-  "Il template dice all'AI come strutturare le note AI. Si sceglie per ogni meeting dall'intestazione.":
-    "A template tells the AI how to structure the AI notes. You pick one per meeting from its header.",
+  "Il template dice all'AI come strutturare le note AI e può dare alle tue note un punto di partenza. Si sceglie per ogni meeting dall'intestazione.":
+    "The template tells the AI how to structure the AI notes, and can give your own notes a starting point. Pick it per meeting from the header.",
   "di sistema": "built-in",
   "{name} (modifica = copia)": "{name} (editing creates a copy)",
   "Modifica template": "Edit template",
@@ -716,6 +716,16 @@ const en: Record<string, string> = {
   "Unisco…": "Merging…",
   "Unire in un solo file?": "Merge into one file?",
   Unisci: "Merge",
+
+  // templates: full-area editing, starting notes
+  "Come l'AI deve strutturare le note AI di questo meeting.":
+    "How the AI should structure this meeting's AI notes.",
+  "Note di partenza": "Starting notes",
+  "Ciò che trovi già scritto nelle tue note quando scegli questo template su un meeting vuoto.":
+    "What you find already written in your notes when you pick this template on an empty meeting.",
+  "Un'agenda, i titoli delle sezioni, una checklist… Digita / per i comandi.":
+    "An agenda, section headings, a checklist… Type / for commands.",
+  "con note di partenza": "with starting notes",
 };
 
 export default en;

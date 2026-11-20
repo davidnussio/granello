@@ -187,6 +187,9 @@ pub struct Template {
     pub description: String,
     pub instructions: String,
     pub builtin: bool,
+    /// Le note da cui parte un meeting con questo template (Markdown); vuote se non ne ha.
+    #[serde(default)]
+    pub notes_md: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

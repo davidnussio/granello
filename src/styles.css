@@ -1748,6 +1748,78 @@ h3 {
   gap: 10px;
   margin-top: 20px;
 }
+/* modifica di un template: tutta l'area, istruzioni a sinistra e note di partenza a destra */
+.tpl-edit {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 40px 40px 24px;
+}
+.tpl-edit-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.tpl-edit-head .page-title {
+  margin: 0;
+  font-size: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tpl-edit-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 14px;
+}
+.tpl-edit-cols {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+.tpl-edit-col {
+  min-height: 0;
+  margin-bottom: 0;
+}
+.tpl-edit-col textarea,
+.tpl-edit-notes {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.tpl-edit-col textarea {
+  resize: none;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.tpl-edit-notes {
+  overflow-y: auto;
+  padding: 10px 16px;
+}
+.tpl-edit-notes:focus-within {
+  border-color: var(--accent);
+}
+.tpl-edit-notes .editor {
+  max-width: none;
+}
+.tpl-edit-notes .editor .ProseMirror {
+  min-height: 160px;
+  padding-bottom: 40px;
+}
+@media (max-width: 1000px) {
+  .tpl-edit-cols {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(220px, 1fr);
+    overflow-y: auto;
+  }
+}
 .tpl-card {
   display: flex;
   flex-direction: column;

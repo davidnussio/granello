@@ -110,6 +110,13 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     return null;
   },
   list_templates: () => data.templates,
+  // i template si possono salvare davvero, in memoria: serve a provare le note di partenza
+  save_template: (a) => {
+    const tpl = a.template as { id: string; builtin: boolean };
+    const saved = { ...tpl, id: tpl.id && !tpl.builtin ? tpl.id : `anteprima-${Date.now()}`, builtin: false };
+    data.templates = [...(data.templates as { id: string }[]).filter((x) => x.id !== saved.id), saved];
+    return saved;
+  },
   get_settings: () => data.settings,
   demo_status: () => data.demoCount,
   list_whisper_models: () => whisperModels,

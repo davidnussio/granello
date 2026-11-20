@@ -585,6 +585,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
 
   const changeTemplate = async (templateId: string) => {
     setMeeting((m) => (m ? { ...m, templateId } : m));
+    // su una nota ancora vuota il template porta le sue note di partenza; se c'è già
+    // qualcosa di scritto non si tocca
+    const start = templates.find((tpl) => tpl.id === templateId)?.notesMd ?? "";
+    if (start.trim() && !meeting?.notesMd.trim()) {
+      setNotes(start);
+      notesEditor.current?.commands.setContent(start, false);
+    }
     await api.updateMeeting({ id, templateId }).catch((e) => toast(errorText(e)));
   };
 

@@ -51,7 +51,7 @@ Blocco note per i meeting su macOS: scrivi poche note durante il meeting, Granel
 - **Due sorgenti**: microfono ("Tu") e audio della call ("Altri"), catturato in modo nativo dall'uscita di sistema o da un dispositivo di loopback.
 - **Carica una registrazione**: invece di registrare dal vivo, *Carica audio* trascrive un file esistente (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, o la traccia audio di un video MP4/MOV) con la stessa pipeline, in coda alla trascrizione del meeting. Il file viene letto dov'è, mai copiato. Opus non è supportato.
 - **Note AI**: Claude (streaming) arricchisce le tue note seguendo il template scelto. Le note AI restano modificabili.
-- **Template**: Generale, 1:1, Standup, Colloquio, Meeting cliente + template personalizzati.
+- **Template**: Generale, 1:1, Standup, Colloquio, Meeting cliente + template personalizzati. Un template contiene le istruzioni per le note AI e, se vuoi, delle note di partenza (un'agenda, i titoli delle sezioni, una checklist) scritte con lo stesso editor: riempiono le tue note quando scegli il template su un meeting con le note ancora vuote.
 - **Calendario**: uno o più URL iCal (Google, Outlook), ognuno attivabile o disattivabile dalla home, eventi ricorrenti con RRULE, EXDATE e override, notifica prima dell'inizio, un click per aprire le note del meeting.
 - **Chat**: domande su un meeting o su tutti (ricerca full-text SQLite FTS5 per trovare i meeting pertinenti, con citazione di titolo e data).
 - **Tag e partecipanti**: tag sui meeting (la sidebar ne mostra al massimo due per meeting) e partecipanti modificabili. Granello tiene una rubrica delle persone e completa i nomi da lì e dal calendario; se il meeting coincide con un evento del calendario propone di importarne i partecipanti.

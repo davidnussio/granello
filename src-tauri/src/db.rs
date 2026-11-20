@@ -14,7 +14,12 @@ fn now_ms() -> i64 {
 
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
-const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5];
+const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6];
+
+/// Template: oltre alle istruzioni per l'AI, le note da cui parte il meeting (Markdown).
+const SCHEMA_V6: &str = r#"
+ALTER TABLE templates ADD COLUMN notes_md TEXT NOT NULL DEFAULT '';
+"#;
 
 /// Registrazioni salvate: una riga per ogni sessione di registrazione di cui si tiene l'audio.
 const SCHEMA_V5: &str = r#"
@@ -228,16 +233,22 @@ impl Db {
     ) -> Result<Meeting> {
         let id = uuid::Uuid::new_v4().to_string();
         let title = if title.trim().is_empty() { tr("Nuovo meeting", "New meeting") } else { title.trim() };
+        // le note partono da quelle del template, se ne ha
+        let notes = match template_id {
+            Some(t) => self.get_template(t)?.map(|t| t.notes_md).unwrap_or_default(),
+            None => String::new(),
+        };
         self.conn.execute(
-            "INSERT INTO meetings (id, title, created_at, calendar_event_id, attendees, template_id)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO meetings (id, title, created_at, calendar_event_id, attendees, template_id, notes_md)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
                 id,
                 title,
                 now_ms(),
                 calendar_event_id,
                 serde_json::to_string(attendees)?,
-                template_id
+                template_id,
+                notes
             ],
         )?;
         self.upsert_people(&attendees.iter().map(|a| (a.clone(), None)).collect::<Vec<_>>())?;
@@ -867,7 +878,7 @@ impl Db {
 
     pub fn list_templates(&self) -> Result<Vec<Template>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, instructions, builtin FROM templates ORDER BY builtin DESC, name",
+            "SELECT id, name, description, instructions, builtin, notes_md FROM templates ORDER BY builtin DESC, name",
         )?;
         let rows = stmt.query_map([], |r| {
             Ok(Template {
@@ -876,6 +887,7 @@ impl Db {
                 description: r.get(2)?,
                 instructions: r.get(3)?,
                 builtin: r.get(4)?,
+                notes_md: r.get(5)?,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
@@ -885,7 +897,7 @@ impl Db {
         Ok(self
             .conn
             .query_row(
-                "SELECT id, name, description, instructions, builtin FROM templates WHERE id = ?1",
+                "SELECT id, name, description, instructions, builtin, notes_md FROM templates WHERE id = ?1",
                 [id],
                 |r| {
                     Ok(Template {
@@ -894,6 +906,7 @@ impl Db {
                         description: r.get(2)?,
                         instructions: r.get(3)?,
                         builtin: r.get(4)?,
+                        notes_md: r.get(5)?,
                     })
                 },
             )
@@ -908,10 +921,10 @@ impl Db {
             t.id.clone()
         };
         self.conn.execute(
-            "INSERT INTO templates (id, name, description, instructions, builtin) VALUES (?1, ?2, ?3, ?4, 0)
+            "INSERT INTO templates (id, name, description, instructions, builtin, notes_md) VALUES (?1, ?2, ?3, ?4, 0, ?5)
              ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = excluded.description,
-             instructions = excluded.instructions",
-            params![id, t.name, t.description, t.instructions],
+             instructions = excluded.instructions, notes_md = excluded.notes_md",
+            params![id, t.name, t.description, t.instructions, t.notes_md],
         )?;
         self.get_template(&id)?.ok_or_else(|| anyhow::anyhow!("template non salvato"))
     }
@@ -1223,6 +1236,42 @@ mod tests {
         let names: Vec<String> = db.list_people().unwrap().into_iter().map(|p| p.name).collect();
         assert_eq!(names, vec!["Anna Rossi", "Luca Bianchi"]);
         assert_eq!(db.list_meetings(Some("rossi")).unwrap().len(), 1, "reindicizzato dopo la migrazione");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn template_notes_survive_migration_and_start_new_meetings() {
+        let dir = std::env::temp_dir().join(format!("granello-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("db.sqlite");
+        {
+            // un database com'era prima delle note nei template: fino allo schema 5
+            let conn = Connection::open(&path).unwrap();
+            for schema in &MIGRATIONS[..5] {
+                conn.execute_batch(schema).unwrap();
+            }
+            conn.pragma_update(None, "user_version", 5).unwrap();
+            conn.execute("INSERT INTO templates (id, name, instructions) VALUES ('mio', 'Mio', 'Sezioni')", []).unwrap();
+        }
+        let db = Db::open(&path).unwrap();
+        let mut mine = db.get_template("mio").unwrap().unwrap();
+        assert_eq!((mine.instructions.as_str(), mine.notes_md.as_str()), ("Sezioni", ""));
+
+        mine.notes_md = "## Agenda\n\n- [ ] Primo punto".into();
+        let saved = db.save_template(&mine).unwrap();
+        assert_eq!(saved.id, "mio");
+        assert_eq!(saved.notes_md, mine.notes_md);
+        assert_eq!(db.list_templates().unwrap().iter().find(|t| t.id == "mio").unwrap().notes_md, mine.notes_md);
+
+        // un meeting creato con quel template parte dalle sue note; senza, resta vuoto
+        assert_eq!(db.create_meeting("Con", None, &[], Some("mio")).unwrap().notes_md, mine.notes_md);
+        assert_eq!(db.create_meeting("Senza", None, &[], None).unwrap().notes_md, "");
+        assert_eq!(db.create_meeting("Sparito", None, &[], Some("non-esiste")).unwrap().notes_md, "");
+        // la copia di un template di sistema porta con sé le note scritte
+        let builtin = Template { notes_md: "Appunti".into(), ..db.list_templates().unwrap().into_iter().find(|t| t.builtin).unwrap() };
+        let copy = db.save_template(&builtin).unwrap();
+        assert!(!copy.builtin && copy.id != builtin.id);
+        assert_eq!(copy.notes_md, "Appunti");
         let _ = std::fs::remove_dir_all(dir);
     }
 

@@ -51,7 +51,7 @@ A meeting notepad for macOS: jot down a few notes during the meeting, Granello r
 - **Two sources**: the microphone ("You") and the call audio ("Others"), captured natively from the system output or from a loopback device.
 - **Upload a recording**: instead of recording live, *Upload audio* transcribes an existing file (MP3, M4A/AAC, WAV, FLAC, OGG Vorbis, AIFF, CAF, or the audio track of an MP4/MOV video) with the same pipeline, appending to the meeting's transcript. The file is read in place, never copied. Opus is not supported.
 - **AI notes**: the model (streaming) enriches your notes following the template you chose. AI notes stay editable.
-- **Templates**: General, 1:1, Standup, Interview, Client meeting, plus your own.
+- **Templates**: General, 1:1, Standup, Interview, Client meeting, plus your own. A template holds the instructions for the AI notes and, optionally, starting notes (an agenda, section headings, a checklist) written with the same editor: they fill your notes when you pick the template on a meeting whose notes are still empty.
 - **Calendar**: one or more iCal URLs (Google, Outlook), each of which can be turned on or off from the home screen, recurring events with RRULE, EXDATE and overrides, a notification before the start, one click to open the meeting's notes.
 - **Chat**: ask about one meeting or all of them (SQLite FTS5 full-text search finds the relevant meetings, answers cite title and date).
 - **Tags and participants**: tag meetings (the sidebar shows up to two per meeting) and edit who took part. Granello keeps a people directory and autocompletes from it and from the names in your calendar; a meeting that overlaps a calendar event offers to import its attendees.

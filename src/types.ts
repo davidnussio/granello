@@ -80,6 +80,8 @@ export interface Template {
   description: string;
   instructions: string;
   builtin: boolean;
+  /** Le note da cui parte un meeting con questo template (Markdown); vuote se non ne ha. */
+  notesMd: string;
 }
 
 export interface ChatMessage {
