@@ -157,12 +157,26 @@ pnpm tauri build      # .app e .dmg in src-tauri/target/release/bundle
 Controlli prima di un rilascio:
 
 ```bash
-pnpm check              # tsc + traduzioni + clippy (warning = errore) + cargo test
+pnpm check              # tsc + oxlint + oxfmt + traduzioni + clippy (warning = errore) + cargo test
+pnpm fmt                # formatta il frontend con oxfmt
+```
+
+L'interfaccia gira anche nel browser, senza il backend Tauri, sui dati di esempio (generati dal database vero con `cargo test --lib preview_fixtures -- --ignored`):
+
+```bash
+pnpm preview            # http://localhost:1430/preview.html?lang=it (o lang=en)
+pnpm screenshots        # schermate per la vetrina in shots/<lingua>/*.webp, 1440×900, tema scuro
 ```
 
 ### Distribuzione
 
 `pnpm tauri build` produce un'app **non firmata**: su un altro Mac Gatekeeper la blocca. Per distribuirla servono un certificato *Developer ID Application* e la notarizzazione Apple: imposta `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (password specifica per l'app) e `APPLE_TEAM_ID` prima del build, Tauri firma e notarizza da solo. Le entitlement per microfono e rete sono già in `src-tauri/entitlements.plist`.
+
+### Rilasci e aggiornamenti
+
+Stessa `version` in `package.json`, `src-tauri/Cargo.toml` e `src-tauri/tauri.conf.json`, commit, poi un tag `vX.Y.Z`. `.github/workflows/release.yml` esegue i controlli, costruisce il DMG per Apple Silicon e Intel, firma i pacchetti di aggiornamento e crea una release **in bozza** con `latest.json`. Le app installate controllano all'avvio `releases/latest/download/latest.json`, che vede solo le release pubblicate: nessuna si aggiorna finché la bozza non viene pubblicata. Prima di installare l'app chiede; si riavvia solo se non sta registrando.
+
+I pacchetti di aggiornamento sono firmati con una chiave minisign: la pubblica è in `tauri.conf.json`, la privata e la sua password sono i secret di GitHub `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Se la chiave privata va persa, le app installate non si aggiornano più.
 
 Primo avvio (la Home mostra cosa manca):
 
@@ -192,7 +206,6 @@ Usa le cuffie: senza cancellazione dell'eco il microfono riprende anche gli altr
 - OAuth Google Calendar al posto dell'URL iCal.
 - Esportazione verso Notion / Google Docs, condivisione delle note.
 - Firma con certificato Developer ID. Finché manca, il permesso "Consenti sempre" del Portachiavi si perde a ogni build: per questo le API key vengono lette una sola volta per avvio e tenute in memoria (`secrets.rs`). Con la firma attiva, rivalutare se quella cache serve ancora.
-- Aggiornamenti automatici (tauri-plugin-updater) una volta attiva la firma.
 - Salvataggio opzionale dell'audio per ritrascrivere con un modello migliore.
 
 ## Test
@@ -202,3 +215,7 @@ cd src-tauri && cargo test
 ```
 
 Coprono chunking audio, resampling, filtro allucinazioni, parser iCal con ricorrenze, streaming/retry/annullamento dei modelli AI (anche contro un server compatibile OpenAI simulato), validazione delle impostazioni, database, migrazioni, recupero dopo crash e ricerca.
+
+## Licenza
+
+[MIT](LICENSE)

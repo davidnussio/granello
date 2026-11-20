@@ -160,12 +160,26 @@ pnpm tauri build        # .app and .dmg in src-tauri/target/release/bundle
 Checks before a release:
 
 ```bash
-pnpm check              # tsc + translations + clippy (warnings are errors) + cargo test
+pnpm check              # tsc + oxlint + oxfmt + translations + clippy (warnings are errors) + cargo test
+pnpm fmt                # format the frontend with oxfmt
+```
+
+The interface also runs in the browser, without the Tauri backend, on the demo data (generated from the real database by `cargo test --lib preview_fixtures -- --ignored`):
+
+```bash
+pnpm preview            # http://localhost:1430/preview.html?lang=it (or lang=en)
+pnpm screenshots        # showcase images in shots/<lang>/*.webp, 1440×900, dark theme
 ```
 
 ### Distribution
 
 `pnpm tauri build` produces an **unsigned** app: Gatekeeper blocks it on another Mac. Distributing it requires a *Developer ID Application* certificate and Apple notarization: set `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password) and `APPLE_TEAM_ID` before building, and Tauri signs and notarizes on its own. The microphone and network entitlements are already in `src-tauri/entitlements.plist`.
+
+### Releases and updates
+
+Set the same `version` in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, commit, then push a tag `vX.Y.Z`. `.github/workflows/release.yml` runs the checks, builds the DMG for Apple Silicon and Intel, signs the update packages and creates a **draft** release with `latest.json`. Installed apps check `releases/latest/download/latest.json` at startup, which only sees published releases: nothing updates until the draft is published. Before installing, the app asks; it restarts only if it is not recording.
+
+The update packages are signed with a minisign key: the public key is in `tauri.conf.json`, the private key and its password are the GitHub secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Losing the private key means installed apps can no longer update.
 
 First launch (the Home screen shows what's missing):
 
@@ -195,7 +209,6 @@ Use headphones: without echo cancellation the microphone also picks up the other
 - Google Calendar OAuth instead of the iCal URL.
 - Export to Notion / Google Docs, sharing notes.
 - Sign with a Developer ID certificate. Until then the Keychain's "Always Allow" is lost on every build, which is why API keys are read once per launch and kept in memory (`secrets.rs`). Once signing is in place, reconsider whether that cache is still needed.
-- Automatic updates (tauri-plugin-updater) once signing is in place.
 - Optionally saving audio to re-transcribe with a better model.
 
 ## Tests
@@ -205,3 +218,7 @@ cd src-tauri && cargo test
 ```
 
 They cover audio chunking, resampling, the hallucination filter, the iCal parser with recurrences, streaming/retry/cancellation for AI models (including against a simulated OpenAI-compatible server), settings validation, the database, migrations, crash recovery and search.
+
+## License
+
+[MIT](LICENSE)

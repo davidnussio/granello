@@ -28,6 +28,16 @@ if (!response.ok) {
 }
 const data = (await response.json()) as Fixtures;
 
+// per le schermate (?shots) i meeting di esempio non mostrano il tag #faker
+const strip = (tags: string[]) => tags.filter((tag) => tag !== "faker");
+if (params.has("shots")) {
+  for (const m of data.meetings as { tags: string[] }[]) m.tags = strip(m.tags);
+  for (const d of Object.values(data.details) as { meeting: { tags: string[] } }[]) {
+    d.meeting.tags = strip(d.meeting.tags);
+  }
+  data.tags = (data.tags as { name: string }[]).filter((t) => t.name !== "faker");
+}
+
 // il modello consigliato risulta scaricato, così la Home non segnala passi mancanti
 const whisperModels = data.whisperModels.map((m, i) => ({ ...m, downloaded: i === 0 || m.downloaded }));
 if (whisperModels.length) data.settings.whisperModel = whisperModels[0].name;

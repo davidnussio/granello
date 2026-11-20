@@ -26,7 +26,7 @@ and knowledge live in `~/Developer/repos/dev-commons`.
   translations, clippy with warnings as errors, cargo test. Format with
   `pnpm fmt`.
 - UI changes: `pnpm preview` serves the interface in the browser with demo
-  data and no backend (`preview.html`, port 1420); check it there before
+  data and no backend (`preview.html`, port 1430); check it there before
   saying it works. `pnpm screenshots` regenerates the showcase images.
 - Vite uses port 1420 (Tauri's `devUrl`).
 - Releases: `version` must match in `package.json`, `src-tauri/Cargo.toml`
