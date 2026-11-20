@@ -933,7 +933,6 @@ button.lib-row { padding: 6px 9px; gap: 8px; }
 .demo-card p { margin: 0; }
 
 /* privacy: livello del meeting e parti della trascrizione da verificare */
-.privacy-select.on { border-color: var(--rec); color: var(--rec); }
 .tseg.review { background: rgba(240, 180, 40, 0.28); border-radius: 3px; box-shadow: 0 0 0 2px rgba(240, 180, 40, 0.28); }
 .tseg-actions { display: inline-flex; gap: 3px; margin-left: 5px; user-select: none; -webkit-user-select: none; vertical-align: 1px; }
 .tseg-actions button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 5px; font-size: 11px; padding: 0 6px; line-height: 17px; }
@@ -967,12 +966,16 @@ button.lib-row { padding: 6px 9px; gap: 8px; }
 .privacy-icon.hardened { opacity: 1; }
 .rec-btn .privacy-icon { margin-left: 2px; }
 .privacy-line { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); padding: 0 2px; }
-.privacy-line.hardened, .privacy-line.audio { color: var(--rec); }
 /* chi parla: scelta del parlante per il testo selezionato */
 .who-menu { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-width: 300px; }
 .who-menu .speaker-input { width: 110px; height: 24px; }
 .recbar .chip.select { max-width: 190px; text-overflow: ellipsis; }
-/* il livello standard è arancione: è quello in cui qualcosa può uscire dal Mac */
-.privacy-line.open { color: #d98a1f; }
-.privacy-select:not(.on) { border-color: #d98a1f; color: #d98a1f; }
-.rec-btn .privacy-icon.open { color: #d98a1f; opacity: 1; }
+/* colori del livello di privacy: arancione = standard (qualcosa può uscire dal Mac),
+   grigio = audio locale, verde = blindata (non esce niente). Mai rosso: sembrerebbe un pericolo
+   proprio dove il meeting è più protetto. */
+.privacy-line.open, .privacy-select.open { color: #d98a1f; }
+.privacy-select.open { border-color: #d98a1f; }
+.privacy-line.hardened, .privacy-select.hardened { color: var(--accent); }
+.privacy-select.hardened { border-color: var(--accent); }
+.rec-btn:not(.on) .privacy-icon.open { color: #d98a1f; opacity: 1; }
+.rec-btn:not(.on) .privacy-icon.hardened { color: var(--accent); }

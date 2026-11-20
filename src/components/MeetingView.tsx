@@ -594,7 +594,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               ))}
             </select>
             <select
-              className={"chip select privacy-select" + (meeting.privacy !== "open" ? " on" : "")}
+              className={"chip select privacy-select " + meeting.privacy}
               value={meeting.privacy}
               onChange={(e) => changePrivacy(e.target.value as Privacy)}
               aria-label={t("Privacy di questo meeting")}
