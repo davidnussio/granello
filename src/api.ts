@@ -42,6 +42,12 @@ export const api = {
     invoke<Meeting>("update_meeting_meta", args),
   deleteMeeting: (id: string) => invoke<void>("delete_meeting", { id }),
 
+  /** Quanti meeting di esempio sono caricati. */
+  demoStatus: () => invoke<number>("demo_status"),
+  /** Carica i meeting di esempio; ritorna quanti sono. */
+  loadDemo: () => invoke<number>("load_demo"),
+  /** Toglie i meeting di esempio; ritorna quanti ne ha tolti. */
+  removeDemo: () => invoke<number>("remove_demo"),
   listProjects: () => invoke<Project[]>("list_projects"),
   /** Promuove un tag a progetto (false), lo archivia (true) o lo riporta a tag normale (null). */
   setProject: (tag: string, archived: boolean | null) => invoke<Project[]>("set_project", { tag, archived }),

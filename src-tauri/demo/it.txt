@@ -1,0 +1,352 @@
+projects: cliente-nord, app-mobile
+archived: sito-2025
+
+=== demo-rinnovo
+title: Rinnovo contratto Nord 2027
+when: 1 10:00
+minutes: 42
+attendees: Marco Bianchi, Elena Rossi
+tags: cliente-nord, prezzi
+--- notes
+[[toc]]
+
+## Dove siamo
+
+Nord vuole rinnovare ma chiede uno ==sconto del 10%== entro gennaio. @[Marco Bianchi] ha un'offerta di un concorrente sul tavolo.
+
+::: quote 11:48 Marco Bianchi
+Se non arriviamo al 10%, a gennaio dobbiamo guardare altrove.
+:::
+
+::: moment 12:34
+Elena propone l'8% in cambio di un contratto di due anni invece di uno.
+:::
+
+## Le due strade
+
+::: pros-cons
++ Margine sopra il 30% con l'8%
++ Due anni di ricavi certi
+- Il 10% ci porta sotto soglia
+- Altri clienti lo chiederanno
+= Offriamo l'8% su due anni, con l'integrazione CRM inclusa
+:::
+
+| Proposta | Sconto | Durata | Margine |
+| --- | --- | --- | --- |
+| Richiesta di Nord | 10% | 1 anno | 27% |
+| Nostra controproposta | 8% | 2 anni | 31% |
+| Senza sconto | 0% | 1 anno | 36% |
+
+[[chart:bar]]
+
+> [!DECISION]
+> Controproposta: 8% su due anni, integrazione CRM inclusa. Scade il [[{{date:+10}}]].
+
+## Cosa chiede l'AI
+
+::: ai Quali sono le obiezioni di Nord?
+- Il prezzo è più alto di quello del concorrente
+- Vogliono l'integrazione con il CRM prima del go-live
+- Un impegno di due anni va approvato dalla loro direzione
+:::
+
+## Prossimi passi
+
+[[progress]]
+
+- [x] Calcolare il margine con le tre ipotesi
+- [ ] @[Elena Rossi]: mandare la controproposta scritta entro il [[{{date:+2}}]]
+- [ ] @[Marco Bianchi]: portare la proposta in direzione
+- [ ] Fissare la call di chiusura
+--- enhanced
+### Contesto
+
+- Nord intende rinnovare per il 2027 ma chiede uno sconto del 10% entro gennaio.
+- Marco Bianchi ha in mano l'offerta di un concorrente, più bassa della nostra.
+
+### Negoziazione
+
+- Con il 10% su un anno il margine scende al 27%, sotto la soglia del 30%.
+- Elena ha proposto l'8% in cambio di un contratto di due anni: margine al 31%.
+- L'integrazione con il CRM viene inclusa nella controproposta.
+
+> "Se non arriviamo al 10%, a gennaio dobbiamo guardare altrove." (Marco Bianchi)
+
+### Decisioni
+
+- Controproposta: 8% su due anni, integrazione CRM inclusa.
+
+### Prossimi passi
+
+- [ ] Elena Rossi: mandare la controproposta scritta
+- [ ] Marco Bianchi: portare la proposta in direzione
+- [ ] Fissare la call di chiusura
+--- transcript
+00:08 me Buongiorno Marco, grazie per il tempo. Partiamo dal rinnovo?
+00:15 them Sì, vado dritto al punto. Siamo contenti del servizio, ma il budget del 2027 è più stretto.
+00:31 them Abbiamo ricevuto un'offerta da un altro fornitore, più bassa di circa il dodici per cento.
+00:44 me Capisco. Ci puoi dire su cosa è più bassa? Stesso numero di utenti, stesso supporto?
+01:02 them Stessi utenti. Il supporto è solo via mail, non hanno il referente dedicato.
+01:20 me Quindi non è proprio lo stesso servizio. Detto questo, vogliamo venirvi incontro.
+11:30 them Per noi il numero è il dieci per cento. Sotto quella cifra faccio fatica a portarlo in direzione.
+11:48 them Se non arriviamo al dieci per cento, a gennaio dobbiamo guardare altrove.
+12:05 me Il dieci su un anno per noi è difficile. Elena, vuoi dire tu?
+12:20 me Possiamo arrivare all'otto, se il contratto diventa di due anni invece di uno.
+12:34 me E nei due anni includiamo l'integrazione con il vostro CRM, che oggi sarebbe a parte.
+12:52 them L'integrazione ci interessa molto, ci serve prima del go-live di marzo.
+13:10 them Due anni però li deve approvare la direzione. Mandatemi la proposta scritta.
+13:25 me Te la mandiamo entro dopodomani. Fissiamo intanto una call per la settimana prossima?
+13:38 them Va bene, sentiamoci giovedì.
+
+=== demo-integrazione
+title: Demo integrazione CRM
+when: 8 15:00
+minutes: 31
+attendees: Marco Bianchi, Luca Ferri
+tags: cliente-nord
+--- notes
+## Cosa abbiamo mostrato
+
+La sincronizzazione dei contatti tra il CRM di Nord e la nostra piattaforma. A @[Marco Bianchi] serve funzionante ==prima del go-live di marzo==.
+
+```mermaid
+flowchart LR
+  CRM[CRM di Nord] -->|contatti| Sync[Sincronizzazione]
+  Sync --> App[Piattaforma]
+  App -->|stato ordini| Sync
+  Sync -->|aggiornamenti| CRM
+```
+
+## Lavori
+
+::: kanban
+## Da fare
+- Mappare i campi personalizzati
+- Gestire i contatti duplicati
+## In corso
+- Ambiente di prova per Nord
+## Fatto
+- Autenticazione con il CRM
+- Prima sincronizzazione di prova
+:::
+
+## Tappe
+
+::: timeline
+- {{date:-8}} Demo a Nord
+- {{date:+12}} Ambiente di prova pronto
+- {{date:+40}} Collaudo con i loro dati
+- {{date:+95}} Go-live
+:::
+
+> [!WARNING]
+> I campi personalizzati del loro CRM non sono documentati: serve un export da Nord.
+
+- [ ] @[Luca Ferri]: preparare l'ambiente di prova
+- [ ] @[Marco Bianchi]: mandare l'export dei campi personalizzati
+--- transcript
+00:10 me Vi faccio vedere la sincronizzazione su dati di prova. Luca, condividi tu?
+00:22 me Qui a sinistra il vostro CRM, a destra la piattaforma. Creo un contatto e in pochi secondi compare dall'altra parte.
+00:48 them Bene. E se lo stesso contatto esiste già da voi con un'altra mail?
+01:05 me Oggi ne crea un secondo. La gestione dei duplicati è il prossimo lavoro.
+01:20 them A noi serve tutto funzionante prima del go-live di marzo, compresi i campi personalizzati.
+01:38 me Per quelli ci serve un export dal vostro CRM, non sono documentati.
+01:50 them Ve lo mando io questa settimana.
+
+=== demo-kickoff
+title: Kickoff progetto Nord
+when: 30 09:30
+minutes: 55
+attendees: Marco Bianchi, Elena Rossi, Giulia Moretti
+tags: cliente-nord
+--- notes
+## Obiettivi
+
+- Portare i 120 utenti di Nord sulla piattaforma entro marzo
+- Un solo referente per parte: @[Marco Bianchi] per Nord, @[Giulia Moretti] per noi
+
+## Quando ci vediamo
+
+::: poll Giorno della riunione settimanale
+- [1] Lunedì mattina
+- [3] Giovedì pomeriggio
+- [0] Venerdì mattina
+:::
+
+::: details Chi decide cosa
+Budget e contratto: direzione di Nord, tramite Marco.
+
+Priorità delle funzioni: Giulia, sentito Marco.
+
+Tempi tecnici: Luca.
+:::
+
+> [!NOTE]
+> Marco preferisce ricevere un riepilogo scritto dopo ogni incontro.
+
+=== demo-roadmap
+title: Roadmap app mobile, primo trimestre
+when: 5 14:00
+minutes: 48
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+tags: app-mobile
+--- notes
+## Cosa costruiamo per primo
+
+Tre candidati. Li confrontiamo su quanto servono ai clienti, quanto costano e quanto rischiano.
+
+::: matrix
+| Criterio | Peso | Notifiche | Uso offline | Firma digitale |
+| --- | --- | --- | --- | --- |
+| Valore per i clienti | 3 | 4 | 5 | 3 |
+| Costo di sviluppo | 2 | 4 | 2 | 3 |
+| Rischio tecnico | 1 | 5 | 2 | 3 |
+:::
+
+## Richieste dei clienti
+
+| Funzione | Richieste |
+| --- | --- |
+| Uso offline | 34 |
+| Notifiche | 21 |
+| Firma digitale | 12 |
+
+[[chart:bar]]
+
+## Tappe
+
+::: timeline
+- {{date:+9}} Notifiche in beta
+- {{date:+45}} Uso offline, prima versione
+- {{date:+80}} Rilascio sugli store
+:::
+
+Stima dello sforzo: $giorni = persone \times settimane \times 5$
+
+> [!DECISION]
+> Si parte dalle notifiche: costano poco e sbloccano la beta. L'uso offline segue subito dopo.
+
+[[progress]]
+
+- [x] Raccogliere le richieste dei clienti
+- [x] Stimare i tre candidati
+- [ ] @[Luca Ferri]: prototipo delle notifiche
+- [ ] @[Giulia Moretti]: scrivere i requisiti dell'uso offline
+--- enhanced
+### Priorità
+
+- Tre candidati per il primo trimestre: notifiche, uso offline, firma digitale.
+- L'uso offline è la funzione più richiesta (34 richieste), ma è la più costosa e rischiosa.
+- Le notifiche vincono il confronto pesato: valore buono, costo e rischio bassi.
+
+### Decisioni
+
+- Si parte dalle notifiche; l'uso offline segue subito dopo.
+
+### Prossimi passi
+
+- [ ] Luca Ferri: prototipo delle notifiche
+- [ ] Giulia Moretti: scrivere i requisiti dell'uso offline
+
+=== demo-standup
+title: Standup del lunedì
+when: 3 09:15
+minutes: 12
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+tags: standup
+--- notes
+[[timer:10:00]]
+
+::: kanban
+## Luca
+- Prototipo notifiche
+- Ambiente di prova per Nord
+## Elena
+- Controproposta per Nord
+## Giulia
+- Requisiti uso offline
+## Bloccati
+- Export dei campi dal CRM di Nord
+:::
+
+> [!WARNING]
+> Senza l'export di Nord l'integrazione resta ferma.
+
+=== demo-colloquio
+title: Colloquio con Sara Conti, product designer
+when: 12 11:00
+minutes: 50
+attendees: Sara Conti, Giulia Moretti
+tags: colloqui
+--- notes
+## Impressioni
+
+Portfolio: [[rating:5]]
+
+Ragionamento sui problemi: [[rating:4]]
+
+Esperienza su app mobile: [[rating:3]]
+
+::: quote 18:20 Sara Conti
+Prima di disegnare una schermata voglio vedere tre persone usare quella che c'è già.
+:::
+
+::: pros-cons
++ Parte sempre dalla ricerca con gli utenti
++ Ha già lavorato con team piccoli
+- Poca esperienza su iOS e Android nativi
+= Da risentire per la prova pratica
+:::
+
+::: details Domande che ha fatto lei
+Come decidiamo le priorità? Chi parla con i clienti? Quanto tempo c'è per la ricerca?
+:::
+
+- [ ] @[Giulia Moretti]: mandare la prova pratica entro il [[{{date:-9}}]]
+
+=== demo-one-on-one
+title: 1:1 con Elena
+when: 2 16:30
+minutes: 28
+attendees: Elena Rossi
+tags: one-on-one
+--- notes
+## Come va
+
+Carico alto per via di Nord, ma sotto controllo. Vorrebbe seguire anche il prossimo cliente grande.
+
+::: moment 6:10
+:::
+
+## Crescita
+
+- Vuole imparare a leggere i numeri di margine da sola
+- Le interessa condurre lei la call di chiusura con Nord
+
+## Azioni
+
+- [ ] Affiancarla sul calcolo dei margini
+- [ ] Lasciarle la call di chiusura
+--- transcript
+00:05 me Allora, come sta andando questo periodo?
+00:12 them Intenso. Nord occupa quasi tutta la settimana, ma mi sta piacendo.
+06:02 them Una cosa che vorrei: la prossima volta che arriva un cliente grande, mi piacerebbe seguirlo io dall'inizio.
+06:18 me Mi sembra giusto. Cosa ti servirebbe per sentirti pronta?
+06:30 them Capire meglio i numeri. Sul margine oggi mi appoggio ancora a te.
+06:45 me Allora facciamo insieme il calcolo per Nord, così la prossima volta lo fai da sola.
+07:02 them E la call di chiusura con Marco, posso condurla io?
+07:10 me Sì, è tua.
+
+=== demo-sito
+title: Lancio del nuovo sito
+when: 95 10:30
+minutes: 35
+attendees: Giulia Moretti, Sara Conti
+tags: sito-2025
+--- notes
+Progetto chiuso: il sito è online.
+
+- [x] Testi rivisti
+- [x] Pagine dei prezzi
+- [x] Messa online

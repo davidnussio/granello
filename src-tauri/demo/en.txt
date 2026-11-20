@@ -1,0 +1,352 @@
+projects: cliente-nord, app-mobile
+archived: sito-2025
+
+=== demo-rinnovo
+title: Nord contract renewal 2027
+when: 1 10:00
+minutes: 42
+attendees: Marco Bianchi, Elena Rossi
+tags: cliente-nord, prezzi
+--- notes
+[[toc]]
+
+## Where we stand
+
+Nord wants to renew but asks for a ==10% discount== by January. @[Marco Bianchi] has a competitor's offer on the table.
+
+::: quote 11:48 Marco Bianchi
+If we don't get to 10%, in January we have to look elsewhere.
+:::
+
+::: moment 12:34
+Elena offers 8% in exchange for a two-year contract instead of one.
+:::
+
+## The two options
+
+::: pros-cons
++ Margin above 30% with 8%
++ Two years of sure revenue
+- 10% takes us below threshold
+- Other clients will ask too
+= We offer 8% over two years, CRM integration included
+:::
+
+| Proposal | Discount | Term | Margin |
+| --- | --- | --- | --- |
+| Nord's request | 10% | 1 year | 27% |
+| Our counter-offer | 8% | 2 years | 31% |
+| No discount | 0% | 1 year | 36% |
+
+[[chart:bar]]
+
+> [!DECISION]
+> Counter-offer: 8% over two years, CRM integration included. Expires on [[{{date:+10}}]].
+
+## What the AI is asked
+
+::: ai What are Nord's objections?
+- The price is higher than the competitor's
+- They want the CRM integration before go-live
+- A two-year commitment needs their board's approval
+:::
+
+## Next steps
+
+[[progress]]
+
+- [x] Work out the margin for the three scenarios
+- [ ] @[Elena Rossi]: send the written counter-offer by [[{{date:+2}}]]
+- [ ] @[Marco Bianchi]: take the proposal to the board
+- [ ] Schedule the closing call
+--- enhanced
+### Context
+
+- Nord intends to renew for 2027 but asks for a 10% discount by January.
+- Marco Bianchi holds a competitor's offer, lower than ours.
+
+### Negotiation
+
+- With 10% over one year the margin drops to 27%, below the 30% threshold.
+- Elena offered 8% in exchange for a two-year contract: margin at 31%.
+- The CRM integration is included in the counter-offer.
+
+> "If we don't get to 10%, in January we have to look elsewhere." (Marco Bianchi)
+
+### Decisions
+
+- Counter-offer: 8% over two years, CRM integration included.
+
+### Next steps
+
+- [ ] Elena Rossi: send the written counter-offer
+- [ ] Marco Bianchi: take the proposal to the board
+- [ ] Schedule the closing call
+--- transcript
+00:08 me Good morning Marco, thanks for your time. Shall we start with the renewal?
+00:15 them Yes, I'll get straight to it. We're happy with the service, but the 2027 budget is tighter.
+00:31 them We got an offer from another vendor, about twelve percent lower.
+00:44 me I see. Can you tell us what makes it lower? Same number of users, same support?
+01:02 them Same users. Support is email only, there's no dedicated contact.
+01:20 me So it's not quite the same service. That said, we want to meet you halfway.
+11:30 them For us the number is ten percent. Below that I struggle to take it to the board.
+11:48 them If we don't get to ten percent, in January we have to look elsewhere.
+12:05 me Ten over one year is hard for us. Elena, do you want to take this?
+12:20 me We can get to eight, if the contract becomes two years instead of one.
+12:34 me And over the two years we include the integration with your CRM, which today would be extra.
+12:52 them The integration matters a lot to us, we need it before the March go-live.
+13:10 them Two years has to be approved by the board though. Send me the written proposal.
+13:25 me You'll have it by the day after tomorrow. Shall we book a call for next week meanwhile?
+13:38 them Fine, let's talk on Thursday.
+
+=== demo-integrazione
+title: CRM integration demo
+when: 8 15:00
+minutes: 31
+attendees: Marco Bianchi, Luca Ferri
+tags: cliente-nord
+--- notes
+## What we showed
+
+Contact sync between Nord's CRM and our platform. @[Marco Bianchi] needs it working ==before the March go-live==.
+
+```mermaid
+flowchart LR
+  CRM[Nord's CRM] -->|contacts| Sync[Sync]
+  Sync --> App[Platform]
+  App -->|order status| Sync
+  Sync -->|updates| CRM
+```
+
+## Work
+
+::: kanban
+## To do
+- Map the custom fields
+- Handle duplicate contacts
+## In progress
+- Test environment for Nord
+## Done
+- Authentication with the CRM
+- First test sync
+:::
+
+## Milestones
+
+::: timeline
+- {{date:-8}} Demo to Nord
+- {{date:+12}} Test environment ready
+- {{date:+40}} Acceptance test with their data
+- {{date:+95}} Go-live
+:::
+
+> [!WARNING]
+> The custom fields of their CRM are undocumented: we need an export from Nord.
+
+- [ ] @[Luca Ferri]: set up the test environment
+- [ ] @[Marco Bianchi]: send the export of the custom fields
+--- transcript
+00:10 me Let me show you the sync on test data. Luca, will you share?
+00:22 me Your CRM on the left, the platform on the right. I create a contact and within seconds it shows up on the other side.
+00:48 them Good. And if the same contact already exists on your side with a different email?
+01:05 me Today it creates a second one. Handling duplicates is the next piece of work.
+01:20 them We need everything working before the March go-live, custom fields included.
+01:38 me For those we need an export from your CRM, they aren't documented.
+01:50 them I'll send it this week.
+
+=== demo-kickoff
+title: Nord project kickoff
+when: 30 09:30
+minutes: 55
+attendees: Marco Bianchi, Elena Rossi, Giulia Moretti
+tags: cliente-nord
+--- notes
+## Goals
+
+- Move Nord's 120 users onto the platform by March
+- One contact per side: @[Marco Bianchi] for Nord, @[Giulia Moretti] for us
+
+## When we meet
+
+::: poll Day of the weekly meeting
+- [1] Monday morning
+- [3] Thursday afternoon
+- [0] Friday morning
+:::
+
+::: details Who decides what
+Budget and contract: Nord's board, through Marco.
+
+Feature priorities: Giulia, after talking to Marco.
+
+Technical timing: Luca.
+:::
+
+> [!NOTE]
+> Marco prefers a written recap after every meeting.
+
+=== demo-roadmap
+title: Mobile app roadmap, first quarter
+when: 5 14:00
+minutes: 48
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+tags: app-mobile
+--- notes
+## What we build first
+
+Three candidates. We compare them on value to clients, cost and risk.
+
+::: matrix
+| Criterion | Weight | Notifications | Offline use | Digital signature |
+| --- | --- | --- | --- | --- |
+| Value to clients | 3 | 4 | 5 | 3 |
+| Development cost | 2 | 4 | 2 | 3 |
+| Technical risk | 1 | 5 | 2 | 3 |
+:::
+
+## Client requests
+
+| Feature | Requests |
+| --- | --- |
+| Offline use | 34 |
+| Notifications | 21 |
+| Digital signature | 12 |
+
+[[chart:bar]]
+
+## Milestones
+
+::: timeline
+- {{date:+9}} Notifications in beta
+- {{date:+45}} Offline use, first version
+- {{date:+80}} Release on the stores
+:::
+
+Effort estimate: $days = people \times weeks \times 5$
+
+> [!DECISION]
+> We start with notifications: they're cheap and unblock the beta. Offline use follows right after.
+
+[[progress]]
+
+- [x] Collect client requests
+- [x] Estimate the three candidates
+- [ ] @[Luca Ferri]: notifications prototype
+- [ ] @[Giulia Moretti]: write the offline-use requirements
+--- enhanced
+### Priorities
+
+- Three candidates for the first quarter: notifications, offline use, digital signature.
+- Offline use is the most requested feature (34 requests), but the most expensive and risky.
+- Notifications win the weighted comparison: good value, low cost and risk.
+
+### Decisions
+
+- We start with notifications; offline use follows right after.
+
+### Next steps
+
+- [ ] Luca Ferri: notifications prototype
+- [ ] Giulia Moretti: write the offline-use requirements
+
+=== demo-standup
+title: Monday standup
+when: 3 09:15
+minutes: 12
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+tags: standup
+--- notes
+[[timer:10:00]]
+
+::: kanban
+## Luca
+- Notifications prototype
+- Test environment for Nord
+## Elena
+- Counter-offer for Nord
+## Giulia
+- Offline-use requirements
+## Blocked
+- Field export from Nord's CRM
+:::
+
+> [!WARNING]
+> Without Nord's export the integration is stuck.
+
+=== demo-colloquio
+title: Interview with Sara Conti, product designer
+when: 12 11:00
+minutes: 50
+attendees: Sara Conti, Giulia Moretti
+tags: colloqui
+--- notes
+## Impressions
+
+Portfolio: [[rating:5]]
+
+Problem solving: [[rating:4]]
+
+Mobile app experience: [[rating:3]]
+
+::: quote 18:20 Sara Conti
+Before I draw a screen I want to watch three people use the one that already exists.
+:::
+
+::: pros-cons
++ Always starts from user research
++ Has already worked in small teams
+- Little experience with native iOS and Android
+= Call her back for the practical test
+:::
+
+::: details Questions she asked
+How do we set priorities? Who talks to clients? How much time is there for research?
+:::
+
+- [ ] @[Giulia Moretti]: send the practical test by [[{{date:-9}}]]
+
+=== demo-one-on-one
+title: 1:1 with Elena
+when: 2 16:30
+minutes: 28
+attendees: Elena Rossi
+tags: one-on-one
+--- notes
+## How it's going
+
+Heavy workload because of Nord, but under control. She'd like to follow the next large client too.
+
+::: moment 6:10
+:::
+
+## Growth
+
+- Wants to learn to read margin numbers on her own
+- Interested in running the closing call with Nord herself
+
+## Actions
+
+- [ ] Work through the margin calculation together
+- [ ] Let her run the closing call
+--- transcript
+00:05 me So, how has this stretch been?
+00:12 them Intense. Nord takes almost the whole week, but I'm enjoying it.
+06:02 them One thing I'd like: next time a large client comes in, I'd love to follow it from the start.
+06:18 me That sounds right. What would you need to feel ready?
+06:30 them A better grasp of the numbers. On margin I still lean on you.
+06:45 me Then let's do the Nord calculation together, so next time you do it alone.
+07:02 them And the closing call with Marco, can I run it?
+07:10 me Yes, it's yours.
+
+=== demo-sito
+title: New website launch
+when: 95 10:30
+minutes: 35
+attendees: Giulia Moretti, Sara Conti
+tags: sito-2025
+--- notes
+Project closed: the site is live.
+
+- [x] Copy reviewed
+- [x] Pricing pages
+- [x] Go-live

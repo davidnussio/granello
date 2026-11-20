@@ -532,6 +532,15 @@ const en: Record<string, string> = {
   "Scegli un meeting per vederne l'anteprima.": "Pick a meeting to preview it.",
   "Sfoglia i meeting per progetto, persona, tag e periodo": "Browse meetings by project, person, tag and period",
   "▤ Libreria": "▤ Library",
+  "Carica i dati di esempio": "Load sample data",
+  "Toglie solo i meeting di esempio, anche se li hai modificati. I tuoi meeting restano.": "Removes only the sample meetings, even if you edited them. Your own meetings stay.",
+  "Togli i dati di esempio": "Remove sample data",
+  "{n} meeting di esempio caricati. Sfogliali dalla Libreria o dall'elenco a sinistra.": "{n} sample meetings loaded. Browse them from the Library or the list on the left.",
+  "{n} meeting di esempio tolti": "{n} sample meetings removed",
+  "Stai vedendo i dati di esempio": "You're looking at sample data",
+  "Vuoi vedere cosa sa fare?": "Want to see what it can do?",
+  "{n} meeting inventati, con note, trascrizioni e progetti. Quando hai finito di esplorare puoi toglierli: i tuoi meeting restano.": "{n} made-up meetings, with notes, transcripts and projects. When you're done exploring you can remove them: your own meetings stay.",
+  "Carica qualche meeting inventato ma realistico: note con tutti i blocchi, trascrizioni, note AI e progetti nella Libreria. Si tolgono con un clic.": "Load a few made-up but realistic meetings: notes with every block, transcripts, AI notes and projects in the Library. One click removes them.",
 };
 
 export default en;

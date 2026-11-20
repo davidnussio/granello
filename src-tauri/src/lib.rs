@@ -8,6 +8,7 @@ mod calendar;
 mod commands;
 mod db;
 mod decode;
+mod demo;
 mod llm;
 mod models;
 mod prompts;
@@ -85,6 +86,9 @@ pub fn run() {
             commands::update_meeting_meta,
             commands::delete_meeting,
             commands::list_tags,
+            commands::demo_status,
+            commands::load_demo,
+            commands::remove_demo,
             commands::list_projects,
             commands::set_project,
             commands::list_people,

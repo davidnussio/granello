@@ -249,6 +249,31 @@ fn calendar_people(state: &AppState) -> Vec<(String, Option<String>)> {
 
 // ---------- tag e persone ----------
 
+/// Quanti meeting di esempio sono caricati (0 = nessuno).
+#[tauri::command]
+pub fn demo_status(state: State<AppState>) -> CmdResult<usize> {
+    state.db.lock().demo_count().map_err(err)
+}
+
+/// Carica i meeting di esempio nella lingua dell'interfaccia. Ritorna quanti sono.
+#[tauri::command]
+pub fn load_demo(state: State<AppState>) -> CmdResult<usize> {
+    let data = crate::demo::load(crate::i18n::lang()).map_err(err)?;
+    state.db.lock().insert_demo(&data).map_err(err)?;
+    Ok(data.meetings.len())
+}
+
+/// Toglie i meeting di esempio; i meeting dell'utente non vengono toccati.
+#[tauri::command]
+pub fn remove_demo(state: State<AppState>) -> CmdResult<usize> {
+    if state.session.lock().as_ref().is_some_and(|s| s.meeting_id.starts_with(crate::demo::ID_PREFIX)) {
+        return Err(tr("Ferma la registrazione prima di togliere i dati di esempio", "Stop the recording before removing the sample data").into());
+    }
+    // i nomi di progetti e persone sono gli stessi nelle due lingue
+    let data = crate::demo::load(crate::i18n::lang()).map_err(err)?;
+    state.db.lock().remove_demo(&data).map_err(err)
+}
+
 #[tauri::command]
 pub fn list_projects(state: State<AppState>) -> CmdResult<Vec<Project>> {
     state.db.lock().list_projects().map_err(err)

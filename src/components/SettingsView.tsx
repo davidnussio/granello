@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import DemoButton, { type Demo } from "./DemoData";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { api, errorText, on, SYSTEM_AUDIO, type AppInfo, type ModelDownload } from "../api";
 import type { Person, Settings, WhisperModelInfo } from "../types";
@@ -8,6 +9,7 @@ import { t } from "../i18n";
 
 interface Props {
   toast: (t: string) => void;
+  demo: Demo;
   onCalendarChanged: () => void;
   onLangChanged: (setting: string) => void;
 }
@@ -20,7 +22,7 @@ const LANGS: [string, string][] = [
   ["auto", "Rilevamento automatico"],
 ];
 
-export default function SettingsView({ toast, onCalendarChanged, onLangChanged }: Props) {
+export default function SettingsView({ toast, demo, onCalendarChanged, onLangChanged }: Props) {
   const [savedAt, setSavedAt] = useState(0);
   const [s, setS] = useState<Settings | null>(null);
   const [devices, setDevices] = useState<string[]>([]);
@@ -278,6 +280,7 @@ export default function SettingsView({ toast, onCalendarChanged, onLangChanged }
                 {t("Mostra i log")}
               </button>
             )}
+            <DemoButton demo={demo} />
             <div className="spacer" />
             <span className="muted small">Granello {info.version}</span>
           </div>

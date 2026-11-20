@@ -1,0 +1,255 @@
+//! Dati di esempio: una manciata di meeting inventati ma realistici, per vedere cosa sa fare
+//! Granello senza aspettare di averne registrati di propri. I testi stanno in `demo/it.txt` e
+//! `demo/en.txt`, in un formato semplice da leggere e modificare a mano:
+//!
+//! ```text
+//! projects: cliente-nord, app-mobile
+//! archived: sito-2025
+//!
+//! === demo-rinnovo
+//! title: Rinnovo contratto 2027
+//! when: 1 10:00          (giorni fa, ora di inizio)
+//! minutes: 42
+//! attendees: Marco Bianchi, Elena Rossi
+//! tags: cliente-nord, prezzi
+//! --- notes
+//! …Markdown; {{date:+7}} diventa la data di oggi più sette giorni…
+//! --- enhanced
+//! …Markdown delle note AI…
+//! --- transcript
+//! 00:12 them Buongiorno a tutti.
+//! ```
+
+use crate::i18n::Lang;
+use anyhow::{anyhow, bail, Result};
+use chrono::{Duration, Local, NaiveTime, TimeZone};
+
+/// Tutti i meeting di esempio hanno un id con questo prefisso: è così che si riconoscono per toglierli.
+pub const ID_PREFIX: &str = "demo-";
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct DemoSegment {
+    pub source: String,
+    pub start_ms: i64,
+    pub end_ms: i64,
+    pub text: String,
+}
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct DemoMeeting {
+    pub id: String,
+    pub title: String,
+    pub started_at: i64,
+    pub ended_at: i64,
+    pub attendees: Vec<String>,
+    pub tags: Vec<String>,
+    pub notes_md: String,
+    pub enhanced_md: Option<String>,
+    pub segments: Vec<DemoSegment>,
+}
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct DemoData {
+    /// Tag da mostrare come progetti attivi.
+    pub projects: Vec<String>,
+    /// Tag da mostrare come progetti archiviati.
+    pub archived: Vec<String>,
+    pub meetings: Vec<DemoMeeting>,
+}
+
+impl DemoData {
+    /// Tutte le persone che compaiono nei meeting di esempio.
+    pub fn people(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.meetings.iter().flat_map(|m| m.attendees.clone()).collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+}
+
+/// I dati di esempio nella lingua dell'interfaccia, con le date calcolate a partire da adesso.
+pub fn load(lang: Lang) -> Result<DemoData> {
+    let text = match lang {
+        Lang::It => include_str!("../demo/it.txt"),
+        Lang::En => include_str!("../demo/en.txt"),
+    };
+    parse(text, Local::now().timestamp_millis())
+}
+
+fn list(value: &str) -> Vec<String> {
+    value.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+}
+
+/// "mm:ss" in millisecondi.
+fn clock(text: &str) -> Option<i64> {
+    let (m, s) = text.split_once(':')?;
+    Some((m.parse::<i64>().ok()? * 60 + s.parse::<i64>().ok()?) * 1000)
+}
+
+/// Sostituisce `{{date:+7}}` e `{{date:-3}}` con la data (AAAA-MM-GG) a quei giorni da oggi.
+fn fill_dates(text: &str, now_ms: i64) -> String {
+    let today = Local.timestamp_millis_opt(now_ms).single().map(|d| d.date_naive()).unwrap_or_default();
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(start) = rest.find("{{date:") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 7..];
+        let Some(end) = after.find("}}") else { break };
+        let days: i64 = after[..end].trim().parse().unwrap_or(0);
+        out.push_str(&(today + Duration::days(days)).format("%Y-%m-%d").to_string());
+        rest = &after[end + 2..];
+    }
+    out.push_str(rest);
+    out
+}
+
+pub fn parse(text: &str, now_ms: i64) -> Result<DemoData> {
+    let text = fill_dates(text, now_ms);
+    let today = Local.timestamp_millis_opt(now_ms).single().ok_or_else(|| anyhow!("data non valida"))?.date_naive();
+    let mut data = DemoData::default();
+    let mut current: Option<DemoMeeting> = None;
+    let mut minutes = 30i64;
+    // "" = intestazione del meeting, altrimenti notes / enhanced / transcript
+    let mut section = String::new();
+    let mut body = String::new();
+
+    fn close_section(m: &mut DemoMeeting, section: &str, body: &str) -> Result<()> {
+        let body = body.trim();
+        match section {
+            "notes" => m.notes_md = body.to_string(),
+            "enhanced" => m.enhanced_md = Some(body.to_string()).filter(|b| !b.is_empty()),
+            "transcript" => {
+                for line in body.lines().filter(|l| !l.trim().is_empty()) {
+                    let mut parts = line.trim().splitn(3, ' ');
+                    let (Some(at), Some(source), Some(text)) = (parts.next(), parts.next(), parts.next()) else {
+                        bail!("riga di trascrizione non valida in {}: {line}", m.id);
+                    };
+                    let start_ms = clock(at).ok_or_else(|| anyhow!("orario non valido in {}: {at}", m.id))?;
+                    // circa 15 caratteri al secondo, come il parlato
+                    let end_ms = start_ms + (text.chars().count() as i64 * 1000 / 15).max(1500);
+                    m.segments.push(DemoSegment { source: source.into(), start_ms, end_ms, text: text.trim().into() });
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    for line in text.lines() {
+        if let Some(id) = line.strip_prefix("=== ") {
+            if let Some(mut m) = current.take() {
+                close_section(&mut m, &section, &body)?;
+                data.meetings.push(m);
+            }
+            let id = id.trim();
+            if !id.starts_with(ID_PREFIX) {
+                bail!("l'id {id} non comincia con {ID_PREFIX}");
+            }
+            current = Some(DemoMeeting { id: id.into(), ..Default::default() });
+            minutes = 30;
+            section.clear();
+            body.clear();
+            continue;
+        }
+        let Some(m) = current.as_mut() else {
+            // prima del primo meeting: quali tag sono progetti
+            if let Some(v) = line.strip_prefix("projects:") {
+                data.projects = list(v);
+            } else if let Some(v) = line.strip_prefix("archived:") {
+                data.archived = list(v);
+            }
+            continue;
+        };
+        if let Some(name) = line.strip_prefix("--- ") {
+            close_section(m, &section, &body)?;
+            section = name.trim().to_string();
+            body.clear();
+            continue;
+        }
+        if !section.is_empty() {
+            body.push_str(line);
+            body.push('\n');
+            continue;
+        }
+        let Some((key, value)) = line.split_once(':') else { continue };
+        let value = value.trim();
+        match key.trim() {
+            "title" => m.title = value.into(),
+            "attendees" => m.attendees = list(value),
+            "tags" => m.tags = list(value),
+            "minutes" => minutes = value.parse().unwrap_or(30),
+            "when" => {
+                let (days, at) = value.split_once(' ').ok_or_else(|| anyhow!("when non valido in {}: {value}", m.id))?;
+                let days: i64 = days.parse().map_err(|_| anyhow!("giorni non validi in {}: {days}", m.id))?;
+                let at = NaiveTime::parse_from_str(at.trim(), "%H:%M").map_err(|_| anyhow!("ora non valida in {}: {at}", m.id))?;
+                let start = Local
+                    .from_local_datetime(&(today - Duration::days(days)).and_time(at))
+                    .earliest()
+                    .ok_or_else(|| anyhow!("data non valida in {}", m.id))?;
+                m.started_at = start.timestamp_millis();
+            }
+            _ => {}
+        }
+        m.ended_at = m.started_at + minutes * 60_000;
+    }
+    if let Some(mut m) = current.take() {
+        close_section(&mut m, &section, &body)?;
+        data.meetings.push(m);
+    }
+    for m in &data.meetings {
+        if m.title.is_empty() || m.started_at == 0 {
+            bail!("al meeting {} manca il titolo o la data", m.id);
+        }
+    }
+    Ok(data)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_the_readable_format() {
+        let now = Local.with_ymd_and_hms(2026, 11, 20, 12, 0, 0).unwrap().timestamp_millis();
+        let data = parse(
+            "projects: nord\narchived: sito\n\n=== demo-a\ntitle: Rinnovo\nwhen: 1 10:00\nminutes: 40\nattendees: Marco, Elena\ntags: nord, prezzi\n\
+--- notes\n# Prezzo\nScade il [[{{date:+7}}]]\n--- enhanced\nNote AI\n--- transcript\n00:12 them Buongiorno a tutti.\n01:05 me Cominciamo.\n\
+=== demo-b\ntitle: Altro\nwhen: 0 09:30\n--- notes\nciao\n",
+            now,
+        )
+        .unwrap();
+        assert_eq!(data.projects, vec!["nord"]);
+        assert_eq!(data.archived, vec!["sito"]);
+        let a = &data.meetings[0];
+        assert_eq!(a.attendees, vec!["Marco", "Elena"]);
+        assert_eq!(a.notes_md, "# Prezzo\nScade il [[2026-11-27]]");
+        assert_eq!(a.enhanced_md.as_deref(), Some("Note AI"));
+        assert_eq!(a.ended_at - a.started_at, 40 * 60_000);
+        assert_eq!(Local.timestamp_millis_opt(a.started_at).unwrap().format("%Y-%m-%d %H:%M").to_string(), "2026-11-19 10:00");
+        assert_eq!((a.segments[1].source.as_str(), a.segments[1].start_ms), ("me", 65_000));
+        assert_eq!(data.meetings[1].enhanced_md, None);
+        assert_eq!(data.people(), vec!["Elena", "Marco"]);
+        assert!(parse("=== altro\ntitle: x\nwhen: 0 10:00\n", now).is_err());
+    }
+
+    #[test]
+    fn shipped_demo_data_is_valid() {
+        for lang in [Lang::It, Lang::En] {
+            let data = load(lang).unwrap();
+            assert!(data.meetings.len() >= 6, "{lang:?}");
+            let mut ids: Vec<&str> = data.meetings.iter().map(|m| m.id.as_str()).collect();
+            ids.sort();
+            ids.dedup();
+            assert_eq!(ids.len(), data.meetings.len(), "id ripetuti ({lang:?})");
+            for m in &data.meetings {
+                assert!(!m.notes_md.is_empty(), "{} senza note", m.id);
+                assert!(!m.notes_md.contains("{{"), "{} ha una data non sostituita", m.id);
+                assert!(m.segments.windows(2).all(|w| w[0].start_ms < w[1].start_ms), "{} trascrizione non in ordine", m.id);
+            }
+            // ogni progetto ha almeno un meeting, altrimenti nella Libreria resta vuoto
+            for tag in data.projects.iter().chain(&data.archived) {
+                assert!(data.meetings.iter().any(|m| m.tags.contains(tag)), "nessun meeting per {tag} ({lang:?})");
+            }
+        }
+    }
+}

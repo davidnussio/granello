@@ -923,3 +923,9 @@ button.lib-row { padding: 6px 9px; gap: 8px; }
 .lib-text { color: var(--muted); line-height: 1.5; font-size: 13.5px; }
 .lib-facts { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
 .lib-preview .btn { align-self: flex-start; margin-top: 6px; }
+
+/* dati di esempio: invito in Home */
+.demo-card { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+.demo-card > div { flex: 1; min-width: 0; }
+.demo-card h3 { margin: 0 0 4px; }
+.demo-card p { margin: 0; }

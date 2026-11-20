@@ -9,6 +9,7 @@ import SettingsView from "./components/SettingsView";
 import TemplatesView from "./components/TemplatesView";
 import Home from "./components/Home";
 import LibraryView from "./components/LibraryView";
+import type { Demo } from "./components/DemoData";
 import { getLang, resolveLang, setLang, t } from "./i18n";
 
 export interface SetupStatus {
@@ -155,6 +156,40 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // dati di esempio: meeting inventati per provare l'app, riconoscibili dall'id
+  const [demoCount, setDemoCount] = useState(0);
+  useEffect(() => {
+    api.demoStatus().then(setDemoCount).catch(() => {});
+  }, []);
+  const demo: Demo = {
+    count: demoCount,
+    load: async () => {
+      try {
+        const count = await api.loadDemo();
+        setDemoCount(count);
+        setProjects(await api.listProjects());
+        refreshMeetings();
+        toast(t("{n} meeting di esempio caricati. Sfogliali dalla Libreria o dall'elenco a sinistra.", { n: count }));
+        setView({ kind: "library" });
+      } catch (e) {
+        toast(errorText(e));
+      }
+    },
+    remove: async () => {
+      try {
+        const removed = await api.removeDemo();
+        setDemoCount(0);
+        setProjects(await api.listProjects());
+        refreshMeetings();
+        // il meeting aperto potrebbe essere uno di quelli appena tolti
+        setView((v) => (v.kind === "meeting" && v.id.startsWith("demo-") ? { kind: "home" } : v));
+        toast(t("{n} meeting di esempio tolti", { n: removed }));
+      } catch (e) {
+        toast(errorText(e));
+      }
+    },
+  };
+
   const newMeetingRef = useRef<() => void>(() => {});
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -223,6 +258,7 @@ export default function App() {
             calendars={calendars}
             onToggleCalendar={toggleCalendar}
             setup={setup}
+            demo={demo}
             onNew={newMeeting}
             onOpenEvent={openEvent}
             onRefresh={() => refreshEvents(true)}
@@ -269,6 +305,7 @@ export default function App() {
         {view.kind === "settings" && (
           <SettingsView
             toast={toast}
+            demo={demo}
             onCalendarChanged={() => refreshEvents(true)}
             onLangChanged={(l) => {
               applyLang(l);

@@ -13,6 +13,20 @@ Browse meetings by project, person, tag and period (cascading columns). Projects
 - [ ] A view of items across meetings (decisions, action items, quotes), once those blocks exist.
 - [ ] A board to arrange a selection of those items, if the first two views are not enough.
 
+## Privacy and online models
+
+Today transcription is always local (whisper) and only text goes to the AI provider.
+These tasks add an online option without giving up privacy first.
+
+- [ ] **Online transcription and diarization**: optionally use an online model to transcribe and to tell speakers apart (who said what), instead of the local whisper model. Off by default.
+- [ ] **PRIVACY button in the note**: a per-meeting switch that forces local models, whatever the global settings say. Two levels:
+  - **Local audio**: the audio is processed only on this Mac (local transcription, no online diarization); the text can still go to the configured AI provider for notes, chat and the editor's AI.
+  - **Hardened**: nothing leaves the Mac. Transcription, AI notes, chat, live AI block, title and every other AI feature use local models only, or are unavailable if no local model is configured.
+- [ ] **Redact parts of the discussion**: an entry to black out pieces of the transcript, in two modes:
+  - **Redact now**: the selected part is blacked out immediately and is never sent to any model nor shown again.
+  - **Mark to review**: the part is flagged as "to verify" and stays readable until someone decides whether to redact it.
+- [ ] **Pending reviews block non-local processing**: while a meeting has parts marked "to verify", no processing with non-local models runs on it (online transcription, AI notes, chat, editor AI). It resumes once every flagged part has been looked at and either redacted or cleared.
+
 ## Editor components
 
 Blocks that could be added to the notes editor. The classics and the cool ones are

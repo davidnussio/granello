@@ -302,6 +302,83 @@ impl Db {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
+    // ---------- dati di esempio ----------
+
+    /// Quanti meeting di esempio ci sono.
+    pub fn demo_count(&self) -> Result<usize> {
+        let like = format!("{}%", crate::demo::ID_PREFIX);
+        Ok(self.conn.query_row("SELECT COUNT(*) FROM meetings WHERE id LIKE ?1", [like], |r| r.get(0))?)
+    }
+
+    /// Inserisce i meeting di esempio (sostituendo quelli già presenti) e segna i loro progetti.
+    /// Un tag che l'utente ha già reso progetto resta com'è.
+    pub fn insert_demo(&self, data: &crate::demo::DemoData) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        for m in &data.meetings {
+            self.delete_meeting_rows(&m.id)?;
+            self.conn.execute(
+                "INSERT INTO meetings (id, title, created_at, started_at, ended_at, attendees, tags, notes_md, enhanced_md)
+                 VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![
+                    m.id,
+                    m.title,
+                    m.started_at,
+                    m.ended_at,
+                    serde_json::to_string(&m.attendees)?,
+                    serde_json::to_string(&m.tags)?,
+                    m.notes_md,
+                    m.enhanced_md
+                ],
+            )?;
+            for s in &m.segments {
+                self.add_segment(&m.id, &s.source, s.start_ms, s.end_ms, &s.text)?;
+            }
+            self.upsert_people(&m.attendees.iter().map(|a| (a.clone(), None)).collect::<Vec<_>>())?;
+            self.reindex(&m.id)?;
+        }
+        for (tags, archived) in [(&data.projects, false), (&data.archived, true)] {
+            for tag in tags {
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO projects (tag, archived, created_at) VALUES (?1, ?2, ?3)",
+                    params![tag, archived, now_ms()],
+                )?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Toglie i meeting di esempio, e con loro i progetti e le persone che non servono più
+    /// a nessun altro meeting. Ritorna quanti meeting ha tolto.
+    pub fn remove_demo(&self, data: &crate::demo::DemoData) -> Result<usize> {
+        let like = format!("{}%", crate::demo::ID_PREFIX);
+        let tx = self.conn.unchecked_transaction()?;
+        let ids: Vec<String> = {
+            let mut stmt = self.conn.prepare("SELECT id FROM meetings WHERE id LIKE ?1")?;
+            let rows = stmt.query_map([&like], |r| r.get(0))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        for id in &ids {
+            self.delete_meeting_rows(id)?;
+        }
+        for tag in data.projects.iter().chain(&data.archived) {
+            self.conn.execute(
+                "DELETE FROM projects WHERE tag = ?1
+                 AND NOT EXISTS (SELECT 1 FROM meetings m, json_each(m.tags) j WHERE j.value = ?1)",
+                [tag],
+            )?;
+        }
+        for name in data.people() {
+            self.conn.execute(
+                "DELETE FROM people WHERE name = ?1
+                 AND NOT EXISTS (SELECT 1 FROM meetings m, json_each(m.attendees) j WHERE j.value = ?1 COLLATE NOCASE)",
+                [name],
+            )?;
+        }
+        tx.commit()?;
+        Ok(ids.len())
+    }
+
     // ---------- progetti ----------
 
     /// I tag promossi a progetto, in ordine alfabetico.
@@ -393,10 +470,16 @@ impl Db {
 
     pub fn delete_meeting(&self, id: &str) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
-        tx.execute("DELETE FROM meetings WHERE id = ?1", [id])?;
-        tx.execute("DELETE FROM meetings_fts WHERE meeting_id = ?1", [id])?;
-        tx.execute("DELETE FROM chat_messages WHERE scope = ?1", [id])?;
+        self.delete_meeting_rows(id)?;
         tx.commit()?;
+        Ok(())
+    }
+
+    /// Le righe di un meeting, senza aprire una transazione: per chi ne ha già una aperta.
+    fn delete_meeting_rows(&self, id: &str) -> Result<()> {
+        self.conn.execute("DELETE FROM meetings WHERE id = ?1", [id])?;
+        self.conn.execute("DELETE FROM meetings_fts WHERE meeting_id = ?1", [id])?;
+        self.conn.execute("DELETE FROM chat_messages WHERE scope = ?1", [id])?;
         Ok(())
     }
 
@@ -761,6 +844,32 @@ mod tests {
         db.delete_meeting(&m.id).unwrap();
         assert!(db.list_meetings(None).unwrap().is_empty());
         assert!(db.chat_history(&m.id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn demo_data_comes_and_goes_without_touching_real_meetings() {
+        let db = Db::open_in_memory().unwrap();
+        let mine = db.create_meeting("Il mio meeting", None, &["Marco Bianchi".into()], None).unwrap();
+        db.set_tags(&mine.id, &["mio".into()]).unwrap();
+        db.set_project("mio", Some(false)).unwrap();
+        let before_people = db.list_people().unwrap().len();
+
+        let data = crate::demo::load(crate::i18n::Lang::It).unwrap();
+        db.insert_demo(&data).unwrap();
+        db.insert_demo(&data).unwrap(); // caricarli due volte non li raddoppia
+        assert_eq!(db.demo_count().unwrap(), data.meetings.len());
+        assert_eq!(db.list_meetings(None).unwrap().len(), data.meetings.len() + 1);
+        let first = &data.meetings[0];
+        assert_eq!(db.segments(&first.id).unwrap().len(), first.segments.len());
+        assert!(db.list_projects().unwrap().len() > 1);
+
+        assert_eq!(db.remove_demo(&data).unwrap(), data.meetings.len());
+        assert_eq!(db.demo_count().unwrap(), 0);
+        let left = db.list_meetings(None).unwrap();
+        assert_eq!(left.len(), 1);
+        assert_eq!(left[0].id, mine.id);
+        assert_eq!(db.list_projects().unwrap(), vec![Project { tag: "mio".into(), archived: false }]);
+        assert_eq!(db.list_people().unwrap().len(), before_people);
     }
 
     #[test]

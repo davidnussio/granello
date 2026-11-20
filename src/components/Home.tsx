@@ -1,4 +1,5 @@
 import type { CalendarEvent, CalendarInfo } from "../types";
+import DemoButton, { type Demo } from "./DemoData";
 import type { SetupStatus } from "../App";
 import { groupByDay, time } from "../format";
 import { t } from "../i18n";
@@ -11,10 +12,11 @@ interface Props {
   onOpenEvent: (e: CalendarEvent) => void;
   onRefresh: () => void;
   setup: SetupStatus | null;
+  demo: Demo;
   onOpenSettings: () => void;
 }
 
-export default function Home({ events, calendars, onToggleCalendar, onNew, onOpenEvent, onRefresh, setup, onOpenSettings }: Props) {
+export default function Home({ events, calendars, onToggleCalendar, onNew, onOpenEvent, onRefresh, setup, demo, onOpenSettings }: Props) {
   const now = Date.now();
   const upcoming = events.filter((e) => e.end > now);
   const active = calendars.filter((c) => c.enabled);
@@ -66,6 +68,18 @@ export default function Home({ events, calendars, onToggleCalendar, onNew, onOpe
           </button>
         </section>
       )}
+
+      <section className="card demo-card">
+        <div>
+          <h3>{demo.count ? t("Stai vedendo i dati di esempio") : t("Vuoi vedere cosa sa fare?")}</h3>
+          <p className="muted small">
+            {demo.count
+              ? t("{n} meeting inventati, con note, trascrizioni e progetti. Quando hai finito di esplorare puoi toglierli: i tuoi meeting restano.", { n: demo.count })
+              : t("Carica qualche meeting inventato ma realistico: note con tutti i blocchi, trascrizioni, note AI e progetti nella Libreria. Si tolgono con un clic.")}
+          </p>
+        </div>
+        <DemoButton demo={demo} primary={demo.count === 0} />
+      </section>
 
       <h3>{t("Prossimi meeting")}</h3>
       {calendars.length > 0 && (
