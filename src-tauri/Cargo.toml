@@ -39,6 +39,7 @@ tauri-plugin-dialog = "2"
 symphonia = { version = "0.5.4", features = ["aac", "alac", "isomp4", "mp3", "aiff", "caf"] }
 base64 = "0.22"
 tauri-plugin-updater = "2"
+tauri-plugin-window-state = "2"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["net", "io-util"] }

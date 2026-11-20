@@ -54,6 +54,16 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // la finestra riapre con dimensione e posizione dell'ultima volta (anche ingrandita o a
+        // tutto schermo); senza VISIBLE e DECORATIONS, che restano quelli della configurazione
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags({
+                    use tauri_plugin_window_state::StateFlags;
+                    StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED | StateFlags::FULLSCREEN
+                })
+                .build(),
+        )
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let models_dir = data_dir.join("models");
