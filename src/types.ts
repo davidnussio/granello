@@ -118,6 +118,32 @@ export interface Settings {
   notifyBeforeMin: number;
   /** A fine riunione l'audio viene caricato su Gladia per una trascrizione con i parlanti. */
   onlineTranscription: boolean;
+  /** Salva l'audio di ogni registrazione, per riascoltarlo. */
+  saveRecordings: boolean;
+  /** Cartella delle registrazioni; null = quella predefinita. */
+  recordingsDir: string | null;
+  /** Alla fine toglie dalla registrazione le pause senza audio (serve ffmpeg). */
+  trimSilence: boolean;
+}
+
+/** Una registrazione salvata: l'audio di una sessione di registrazione di un meeting. */
+export interface Recording {
+  id: number;
+  meetingId: string;
+  meetingTitle: string;
+  path: string;
+  startedAt: number;
+  durationMs: number;
+  bytes: number;
+  /** Le pause sono state tolte: i minuti non corrispondono più alla trascrizione. */
+  trimmed: boolean;
+}
+
+/** Dove finiscono le registrazioni e se su questo Mac c'è ffmpeg. */
+export interface RecordingsInfo {
+  dir: string;
+  defaultDir: string;
+  ffmpeg: boolean;
 }
 
 /** Un calendario configurato. L'indirizzo iCal è un segreto. */

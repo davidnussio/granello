@@ -211,8 +211,8 @@ const en: Record<string, string> = {
     "Google Calendar: calendar settings → \"Secret address in iCal format\". Outlook: Calendar → Publish calendar → ICS link.",
   "Notifica prima dell'inizio (minuti)": "Notify before the start (minutes)",
   "Dati e privacy": "Data and privacy",
-  "Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e scartato. Fa eccezione la trascrizione online, se la attivi: l'audio resta qui fino al caricamento su Gladia e poi viene cancellato. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.":
-    "Notes, transcripts and models stay on this Mac. Audio is never saved: it is transcribed locally and discarded. The exception is online transcription, if you turn it on: the audio stays here until it is uploaded to Gladia and is then deleted. Only the text of your notes and transcript is sent to the AI provider you chose, when you generate AI notes or use the chat.",
+  "Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e scartato. Fanno eccezione due opzioni, spente finché non le attivi: il salvataggio delle registrazioni, che tiene l'audio in una cartella di questo Mac, e la trascrizione online, che lo tiene fino al caricamento su Gladia e poi lo cancella. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.":
+    "Notes, transcripts and models stay on this Mac. Audio is never saved: it is transcribed locally and discarded. Two options are the exception, off until you turn them on: saving recordings, which keeps the audio in a folder on this Mac, and online transcription, which keeps it until it is uploaded to Gladia and then deletes it. Only the text of your notes and transcript is sent to the AI provider you chose, when you generate AI notes or use the chat.",
   "Mostra i dati nel Finder": "Show data in Finder",
   "Mostra i log": "Show logs",
 
@@ -575,6 +575,23 @@ const en: Record<string, string> = {
   "Chiave API di Gladia": "Gladia API key",
   "Chiave salvata nel Portachiavi": "Key saved in the Keychain",
   "Incolla la chiave": "Paste the key",
+  "Nessuna registrazione salvata. Attiva \"Salva le registrazioni\" nelle Impostazioni: da lì in poi l'audio di ogni riunione resta qui.": "No saved recordings. Turn on \"Save recordings\" in Settings: from then on every meeting's audio stays here.",
+  "senza pause": "pauses removed",
+  "Registrazione in corso, o non ancora chiusa.": "Recording in progress, or not closed yet.",
+  "Toglie le pause senza audio. Dopo, i minuti non corrispondono più a quelli della trascrizione.": "Removes the silent pauses. Afterwards the timings no longer match the transcript's.",
+  "Tolgo le pause…": "Removing pauses…",
+  "Togli le pause": "Remove pauses",
+  "Registrazioni": "Recordings",
+  "Di norma l'audio viene trascritto e scartato. Attivando il salvataggio, l'audio di ogni riunione resta in una cartella di questo Mac e si riascolta dalla Libreria o dal meeting. Non viene inviato a nessuno.": "Normally audio is transcribed and discarded. With saving on, every meeting's audio stays in a folder on this Mac and can be played back from the Library or the meeting. It is not sent anywhere.",
+  "Salva le registrazioni": "Save recordings",
+  "Cartella": "Folder",
+  "Cambia…": "Change…",
+  "Predefinita": "Default",
+  "Cambiando cartella, le registrazioni già fatte restano dov'erano e si continuano a riascoltare.": "When you change folder, existing recordings stay where they were and can still be played.",
+  "Togli le pause senza audio alla fine della registrazione": "Remove silent pauses when the recording ends",
+  "Serve ffmpeg, che su questo Mac non c'è (si installa con: brew install ffmpeg). Senza, le registrazioni restano in WAV, circa 115 MB all'ora.": "This needs ffmpeg, which isn't on this Mac (install it with: brew install ffmpeg). Without it recordings stay in WAV, about 115 MB per hour.",
+  "Con ffmpeg le registrazioni vengono compresse (circa 20 MB all'ora). Togliendo le pause, i minuti dell'audio non corrispondono più a quelli della trascrizione.": "With ffmpeg recordings are compressed (about 20 MB per hour). With pauses removed, the audio timings no longer match the transcript's.",
+  "Mostra nel Finder": "Show in Finder",
 };
 
 export default en;

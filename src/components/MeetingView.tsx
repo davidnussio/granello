@@ -5,6 +5,7 @@ import ChipInput, { type ChipSuggestion } from "./ChipInput";
 import NoteEditor from "../editor/NoteEditor";
 import Markdown from "./Markdown";
 import TranscriptPanel from "./TranscriptPanel";
+import Recordings from "./Recordings";
 import ChatPanel from "./ChatPanel";
 import { dayLabel, mmss, time } from "../format";
 import { t } from "../i18n";
@@ -99,6 +100,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const fillingRef = useRef(false);
   const [keptAudio, setKeptAudio] = useState(false);
   const [refining, setRefining] = useState(false);
+  const [recVersion, setRecVersion] = useState(0);
   const refineRef = useRef<() => void>(() => {});
   const titleInput = useRef<HTMLInputElement>(null);
   const [titling, setTitling] = useState(false);
@@ -180,6 +182,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         if (!hasEnhancedRef.current) {
           toast(t("Trascrizione completata"), { label: t("✦ Genera note AI"), run: () => enhanceRef.current() });
         }
+        // la registrazione salvata, se c'è, è appena stata chiusa
+        setRecVersion((v) => v + 1);
         // ora c'è tutta la trascrizione: l'AI scrive cosa si diceva nei momenti segnati
         fillRef.current(true);
         // se l'audio è stato conservato, parte da solo l'affinamento online
@@ -442,8 +446,10 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
       .redactTranscript(id, parts)
       .then((next) => {
         setSegments(next);
-        // oscurando, l'audio conservato viene cancellato: contiene ancora quelle parole
+        // oscurando, l'audio conservato e le registrazioni salvate vengono cancellati:
+        // contengono ancora quelle parole
         setKeptAudio(false);
+        setRecVersion((v) => v + 1);
       })
       .catch((e) => toast(errorText(e)));
   const review = (ids: number[], flag: boolean) =>
@@ -791,6 +797,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               ×
             </button>
           </div>
+          {/* l'audio salvato di questo meeting, se c'è: si riascolta accanto alla trascrizione */}
+          {side === "transcript" && <Recordings meetingId={id} version={recVersion} toast={toast} />}
           {side === "transcript" ? (
             <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} focus={transcriptFocus} onQuote={addQuote} onRedact={redact}
               onReview={review}

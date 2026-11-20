@@ -278,6 +278,27 @@ pub struct Settings {
     /// Affinamento online: a fine riunione l'audio viene caricato su Gladia per una
     /// trascrizione con i parlanti. Spento di default: è l'unico caso in cui l'audio esce dal Mac.
     pub online_transcription: bool,
+    /// Salva l'audio di ogni registrazione, per riascoltarlo. Spento di default.
+    pub save_recordings: bool,
+    /// Cartella delle registrazioni; assente = quella predefinita, nella cartella dati.
+    pub recordings_dir: Option<String>,
+    /// Alla fine toglie dalla registrazione le pause senza audio (serve ffmpeg).
+    pub trim_silence: bool,
+}
+
+/// Una registrazione salvata: l'audio di una sessione di registrazione di un meeting.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Recording {
+    pub id: i64,
+    pub meeting_id: String,
+    pub meeting_title: String,
+    pub path: String,
+    pub started_at: i64,
+    pub duration_ms: i64,
+    pub bytes: i64,
+    /// Le pause senza audio sono state tolte: i minuti non corrispondono più alla trascrizione.
+    pub trimmed: bool,
 }
 
 impl Settings {

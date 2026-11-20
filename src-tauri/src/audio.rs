@@ -307,6 +307,18 @@ pub struct SessionConfig {
     /// Se presente, l'audio della registrazione dal vivo viene anche scritto in questo file,
     /// per l'affinamento online a fine riunione (vedi `keep`).
     pub keep_audio: Option<PathBuf>,
+    /// Se presente, la sessione viene salvata come registrazione da riascoltare.
+    pub save_recording: Option<SaveRecording>,
+}
+
+/// Dove salvare la registrazione di una sessione e come chiuderla.
+#[derive(Clone)]
+pub struct SaveRecording {
+    /// Riga della registrazione nel database.
+    pub id: i64,
+    pub path: PathBuf,
+    /// Alla fine toglie le pause senza audio.
+    pub trim: bool,
 }
 
 pub struct Session {
@@ -345,14 +357,24 @@ fn spawn_transcriber(
     let base_ms = cfg.base_ms;
     // solo dal vivo: di un file caricato esiste già l'originale
     let keep_audio = cfg.keep_audio.clone().filter(|_| import.is_none());
+    let save_recording = cfg.save_recording.clone().filter(|_| import.is_none());
     std::thread::Builder::new().name("granello-transcribe".into()).spawn(move || {
         let mut keeper = keep_audio.and_then(|path| {
             crate::keep::Keeper::open(&path).map_err(|e| log::error!("audio conservato: {e}")).ok()
+        });
+        let mut recorder = save_recording.as_ref().and_then(|r| {
+            crate::keep::Keeper::open(&r.path).map_err(|e| log::error!("registrazione: {e}")).ok()
         });
         for chunk in chunk_rx {
             if let Some(k) = keeper.as_mut() {
                 if let Err(e) = k.add(chunk.start_ms, &chunk.samples) {
                     log::error!("audio conservato: {e}");
+                }
+            }
+            // la registrazione salvata parte da zero, non dal punto del meeting in cui si riprende
+            if let Some(k) = recorder.as_mut() {
+                if let Err(e) = k.add(chunk.start_ms - base_ms, &chunk.samples) {
+                    log::error!("registrazione: {e}");
                 }
             }
             let res = cache
@@ -399,6 +421,19 @@ fn spawn_transcriber(
         // canale chiuso: registrazione terminata e coda svuotata
         if let Err(e) = db.lock().mark_ended(&meeting_id) {
             log::error!("chiusura meeting {meeting_id}: {e}");
+        }
+        drop(keeper);
+        // il file della registrazione va chiuso prima di comprimerlo
+        drop(recorder);
+        if let Some(r) = save_recording {
+            let saved = match crate::recordings::finalize(&r.path, r.trim) {
+                Some(f) => db.lock().update_recording(r.id, &f.path.to_string_lossy(), f.duration_ms, f.bytes as i64, f.trimmed),
+                // niente audio: non resta nemmeno la riga
+                None => db.lock().delete_recording(r.id),
+            };
+            if let Err(e) = saved {
+                log::error!("registrazione di {meeting_id}: {e}");
+            }
         }
         if import.is_some() {
             // un file finisce da solo, senza uno stop: la sessione va liberata qui.

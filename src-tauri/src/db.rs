@@ -14,7 +14,21 @@ fn now_ms() -> i64 {
 
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
-const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4];
+const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5];
+
+/// Registrazioni salvate: una riga per ogni sessione di registrazione di cui si tiene l'audio.
+const SCHEMA_V5: &str = r#"
+CREATE TABLE recordings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    meeting_id TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    started_at INTEGER NOT NULL,
+    duration_ms INTEGER NOT NULL DEFAULT 0,
+    bytes INTEGER NOT NULL DEFAULT 0,
+    trimmed INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX idx_recordings_meeting ON recordings(meeting_id);
+"#;
 
 /// Privacy: livello per meeting e parti della trascrizione segnate "da verificare".
 const SCHEMA_V4: &str = r#"
@@ -667,6 +681,53 @@ impl Db {
             params![to, meeting_id, from],
         )?;
         Ok(())
+    }
+
+    // ---------- registrazioni ----------
+
+    pub fn add_recording(&self, meeting_id: &str, path: &str, started_at: i64) -> Result<i64> {
+        self.conn.execute(
+            "INSERT INTO recordings (meeting_id, path, started_at) VALUES (?1, ?2, ?3)",
+            params![meeting_id, path, started_at],
+        )?;
+        Ok(self.conn.last_insert_rowid())
+    }
+
+    /// Aggiorna una registrazione dopo la chiusura o la pulizia delle pause.
+    pub fn update_recording(&self, id: i64, path: &str, duration_ms: i64, bytes: i64, trimmed: bool) -> Result<()> {
+        self.conn.execute(
+            "UPDATE recordings SET path = ?1, duration_ms = ?2, bytes = ?3, trimmed = ?4 WHERE id = ?5",
+            params![path, duration_ms, bytes, trimmed, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_recording(&self, id: i64) -> Result<()> {
+        self.conn.execute("DELETE FROM recordings WHERE id = ?1", [id])?;
+        Ok(())
+    }
+
+    /// Le registrazioni salvate, dalla più recente; solo quelle di un meeting se indicato.
+    pub fn recordings(&self, meeting_id: Option<&str>) -> Result<Vec<Recording>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT r.id, r.meeting_id, m.title, r.path, r.started_at, r.duration_ms, r.bytes, r.trimmed
+             FROM recordings r JOIN meetings m ON m.id = r.meeting_id
+             WHERE ?1 IS NULL OR r.meeting_id = ?1
+             ORDER BY r.started_at DESC, r.id DESC",
+        )?;
+        let rows = stmt.query_map([meeting_id], |r| {
+            Ok(Recording {
+                id: r.get(0)?,
+                meeting_id: r.get(1)?,
+                meeting_title: r.get(2)?,
+                path: r.get(3)?,
+                started_at: r.get(4)?,
+                duration_ms: r.get(5)?,
+                bytes: r.get(6)?,
+                trimmed: r.get(7)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
     // ---------- privacy ----------

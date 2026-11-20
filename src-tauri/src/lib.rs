@@ -11,6 +11,7 @@ mod decode;
 mod demo;
 mod gladia;
 mod keep;
+mod recordings;
 mod llm;
 mod models;
 mod prompts;
@@ -77,6 +78,11 @@ pub fn run() {
                 llm_http: commands::http_client(Duration::from_secs(600)),
                 streams: Mutex::new(Default::default()),
             });
+{
+                let state = app.state::<AppState>();
+                let chosen = state.db.lock().get_settings().ok().and_then(|s| s.recordings_dir);
+                commands::allow_recordings_dir(app.handle(), &state.data_dir, chosen.as_deref());
+            }
             spawn_calendar_watcher(app.handle().clone());
             Ok(())
         })
@@ -90,6 +96,11 @@ pub fn run() {
             commands::set_meeting_privacy,
             commands::redact_transcript,
             commands::review_transcript,
+            commands::recordings_info,
+            commands::list_recordings,
+            commands::delete_recording,
+            commands::trim_recording,
+            commands::pick_recordings_dir,
             commands::kept_audio,
             commands::discard_audio,
             commands::refine_transcript,

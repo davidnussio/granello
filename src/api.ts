@@ -13,7 +13,9 @@ import type {
   PersonSuggestion,
   TagCount,
   Provider,
+  Recording,
   RecordingStatus,
+  RecordingsInfo,
   Settings,
   Template,
   TranscriptPart,
@@ -47,6 +49,14 @@ export const api = {
   /** Oscura per sempre le parti indicate; ritorna la trascrizione aggiornata. */
   redactTranscript: (meetingId: string, parts: TranscriptPart[]) =>
     invoke<TranscriptSegment[]>("redact_transcript", { meetingId, parts }),
+  recordingsInfo: () => invoke<RecordingsInfo>("recordings_info"),
+  /** Le registrazioni salvate, dalla più recente; solo quelle di un meeting se indicato. */
+  listRecordings: (meetingId?: string) => invoke<Recording[]>("list_recordings", { meetingId }),
+  deleteRecording: (id: number) => invoke<void>("delete_recording", { id }),
+  /** Toglie le pause senza audio da una registrazione; ritorna l'elenco aggiornato. */
+  trimRecording: (id: number) => invoke<Recording[]>("trim_recording", { id }),
+  /** Fa scegliere la cartella delle registrazioni. null se la scelta viene annullata. */
+  pickRecordingsDir: () => invoke<string | null>("pick_recordings_dir"),
   /** C'è dell'audio conservato per l'affinamento online di questo meeting? */
   keptAudio: (meetingId: string) => invoke<boolean>("kept_audio", { meetingId }),
   discardAudio: (meetingId: string) => invoke<void>("discard_audio", { meetingId }),

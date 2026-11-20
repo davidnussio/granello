@@ -3,7 +3,7 @@ use crate::i18n::tr;
 use crate::db::Db;
 use crate::models::*;
 use crate::transcribe::{self, TranscriberCache};
-use crate::{attachments, calendar, gladia, keep, llm, prompts, secrets};
+use crate::{attachments, calendar, gladia, keep, llm, prompts, recordings, secrets};
 use futures_util::StreamExt;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -365,6 +365,10 @@ pub fn delete_meeting(state: State<AppState>, id: String) -> CmdResult<()> {
     }
     let db = state.db.lock();
     let meeting = db.get_meeting(&id).map_err(err)?;
+    // le registrazioni salvate se ne vanno con il meeting: prima i file, le righe seguono
+    for r in db.recordings(Some(&id)).unwrap_or_default() {
+        let _ = std::fs::remove_file(&r.path);
+    }
     db.delete_meeting(&id).map_err(err)?;
     keep::remove(&state.data_dir, &id);
     // gli allegati citati solo da questo meeting se ne vanno con lui
@@ -427,6 +431,11 @@ pub fn redact_transcript(state: State<AppState>, meeting_id: String, parts: Vec<
     db.redact(&meeting_id, &parts).map_err(err)?;
     // l'audio conservato contiene ancora ciò che è stato oscurato: non deve più poter uscire
     keep::remove(&state.data_dir, &meeting_id);
+    // lo stesso vale per le registrazioni salvate: le parole oscurate lì si sentirebbero ancora
+    for r in db.recordings(Some(&meeting_id)).unwrap_or_default() {
+        let _ = std::fs::remove_file(&r.path);
+        let _ = db.delete_recording(r.id);
+    }
     db.segments(&meeting_id).map_err(err)
 }
 
@@ -437,6 +446,99 @@ pub fn review_transcript(state: State<AppState>, meeting_id: String, ids: Vec<i6
     let db = state.db.lock();
     db.set_review(&meeting_id, &ids, review).map_err(err)?;
     db.segments(&meeting_id).map_err(err)
+}
+
+// ---------------- registrazioni salvate ----------------
+
+/// Permette al player dell'interfaccia di leggere i file di una cartella di registrazioni.
+pub fn allow_recordings_dir(app: &AppHandle, data_dir: &std::path::Path, chosen: Option<&str>) {
+    use tauri::Manager;
+    for dir in [recordings::default_dir(data_dir), recordings::dir(data_dir, chosen)] {
+        if let Err(e) = app.asset_protocol_scope().allow_directory(&dir, false) {
+            log::error!("accesso alla cartella delle registrazioni {}: {e}", dir.display());
+        }
+    }
+}
+
+/// Cosa serve alle Impostazioni: dove finiscono le registrazioni e se c'è ffmpeg.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordingsInfo {
+    dir: String,
+    default_dir: String,
+    ffmpeg: bool,
+}
+
+#[tauri::command]
+pub fn recordings_info(state: State<AppState>) -> CmdResult<RecordingsInfo> {
+    let settings = state.db.lock().get_settings().map_err(err)?;
+    Ok(RecordingsInfo {
+        dir: recordings::dir(&state.data_dir, settings.recordings_dir.as_deref()).to_string_lossy().into(),
+        default_dir: recordings::default_dir(&state.data_dir).to_string_lossy().into(),
+        ffmpeg: recordings::ffmpeg().is_some(),
+    })
+}
+
+/// Le registrazioni salvate (di un meeting, se indicato). Quelle il cui file non c'è più
+/// (cancellato a mano, disco scollegato) restano in elenco: l'interfaccia lo segnala.
+#[tauri::command]
+pub fn list_recordings(app: AppHandle, state: State<AppState>, meeting_id: Option<String>) -> CmdResult<Vec<Recording>> {
+    use tauri::Manager;
+    let list = state.db.lock().recordings(meeting_id.as_deref()).map_err(err)?;
+    // una registrazione fatta prima di cambiare cartella sta ancora in quella vecchia
+    for r in &list {
+        if let Some(dir) = std::path::Path::new(&r.path).parent() {
+            let _ = app.asset_protocol_scope().allow_directory(dir, false);
+        }
+    }
+    Ok(list)
+}
+
+fn find_recording(state: &AppState, id: i64) -> CmdResult<Recording> {
+    let all = state.db.lock().recordings(None).map_err(err)?;
+    all.into_iter().find(|r| r.id == id).ok_or_else(|| tr("Registrazione non trovata", "Recording not found").into())
+}
+
+/// Cancella una registrazione: il file e la sua voce in elenco. Note e trascrizione restano.
+#[tauri::command]
+pub fn delete_recording(state: State<AppState>, id: i64) -> CmdResult<()> {
+    let recording = find_recording(&state, id)?;
+    if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == recording.meeting_id) {
+        return Err(tr("Ferma la registrazione prima di eliminarla", "Stop the recording before deleting it").into());
+    }
+    let _ = std::fs::remove_file(&recording.path);
+    state.db.lock().delete_recording(id).map_err(err)
+}
+
+/// Toglie le pause senza audio da una registrazione già salvata (serve ffmpeg).
+#[tauri::command]
+pub async fn trim_recording(state: State<'_, AppState>, id: i64) -> CmdResult<Vec<Recording>> {
+    let recording = find_recording(&state, id)?;
+    if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == recording.meeting_id) {
+        return Err(tr("Attendi la fine della registrazione", "Wait for the recording to finish").into());
+    }
+    let path = PathBuf::from(&recording.path);
+    let done = tokio::task::spawn_blocking(move || recordings::trim(&path)).await.map_err(err)?.map_err(err)?;
+    let db = state.db.lock();
+    db.update_recording(id, &done.path.to_string_lossy(), done.duration_ms, done.bytes as i64, true).map_err(err)?;
+    db.recordings(None).map_err(err)
+}
+
+/// Fa scegliere la cartella delle registrazioni. `None` se la scelta viene annullata.
+#[tauri::command]
+pub async fn pick_recordings_dir(app: AppHandle) -> CmdResult<Option<String>> {
+    use tauri::Manager;
+    use tauri_plugin_dialog::DialogExt;
+    let mut dialog = app.dialog().file().set_title(tr("Cartella delle registrazioni", "Recordings folder"));
+    if let Some(window) = app.get_webview_window("main") {
+        dialog = dialog.set_parent(&window);
+    }
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    dialog.pick_folder(move |picked| {
+        let _ = tx.send(picked);
+    });
+    let Some(picked) = rx.await.map_err(err)? else { return Ok(None) };
+    Ok(Some(picked.into_path().map_err(err)?.to_string_lossy().into()))
 }
 
 // ---------------- affinamento online ----------------
@@ -664,6 +766,17 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
         base_ms,
         // l'audio si conserva solo per l'affinamento online: opzione attiva, chiave presente,
         // meeting senza vincoli di privacy
+        save_recording: (file.is_none() && settings.save_recordings)
+            .then(|| -> Option<audio::SaveRecording> {
+                let started_at = chrono::Utc::now().timestamp_millis();
+                let dir = recordings::dir(&state.data_dir, settings.recordings_dir.as_deref());
+                let path = dir.join(recordings::file_name(started_at, &meeting_id));
+                // se la cartella non si può usare (disco scollegato) si registra lo stesso, senza salvare
+                std::fs::create_dir_all(&dir).map_err(|e| log::error!("cartella delle registrazioni {}: {e}", dir.display())).ok()?;
+                let id = state.db.lock().add_recording(&meeting_id, &path.to_string_lossy(), started_at).ok()?;
+                Some(audio::SaveRecording { id, path, trim: settings.trim_silence })
+            })
+            .flatten(),
         keep_audio: (file.is_none() && settings.online_transcription && meeting.privacy == Privacy::Open && gladia_key(state).is_some())
             .then(|| keep::path(&state.data_dir, &meeting_id))
             .flatten(),
@@ -1283,7 +1396,7 @@ pub fn get_settings(state: State<AppState>) -> CmdResult<Settings> {
 }
 
 #[tauri::command]
-pub fn save_settings(state: State<AppState>, settings: Settings) -> CmdResult<Settings> {
+pub fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings) -> CmdResult<Settings> {
     let s = settings.validated()?;
     if !transcribe::is_known_model(&s.whisper_model) {
         return Err(tr("Modello Whisper sconosciuto", "Unknown Whisper model").into());
@@ -1297,6 +1410,7 @@ pub fn save_settings(state: State<AppState>, settings: Settings) -> CmdResult<Se
         db.seed_templates().map_err(err)?;
     }
     drop(db);
+    allow_recordings_dir(&app, &state.data_dir, s.recordings_dir.as_deref());
     // un provider eliminato non lascia la sua chiave nel Portachiavi
     for gone in old.providers.iter().filter(|o| !s.providers.iter().any(|p| p.id == o.id)) {
         let _ = secrets::set_api_key(&state.data_dir, &gone.id, "");

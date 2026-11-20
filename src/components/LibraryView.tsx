@@ -4,6 +4,7 @@ import type { Meeting, MeetingSummary, Project } from "../types";
 import { dayLabel, time } from "../format";
 import { locale, t } from "../i18n";
 import { sparkle } from "../sparkles";
+import Recordings from "./Recordings";
 
 interface Props {
   projects: Project[];
@@ -12,7 +13,7 @@ interface Props {
   toast: (text: string) => void;
 }
 
-type Dim = "projects" | "people" | "tags" | "period";
+type Dim = "projects" | "people" | "tags" | "period" | "recordings";
 
 /** Una voce della seconda colonna: un progetto, una persona, un tag o un periodo, con i suoi meeting. */
 interface Group {
@@ -27,6 +28,8 @@ const DIMS: { id: Dim; icon: string; label: () => string }[] = [
   { id: "people", icon: "☺", label: () => t("Persone") },
   { id: "tags", icon: "#", label: () => t("Tag") },
   { id: "period", icon: "▦", label: () => t("Periodo") },
+  // non raggruppa i meeting: mostra l'audio salvato, con il player e il link al meeting
+  { id: "recordings", icon: "◉", label: () => t("Registrazioni") },
 ];
 
 /** Raggruppa i meeting per una chiave multipla (tag, persone), dal gruppo più numeroso. */
@@ -104,6 +107,7 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
 
   const groups = useMemo<Group[]>(() => {
     const isProject = new Map(projects.map((p) => [p.tag, p]));
+    if (dim === "recordings") return [];
     if (dim === "people") return groupBy(meetings, (m) => m.attendees);
     if (dim === "period") return byPeriod(meetings);
     const tags = groupBy(meetings, (m) => m.tags);
@@ -246,7 +250,13 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
           ))}
         </div>
 
-        <div className={"lib-col" + (col === 1 ? " focus" : "")} role="listbox" aria-label={DIMS.find((d) => d.id === dim)!.label()}>
+        {dim === "recordings" && (
+          <div className="lib-col lib-recordings">
+            <Recordings onOpen={onOpen} toast={toast} />
+          </div>
+        )}
+
+        <div hidden={dim === "recordings"} className={"lib-col" + (col === 1 ? " focus" : "")} role="listbox" aria-label={DIMS.find((d) => d.id === dim)!.label()}>
           {groups.map((g) => (
             <div key={g.key} className={"lib-row" + (g.key === group?.key ? " on" : "") + (g.archived ? " archived" : "")}>
               <button
@@ -303,7 +313,7 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
           )}
         </div>
 
-        <div className={"lib-col lib-meetings" + (col === 2 ? " focus" : "")} role="listbox" aria-label={t("Meeting")}>
+        <div hidden={dim === "recordings"} className={"lib-col lib-meetings" + (col === 2 ? " focus" : "")} role="listbox" aria-label={t("Meeting")}>
           {listed.map((m) => (
             <button
               key={m.id}
@@ -331,7 +341,7 @@ export default function LibraryView({ projects, onProjectsChanged, onOpen, toast
           )}
         </div>
 
-        <div className="lib-col lib-preview">
+        <div hidden={dim === "recordings"} className="lib-col lib-preview">
           {current ? (
             <>
               <h2>{current.title || t("Senza titolo")}</h2>
