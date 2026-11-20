@@ -119,6 +119,22 @@ export function resolvePlugins(plugins: EditorPlugin[], ctx: PluginContext): Res
   return out;
 }
 
+/**
+ * Riunisce i comandi dello stesso gruppo, così il menu mostra ogni intestazione una volta sola
+ * anche quando plugin lontani nell'elenco usano lo stesso gruppo (es. "Allegati", "Meeting").
+ * I gruppi restano nell'ordine in cui compaiono la prima volta, e dentro un gruppo l'ordine non
+ * cambia: con una ricerca, il gruppo della voce migliore resta in cima.
+ */
+export function groupCommands<T extends { group: string }>(items: T[]): T[] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const list = groups.get(item.group);
+    if (list) list.push(item);
+    else groups.set(item.group, [item]);
+  }
+  return [...groups.values()].flat();
+}
+
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 /** Ricerca per il menu "/": senza distinzione di maiuscole e accenti, su titolo e parole chiave. */

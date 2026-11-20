@@ -35,7 +35,9 @@ const dynamic = [
 
 const dictSrc = readFileSync("src/i18n/en.ts", "utf8");
 const keys = new Set();
-for (const m of dictSrc.matchAll(new RegExp(`^\\s*(${literal.source}|[A-Za-z_]\\w*):`, "gm"))) {
+for (const m of dictSrc.matchAll(
+  new RegExp(`^\\s*(${literal.source}|[\\p{L}_$][\\p{L}\\p{N}_$]*):`, "gmu"),
+)) {
   keys.add(m[1].startsWith('"') ? JSON.parse(m[1]) : m[1]);
 }
 

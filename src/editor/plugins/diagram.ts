@@ -7,8 +7,9 @@ interface Diagram {
   code: string;
 }
 
-const SAMPLE =
-  "flowchart LR\n  A[Richiesta] --> B{Approvata?}\n  B -- Sì --> C[Rilascio]\n  B -- No --> D[Revisione]";
+/** Il diagramma d'esempio che inserisce il comando, nella lingua dell'interfaccia. */
+const sample = () =>
+  `flowchart LR\n  A[${t("Richiesta")}] --> B{${t("Approvata?")}}\n  B -- ${t("Sì")} --> C[${t("Rilascio")}]\n  B -- ${t("No")} --> D[${t("Revisione")}]`;
 
 /** Mermaid è grande: si carica solo quando una nota contiene davvero un diagramma. */
 let library: Promise<typeof import("mermaid").default> | null = null;
@@ -152,7 +153,7 @@ export const diagram: EditorPlugin = {
         e
           .chain()
           .focus()
-          .insertContent({ type: "diagram", attrs: { data: { code: SAMPLE } } })
+          .insertContent({ type: "diagram", attrs: { data: { code: sample() } } })
           .run(),
     },
   ],

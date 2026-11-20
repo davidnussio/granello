@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Extension } from "@tiptap/react";
 import { PluginKey } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionProps } from "@tiptap/suggestion";
-import { filterCommands } from "./index";
+import { filterCommands, groupCommands } from "./index";
 import type { CommandItem, SuggestMenu } from "./types";
 
 type MenuState = SuggestionProps<CommandItem> | null;
@@ -47,7 +47,9 @@ export function slashExtension(commands: CommandItem[], bridge: SlashBridge) {
             // i comandi legati al contesto (es. quelli della tabella) stanno in cima
             const available = commands.filter((c) => !c.when || c.when(editor));
             const context = available.filter((c) => isContextGroup(c, commands));
-            return filterCommands([...context, ...available.filter((c) => !context.includes(c))], query);
+            return groupCommands(
+              filterCommands([...context, ...available.filter((c) => !context.includes(c))], query),
+            );
           },
           allow: ({ editor }) => !editor.isActive("codeBlock") && !editor.isActive("code"),
           command: ({ editor, range, props }) => {

@@ -437,6 +437,13 @@ const en: Record<string, string> = {
   Grafico: "Chart",
   "Disegna la tabella qui sopra": "Draws the table above",
   "Diagramma vuoto": "Empty diagram",
+  // il diagramma d'esempio del comando "/"
+  Richiesta: "Request",
+  "Approvata?": "Approved?",
+  Sì: "Yes",
+  Rilascio: "Release",
+  No: "No",
+  Revisione: "Review",
   "Diagramma non valido: {error}": "Invalid diagram: {error}",
   "Codice Mermaid del diagramma": "The diagram's Mermaid code",
   "Modifica il diagramma": "Edit the diagram",
