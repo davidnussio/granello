@@ -33,7 +33,8 @@ const IMPORT_QUEUE: usize = 4;
 type StreamError = Arc<Mutex<Option<String>>>;
 
 /// Valore di `system_device` che indica l'audio in uscita dal computer, catturato senza
-/// dispositivi di loopback (process tap di Core Audio su macOS 14.6+, WASAPI su Windows).
+/// dispositivi di loopback (process tap di Core Audio su macOS 14.6+, WASAPI su Windows, la
+/// sorgente monitor di PulseAudio o PipeWire su Linux).
 pub const SYSTEM_AUDIO: &str = "@system";
 
 fn device_name(d: &cpal::Device) -> Option<String> {
@@ -80,8 +81,37 @@ fn default_output_id() -> Option<cpal::DeviceId> {
     cpal::default_host().default_output_device().and_then(|d| d.id().ok())
 }
 
+/// Su Linux l'audio di sistema è la sorgente "monitor" dell'uscita predefinita, che PulseAudio
+/// (e PipeWire, che ne parla il protocollo) chiama come l'uscita più `.monitor`.
+#[cfg(target_os = "linux")]
+fn open_system_audio(buf: Arc<Mutex<Vec<f32>>>, error: StreamError) -> Result<(cpal::Stream, u32)> {
+    let host = cpal::default_host();
+    if host.id() != cpal::HostId::PulseAudio {
+        return Err(tra!(
+            "per catturare l'audio di sistema serve PulseAudio o PipeWire: in alternativa scegli come sorgente un dispositivo \"Monitor\"",
+            "capturing system audio needs PulseAudio or PipeWire: otherwise pick a \"Monitor\" device as the source"
+        ));
+    }
+    let sink = host
+        .default_output_device()
+        .ok_or_else(|| tra!("nessuna uscita audio disponibile", "no audio output available"))?;
+    let monitor = format!("{}.monitor", sink.id().context("id dell'uscita")?.id());
+    let device = host
+        .input_devices()?
+        .find(|d| d.id().is_ok_and(|id| id.id() == monitor))
+        .ok_or_else(|| {
+            tra!(
+                "l'uscita audio predefinita non ha una sorgente monitor: scegli come sorgente un dispositivo \"Monitor\"",
+                "the default audio output has no monitor source: pick a \"Monitor\" device as the source"
+            )
+        })?;
+    let config = device.default_input_config().context("config monitor")?;
+    open_stream(&device, config, buf, error)
+}
+
 /// Apre in ascolto l'uscita audio predefinita: quello che il computer sta riproducendo
 /// (le voci degli altri in Teams, Zoom, Meet…), senza dispositivi di loopback.
+#[cfg(not(target_os = "linux"))]
 fn open_system_audio(buf: Arc<Mutex<Vec<f32>>>, error: StreamError) -> Result<(cpal::Stream, u32)> {
     let device = cpal::default_host()
         .default_output_device()
@@ -98,10 +128,17 @@ fn open_system_audio(buf: Arc<Mutex<Vec<f32>>>, error: StreamError) -> Result<(c
     }
     let config = device.default_output_config().context("config output")?;
     open_stream(&device, config, buf, error).map_err(|e| {
-        tra!(
-            "cattura dell'audio di sistema non riuscita ({e}). Serve macOS 14.6 o successivo e il permesso in Impostazioni di Sistema → Privacy e sicurezza → Registrazione schermo e audio di sistema.",
-            "could not capture system audio ({e}). It needs macOS 14.6 or later and the permission in System Settings → Privacy & Security → Screen & System Audio Recording."
-        )
+        if cfg!(target_os = "macos") {
+            tra!(
+                "cattura dell'audio di sistema non riuscita ({e}). Serve macOS 14.6 o successivo e il permesso in Impostazioni di Sistema → Privacy e sicurezza → Registrazione schermo e audio di sistema.",
+                "could not capture system audio ({e}). It needs macOS 14.6 or later and the permission in System Settings → Privacy & Security → Screen & System Audio Recording."
+            )
+        } else {
+            tra!(
+                "cattura dell'audio di sistema non riuscita ({e}): scegli un'altra uscita audio per la call",
+                "could not capture system audio ({e}): pick another audio output for the call"
+            )
+        }
     })
 }
 

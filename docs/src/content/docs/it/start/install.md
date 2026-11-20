@@ -23,6 +23,21 @@ pnpm tauri build    # .app e .dmg in src-tauri/target/release/bundle
 
 La build **non è firmata** con un Developer ID di Apple. Sul Mac che l'ha compilata si apre normalmente. Copiata su un altro Mac, Gatekeeper la blocca al primo avvio.
 
+## Linux e Windows (sperimentale)
+
+Granello si compila anche su Linux e Windows, dallo stesso codice. Queste build sono **sperimentali**: compilano e passano i test, ma non sono ancora state provate su computer di tutti i giorni.
+
+Cosa cambia rispetto al Mac:
+
+- La **trascrizione** gira sulla CPU, senza accelerazione grafica: è più lenta. Un modello più piccolo, come `small`, tiene meglio il passo.
+- **Audio di sistema**: su Windows Granello ascolta l'uscita audio predefinita. Su Linux registra la sorgente "monitor" dell'uscita predefinita, e serve PulseAudio o PipeWire. In alternativa, scegli un dispositivo "Monitor" come sorgente degli altri partecipanti.
+- Le **API key** vanno in Gestione credenziali di Windows. Su Linux restano in un file della cartella dati leggibile solo dal tuo utente.
+
+Requisiti per compilare:
+
+- **Linux** (Debian, Ubuntu e derivate): `sudo apt install libwebkit2gtk-4.1-dev librsvg2-dev libasound2-dev cmake`, più Rust, Node e pnpm. `pnpm tauri build` produce un AppImage.
+- **Windows**: Visual Studio Build Tools con il carico di lavoro C++, `cmake`, più Rust, Node e pnpm. `pnpm tauri build` produce un installer. Non è firmato, quindi al primo avvio Windows SmartScreen mostra un avviso.
+
 ## Provarla senza il backend
 
 L'interfaccia gira anche nel browser con dati di esempio, senza registrazione e senza AI:

@@ -549,7 +549,7 @@ pub async fn merge_recordings(state: State<'_, AppState>, meeting_id: String) ->
     if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == meeting_id) {
         return Err(tr("Attendi la fine della registrazione", "Wait for the recording to finish").into());
     }
-    let tool = recordings::ffmpeg().ok_or_else(|| tr("Per unire le registrazioni serve ffmpeg, che su questo Mac non c'è", "Merging recordings needs ffmpeg, which isn't on this Mac"))?;
+    let tool = recordings::ffmpeg().ok_or_else(|| tr("Per unire le registrazioni serve ffmpeg, che su questo computer non c'è", "Merging recordings needs ffmpeg, which isn't on this computer"))?;
     // solo quelle chiuse e con il file ancora al suo posto, in ordine di tempo
     let mut parts: Vec<Recording> = state
         .db
@@ -681,7 +681,7 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
             return Err(tr("L'affinamento online è spento nelle Impostazioni", "Online refinement is off in Settings").into());
         }
         if meeting.privacy != Privacy::Open {
-            return Err(tr("La privacy di questo meeting tiene l'audio su questo Mac", "This meeting's privacy keeps the audio on this Mac").into());
+            return Err(tr("La privacy di questo meeting tiene l'audio su questo computer", "This meeting's privacy keeps the audio on this computer").into());
         }
         if db.pending_reviews(&meeting_id).map_err(err)? > 0 {
             return Err(tr("Ci sono parti da verificare: decidi prima su quelle", "There are parts to review: decide on those first").into());
@@ -1090,7 +1090,7 @@ struct ResolvedModel {
     model: String,
 }
 
-/// Un provider è locale se il suo server gira su questo Mac: solo così il testo non esce.
+/// Un provider è locale se il suo server gira su questo computer: solo così il testo non esce.
 fn provider_is_local(provider: &Provider) -> bool {
     if provider.kind != ProviderKind::Openai {
         return false;
@@ -1127,8 +1127,8 @@ fn resolve_model_for(state: &AppState, settings: &Settings, which: &ModelRef, re
     match local {
         Some(model) => resolve_model(state, settings, model),
         None => Err(trf!(
-            "{reason}: può elaborarlo solo un modello che gira su questo Mac, e non ce n'è uno configurato.",
-            "{reason}: only a model running on this Mac may process it, and none is configured."
+            "{reason}: può elaborarlo solo un modello che gira su questo computer, e non ce n'è uno configurato.",
+            "{reason}: only a model running on this computer may process it, and none is configured."
         )),
     }
 }

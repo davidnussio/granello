@@ -32,9 +32,10 @@ pub fn file_name(started_at_ms: i64, meeting_id: &str) -> String {
 /// terminale, quindi si guarda anche dove lo mettono Homebrew e MacPorts.
 pub fn ffmpeg() -> Option<PathBuf> {
     let path = std::env::var_os("PATH").unwrap_or_default();
+    let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
     std::env::split_paths(&path)
         .chain(["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"].map(PathBuf::from))
-        .map(|dir| dir.join("ffmpeg"))
+        .map(|dir| dir.join(name))
         .find(|p| p.is_file())
 }
 
@@ -105,7 +106,7 @@ pub fn finalize(wav: &Path, trim: bool) -> Option<Finished> {
 
 /// Toglie le pause da una registrazione già salvata. Il file nuovo prende il posto del vecchio.
 pub fn trim(file: &Path) -> Result<Finished> {
-    let tool = ffmpeg().ok_or_else(|| crate::tra!("Per togliere le pause serve ffmpeg, che su questo Mac non c'è", "Removing pauses needs ffmpeg, which isn't on this Mac"))?;
+    let tool = ffmpeg().ok_or_else(|| crate::tra!("Per togliere le pause serve ffmpeg, che su questo computer non c'è", "Removing pauses needs ffmpeg, which isn't on this computer"))?;
     let temp = file.with_extension("trim.m4a");
     let duration_ms = convert(&tool, file, &temp, true)?;
     let output = file.with_extension("m4a");
