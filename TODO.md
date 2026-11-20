@@ -7,7 +7,7 @@ OAuth…) live in the "Next steps" section of the [README](README.md).
 
 Browse meetings by project, person, tag and period (cascading columns). Projects are promoted tags.
 
-- [x] Columns with preview, keyboard navigation, projects (promote, archive) and sidebar shortcuts.
+- [x] Columns with preview, keyboard navigation, projects (promote, archive).
 - [ ] Cross two dimensions (a person inside a project) with a filter on top.
 - [ ] Tag several selected meetings at once.
 - [ ] A view of items across meetings (decisions, action items, quotes), once those blocks exist.

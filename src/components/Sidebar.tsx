@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import { sparkle } from "../sparkles";
-import type { CalendarEvent, MeetingSummary, Project, RecordingStatus, View } from "../types";
+import type { CalendarEvent, MeetingSummary, RecordingStatus, View } from "../types";
 import { groupByDay, time } from "../format";
 import { t } from "../i18n";
 
@@ -10,7 +10,6 @@ interface Props {
   query: string;
   setQuery: (q: string) => void;
   meetings: MeetingSummary[];
-  projects: Project[];
   events: CalendarEvent[];
   rec: RecordingStatus;
   onNew: () => void;
@@ -22,7 +21,6 @@ export default function Sidebar(p: Props) {
   const now = Date.now();
   const soon = p.events.filter((e) => e.end > now && e.start < now + 18 * 3600_000).slice(0, 4);
   const selectedId = p.view.kind === "meeting" ? p.view.id : null;
-  const active = p.projects.filter((x) => !x.archived);
 
   return (
     <aside className="sidebar">
@@ -49,22 +47,12 @@ export default function Sidebar(p: Props) {
           {sparkle(t("✦ Chiedi ai meeting"))}
         </button>
         <button
-          className={navCls(p.view.kind === "library" && !p.view.project)}
+          className={navCls(p.view.kind === "library")}
           onClick={() => p.setView({ kind: "library" })}
           title={t("Sfoglia i meeting per progetto, persona, tag e periodo")}
         >
           {t("▤ Libreria")}
         </button>
-        {/* i progetti attivi: un clic apre la Libreria su quel progetto */}
-        {active.map((project) => (
-          <button
-            key={project.tag}
-            className={navCls(p.view.kind === "library" && p.view.project === project.tag) + " nav-project"}
-            onClick={() => p.setView({ kind: "library", project: project.tag })}
-          >
-            #{project.tag}
-          </button>
-        ))}
       </nav>
 
       {soon.length > 0 && !p.query && (

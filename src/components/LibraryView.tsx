@@ -6,8 +6,6 @@ import { locale, t } from "../i18n";
 import { sparkle } from "../sparkles";
 
 interface Props {
-  /** Progetto da cui partire (aperto dalla barra laterale). */
-  project?: string;
   projects: Project[];
   onProjectsChanged: (projects: Project[]) => void;
   onOpen: (meetingId: string) => void;
@@ -87,30 +85,22 @@ function digest(meeting: Meeting) {
   };
 }
 
-export default function LibraryView({ project, projects, onProjectsChanged, onOpen, toast }: Props) {
+export default function LibraryView({ projects, onProjectsChanged, onOpen, toast }: Props) {
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
   const [dim, setDim] = useState<Dim>("projects");
-  const [groupKey, setGroupKey] = useState<string | null>(project ?? null);
+  const [groupKey, setGroupKey] = useState<string | null>(null);
   const [meetingId, setMeetingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [oldestFirst, setOldestFirst] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [detail, setDetail] = useState<Meeting | null>(null);
   /** Colonna che riceve le frecce: 0 dimensione, 1 valori, 2 meeting. */
-  const [col, setCol] = useState(project ? 2 : 1);
+  const [col, setCol] = useState(1);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api.listMeetings().then(setMeetings).catch((e) => toast(errorText(e)));
   }, [toast]);
-
-  // aperta dalla barra laterale su un progetto: si parte da lì
-  useEffect(() => {
-    if (!project) return;
-    setDim("projects");
-    setGroupKey(project);
-    setCol(2);
-  }, [project]);
 
   const groups = useMemo<Group[]>(() => {
     const isProject = new Map(projects.map((p) => [p.tag, p]));

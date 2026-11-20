@@ -155,7 +155,7 @@ export interface Project {
 export type View =
   | { kind: "meeting"; id: string }
   | { kind: "chat" }
-  | { kind: "library"; project?: string }
+  | { kind: "library" }
   | { kind: "settings" }
   | { kind: "templates" }
   | { kind: "home" };

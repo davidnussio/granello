@@ -244,7 +244,6 @@ export default function App() {
         query={query}
         setQuery={setQuery}
         meetings={meetings}
-        projects={projects}
         events={events}
         rec={rec}
         onNew={newMeeting}
@@ -281,7 +280,6 @@ export default function App() {
         )}
         {view.kind === "library" && (
           <LibraryView
-            project={view.project}
             projects={projects}
             onProjectsChanged={setProjects}
             onOpen={(id) => setView({ kind: "meeting", id })}
