@@ -3,16 +3,27 @@ name: Release
 # Si parte da un tag: aggiorna "version" in package.json, src-tauri/Cargo.toml e
 # src-tauri/tauri.conf.json, committa, poi
 #   git tag -a v0.2.0 -m "Granello 0.2.0" && git push origin main v0.2.0
-# Il workflow crea la release IN BOZZA con i DMG e latest.json. Le app installate
+# Il workflow crea la release IN BOZZA con i DMG per Mac, l'AppImage per Linux,
+# l'installer per Windows e latest.json. Le app installate
 # leggono releases/latest/download/latest.json, che vede solo le release
 # pubblicate: nessuna si aggiorna finché la bozza non viene pubblicata a mano.
 #
 # Secret richiesti: TAURI_SIGNING_PRIVATE_KEY e TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 # (chiave privata dell'updater; copia nel password manager di David).
 
+#
+# In una pull request che tocca il workflow o la configurazione di build, le build
+# girano lo stesso (artefatti scaricabili dalla pagina del run), senza release.
+
 on:
   push:
     tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - src-tauri/Cargo.toml
+      - src-tauri/Cargo.lock
+      - src-tauri/tauri*.conf.json
 
 permissions:
   contents: write
@@ -32,10 +43,11 @@ jobs:
       - name: Il tag corrisponde alle versioni, la chiave pubblica c'è
         id: version
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           PACKAGE="$(jq -r .version package.json)"
           CONF="$(jq -r .version src-tauri/tauri.conf.json)"
           CARGO="$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -1)"
+          # in una pull request non c'è un tag: vale la versione di package.json
+          if [ "$GITHUB_REF_TYPE" = tag ]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="$PACKAGE"; fi
           for v in "$PACKAGE" "$CONF" "$CARGO"; do
             if [ "$v" != "$VERSION" ]; then
               echo "::error::Il tag $GITHUB_REF_NAME non corrisponde alle versioni (package.json $PACKAGE, tauri.conf.json $CONF, Cargo.toml $CARGO)"
@@ -66,7 +78,9 @@ jobs:
       - name: Dipendenze
         run: pnpm install --frozen-lockfile
 
+      # nelle pull request li fa già il workflow "Controlli"
       - name: Controlli
+        if: github.ref_type == 'tag'
         run: pnpm check
 
   build:
@@ -81,9 +95,22 @@ jobs:
           - os: macos-15-intel # Mac Intel, supportato da GitHub fino all'autunno 2027
             label: macOS-intel
             arch: x86_64
+          # la glibc più vecchia possibile: l'AppImage gira sulle distribuzioni da lì in poi
+          - os: ubuntu-22.04
+            label: linux-x86_64
+            arch: x86_64
+          - os: windows-latest
+            label: windows-x86_64
+            arch: x86_64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+
+      - name: Librerie di sistema
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libasound2-dev patchelf cmake
 
       - uses: pnpm/action-setup@v4
 
@@ -101,23 +128,39 @@ jobs:
       - name: Dipendenze
         run: pnpm install --frozen-lockfile
 
-      # Gli artefatti dell'updater (.app.tar.gz firmato) si creano solo qui, così
-      # una build locale non chiede la chiave privata.
+      # Gli artefatti dell'updater (firmati: .app.tar.gz, AppImage, installer) si
+      # creano solo qui, così una build locale non chiede la chiave privata.
       - name: Build
+        shell: bash # su Windows PowerShell toglierebbe le virgolette del JSON passato a pnpm.cmd
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
       - name: Nomi degli artefatti
+        shell: bash
         env:
           VERSION: ${{ needs.check.outputs.version }}
+          LABEL: ${{ matrix.label }}
+          ARCH: ${{ matrix.arch }}
         run: |
           BUNDLE=src-tauri/target/release/bundle
           mkdir artifacts
-          mv "$BUNDLE"/dmg/*.dmg "artifacts/Granello-$VERSION-${{ matrix.label }}.dmg"
-          mv "$BUNDLE"/macos/Granello.app.tar.gz "artifacts/Granello-$VERSION-${{ matrix.arch }}.app.tar.gz"
-          mv "$BUNDLE"/macos/Granello.app.tar.gz.sig "artifacts/Granello-$VERSION-${{ matrix.arch }}.app.tar.gz.sig"
+          case "$RUNNER_OS" in
+            macOS)
+              mv "$BUNDLE"/dmg/*.dmg "artifacts/Granello-$VERSION-$LABEL.dmg"
+              mv "$BUNDLE"/macos/Granello.app.tar.gz "artifacts/Granello-$VERSION-$ARCH.app.tar.gz"
+              mv "$BUNDLE"/macos/Granello.app.tar.gz.sig "artifacts/Granello-$VERSION-$ARCH.app.tar.gz.sig"
+              ;;
+            Linux)
+              mv "$BUNDLE"/appimage/*.AppImage "artifacts/Granello-$VERSION-$LABEL.AppImage"
+              mv "$BUNDLE"/appimage/*.AppImage.sig "artifacts/Granello-$VERSION-$LABEL.AppImage.sig"
+              ;;
+            Windows)
+              mv "$BUNDLE"/nsis/*-setup.exe "artifacts/Granello-$VERSION-$LABEL-setup.exe"
+              mv "$BUNDLE"/nsis/*-setup.exe.sig "artifacts/Granello-$VERSION-$LABEL-setup.exe.sig"
+              ;;
+          esac
           ls -la artifacts
 
       - uses: actions/upload-artifact@v4
@@ -128,6 +171,7 @@ jobs:
 
   release:
     needs: [check, build]
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -146,12 +190,13 @@ jobs:
           BASE: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
         run: |
           entry() {
-            jq -n --arg sig "$(cat "artifacts/Granello-$VERSION-$1.app.tar.gz.sig")" \
-              --arg url "$BASE/Granello-$VERSION-$1.app.tar.gz" '{signature: $sig, url: $url}'
+            jq -n --arg sig "$(cat "artifacts/Granello-$VERSION-$1.sig")" \
+              --arg url "$BASE/Granello-$VERSION-$1" '{signature: $sig, url: $url}'
           }
           jq -n --arg version "$VERSION" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --argjson arm "$(entry aarch64)" --argjson intel "$(entry x86_64)" \
-            '{version: $version, pub_date: $date, platforms: {"darwin-aarch64": $arm, "darwin-x86_64": $intel}}' \
+            --argjson arm "$(entry aarch64.app.tar.gz)" --argjson intel "$(entry x86_64.app.tar.gz)" \
+            --argjson linux "$(entry linux-x86_64.AppImage)" --argjson windows "$(entry windows-x86_64-setup.exe)" \
+            '{version: $version, pub_date: $date, platforms: {"darwin-aarch64": $arm, "darwin-x86_64": $intel, "linux-x86_64": $linux, "windows-x86_64": $windows}}' \
             > artifacts/latest.json
           cat artifacts/latest.json
 

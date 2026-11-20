@@ -1,5 +1,5 @@
-//! API key dei provider AI: nel Portachiavi su macOS, in file 0600 altrove.
-//! Ogni provider ha la sua voce, identificata dal suo `id`.
+//! API key dei provider AI: nel Portachiavi su macOS, in Gestione credenziali su Windows, in
+//! file 0600 nella cartella dati su Linux. Ogni provider ha la sua voce, identificata dal suo `id`.
 //!
 //! Su macOS ogni chiave viene letta dal Portachiavi una sola volta per avvio e poi tenuta in
 //! memoria: senza una firma Developer ID il permesso "Consenti sempre" si perde a ogni build,
@@ -16,7 +16,7 @@ use std::path::Path;
 /// Provider predefinito: mantiene la voce storica del Portachiavi e la variabile d'ambiente.
 pub const ANTHROPIC_ID: &str = "anthropic";
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 const SERVICE: &str = "ch.dambox.granello";
 
 fn account(provider_id: &str) -> String {
@@ -44,11 +44,11 @@ fn key_from(var: impl Fn(&str) -> Option<String>) -> Option<String> {
 }
 
 /// Chiavi già lette in questo avvio, per provider. `None` = il Portachiavi non ha la voce.
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", windows, test))]
 #[derive(Default)]
 struct KeyCache(parking_lot::Mutex<std::collections::HashMap<String, Option<String>>>);
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", windows, test))]
 impl KeyCache {
     /// La chiave in memoria, altrimenti quella letta con `load`. Un errore (per esempio
     /// l'accesso al Portachiavi negato) non viene ricordato: la prossima volta si riprova.
@@ -68,15 +68,15 @@ impl KeyCache {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 static CACHE: std::sync::LazyLock<KeyCache> = std::sync::LazyLock::new(KeyCache::default);
 
 /// Le build di sviluppo non sono firmate in modo stabile: lì il Portachiavi chiederebbe la
-/// password a ogni avvio, per ogni chiave.
-#[cfg(target_os = "macos")]
-const USE_KEYCHAIN: bool = !cfg!(debug_assertions);
+/// password a ogni avvio, per ogni chiave. Gestione credenziali di Windows non chiede nulla.
+#[cfg(any(target_os = "macos", windows))]
+const USE_KEYCHAIN: bool = cfg!(windows) || !cfg!(debug_assertions);
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 fn keychain_get(provider_id: &str) -> Result<Option<String>> {
     match keyring::Entry::new(SERVICE, &account(provider_id))?.get_password() {
         Ok(k) => Ok(Some(k)),
@@ -86,12 +86,12 @@ fn keychain_get(provider_id: &str) -> Result<Option<String>> {
 }
 
 /// Segna che per questo provider il Portachiavi è già stato guardato una volta.
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 fn imported_marker(dir: &Path, provider_id: &str) -> std::path::PathBuf {
     key_file(dir, provider_id).with_extension("imported")
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 pub fn get_api_key(dir: &Path, provider_id: &str) -> Result<Option<String>> {
     if let Some(k) = env_key(provider_id) {
         return Ok(Some(k));
@@ -116,7 +116,7 @@ pub fn get_api_key(dir: &Path, provider_id: &str) -> Result<Option<String>> {
     Ok(key)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 pub fn set_api_key(dir: &Path, provider_id: &str, key: &str) -> Result<()> {
     if !USE_KEYCHAIN {
         // una chiave tolta qui non deve tornare dal Portachiavi al prossimo avvio
@@ -151,7 +151,7 @@ fn file_get(dir: &Path, provider_id: &str) -> Option<String> {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn get_api_key(dir: &Path, provider_id: &str) -> Result<Option<String>> {
     if let Some(k) = env_key(provider_id) {
         return Ok(Some(k));
@@ -159,7 +159,7 @@ pub fn get_api_key(dir: &Path, provider_id: &str) -> Result<Option<String>> {
     Ok(file_get(dir, provider_id))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn set_api_key(dir: &Path, provider_id: &str, key: &str) -> Result<()> {
     file_set(dir, provider_id, key)
 }

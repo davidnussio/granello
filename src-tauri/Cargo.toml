@@ -48,8 +48,17 @@ tokio = { version = "1", features = ["net", "io-util"] }
 whisper-rs = { version = "0.14", features = ["metal"] }
 keyring = { version = "3", features = ["apple-native"] }
 
+# Fuori da macOS whisper.cpp gira in CPU.
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 whisper-rs = { version = "0.14" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+# PulseAudio (anche quello offerto da PipeWire) espone il "monitor" dell'uscita: l'audio di
+# sistema. Il client è in Rust puro, non servono librerie di sistema.
+[target.'cfg(target_os = "linux")'.dependencies]
+cpal = { version = "0.18", features = ["pulseaudio"] }
 
 [profile.release]
 lto = true
