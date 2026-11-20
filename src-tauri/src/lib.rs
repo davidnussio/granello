@@ -14,6 +14,7 @@ mod keep;
 mod recordings;
 mod llm;
 mod models;
+mod preview;
 mod prompts;
 mod secrets;
 mod transcribe;
