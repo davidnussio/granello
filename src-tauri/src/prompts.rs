@@ -117,15 +117,76 @@ pub fn transcript_text(segments: &[TranscriptSegment], me: &str) -> String {
     out.trim().to_string()
 }
 
-pub fn enhance_system(language: &str) -> String {
-    let lang = match language {
+fn output_language(language: &str) -> String {
+    match language {
         "auto" | "" => "nella lingua prevalente della trascrizione".to_string(),
         "it" => "in italiano".into(),
         "en" => "in inglese".into(),
         "de" => "in tedesco".into(),
         "fr" => "in francese".into(),
         other => format!("nella lingua con codice {other}"),
-    };
+    }
+}
+
+/// Quanto audio attorno a un momento segnato si guarda: chi preme il tasto reagisce a
+/// qualcosa che è appena stato detto, quindi soprattutto prima.
+const MOMENT_BEFORE_MS: i64 = 75_000;
+const MOMENT_AFTER_MS: i64 = 20_000;
+
+/// La trascrizione attorno al momento `ms`, vuota se lì non c'è niente.
+pub fn moment_excerpt(segments: &[TranscriptSegment], ms: i64, me: &str) -> String {
+    let near: Vec<TranscriptSegment> = segments
+        .iter()
+        .filter(|s| s.end_ms >= ms - MOMENT_BEFORE_MS && s.start_ms <= ms + MOMENT_AFTER_MS)
+        .cloned()
+        .collect();
+    transcript_text(&near, me)
+}
+
+pub fn moments_system(language: &str) -> String {
+    format!(
+        "Durante un meeting l'utente ha premuto un tasto per segnare alcuni momenti importanti. \
+Per ogni momento ricevi il minuto e la trascrizione automatica di ciò che si diceva lì attorno \
+(soprattutto prima: l'utente reagisce a qualcosa di appena detto).\n\
+Per ogni momento scrivi, {lang}, una o due frasi brevi che dicono cosa si stava dicendo o decidendo: \
+il contenuto, non \"si parlava di\". Riporta nomi, numeri e date esattamente. Non inventare nulla.\n\
+\"Altri\" indica gli altri partecipanti, non una persona precisa. La trascrizione può contenere \
+errori di riconoscimento. Non usare il trattino lungo.\n\
+Rispondi con una riga per momento, nel formato `N: testo`, dove N è il numero del momento. \
+Se la trascrizione di un momento non dice niente di utile, scrivi `N: -`. Nessun altro testo.",
+        lang = output_language(language)
+    )
+}
+
+/// `excerpts`: per ogni momento, il minuto (ms) e la trascrizione lì attorno.
+pub fn moments_user(meeting: &Meeting, excerpts: &[(i64, String)]) -> String {
+    let mut s = format!("# Meeting: {}\n", meeting.title);
+    if !meeting.attendees.is_empty() {
+        s.push_str(&format!("Partecipanti: {}\n", meeting.attendees.join(", ")));
+    }
+    for (i, (ms, excerpt)) in excerpts.iter().enumerate() {
+        s.push_str(&format!("\n## Momento {} (segnato a {})\n{}\n", i + 1, fmt_ts(*ms), excerpt));
+    }
+    s
+}
+
+/// Legge la risposta `N: testo` del modello: per ognuno degli `n` momenti il testo, se c'è.
+pub fn parse_moments(answer: &str, n: usize) -> Vec<Option<String>> {
+    let mut out = vec![None; n];
+    for line in answer.lines() {
+        let Some((head, text)) = line.split_once(':') else { continue };
+        let head = head.trim().trim_matches(|c: char| !c.is_ascii_digit());
+        let Ok(i) = head.parse::<usize>() else { continue };
+        let text = text.trim().trim_matches('`').trim();
+        if i >= 1 && i <= n && text.chars().any(char::is_alphanumeric) {
+            out[i - 1] = Some(text.to_string());
+        }
+    }
+    out
+}
+
+pub fn enhance_system(language: &str) -> String {
+    let lang = output_language(language);
     format!(
         "Sei un assistente che scrive note di meeting eccellenti, nello stile di Granola.\n\
 Ricevi: le note grezze scritte a mano dall'utente durante il meeting e la trascrizione automatica.\n\
@@ -139,6 +200,8 @@ rilevanti della trascrizione. Ciò che l'utente ha annotato indica cosa per lui 
 - La trascrizione è automatica e può contenere errori di riconoscimento: correggi i termini tecnici \
 quando il contesto lo rende evidente.\n\
 - \"Altri\" nella trascrizione indica gli altri partecipanti (audio di sistema), non una persona precisa.\n\
+- Un blocco \"::: moment MM:SS\" nelle note segna un momento che l'utente ha ritenuto importante mentre \
+ascoltava: dai risalto a ciò che si diceva in quel punto della trascrizione. Non riportare il blocco nelle note.\n\
 - Le azioni vanno come checklist Markdown: \"- [ ] Responsabile: azione (scadenza)\".\n\
 - Non usare il trattino lungo.\n\
 - Scrivi anche i titoli delle sezioni nella lingua delle note, traducendo quelli indicati dal template se serve.\n\
@@ -229,5 +292,27 @@ mod tests {
             "David",
         );
         assert_eq!(out, "[00:00] David: Ciao. Iniziamo?\n[01:05] Altri: Sì.");
+    }
+
+    #[test]
+    fn moment_excerpt_looks_mostly_backwards() {
+        let seg = |t: i64, txt: &str| TranscriptSegment {
+            id: 0,
+            meeting_id: "m".into(),
+            source: "them".into(),
+            start_ms: t,
+            end_ms: t + 5000,
+            text: txt.into(),
+        };
+        let segments = [seg(0, "Presto."), seg(60_000, "Il prezzo è 40."), seg(130_000, "Subito dopo."), seg(200_000, "Tardi.")];
+        let out = moment_excerpt(&segments, 120_000, "David");
+        assert_eq!(out, "[01:00] Altri: Il prezzo è 40. Subito dopo.");
+        assert_eq!(moment_excerpt(&segments, 600_000, "David"), "");
+    }
+
+    #[test]
+    fn parses_one_line_per_moment() {
+        let out = parse_moments("1: Il prezzo sale a 40: da gennaio.\n**2**: -\n[3] : Rilascio giovedì.\n9: fuori\nchiacchiere", 3);
+        assert_eq!(out, vec![Some("Il prezzo sale a 40: da gennaio.".to_string()), None, Some("Rilascio giovedì.".to_string())]);
     }
 }

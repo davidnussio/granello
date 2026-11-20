@@ -7,10 +7,13 @@ export default function TranscriptPanel({
   segments,
   live,
   importing = false,
+  focus = null,
 }: {
   segments: TranscriptSegment[];
   live: boolean;
   importing?: boolean;
+  /** Punto da mostrare (ms): cambia oggetto a ogni richiesta, anche per lo stesso punto. */
+  focus?: { ms: number } | null;
 }) {
   const end = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -27,6 +30,17 @@ export default function TranscriptPanel({
     if (last && last.source === s.source && s.startMs - last.start < 90_000) last.texts.push(s.text);
     else groups.push({ source: s.source, start: s.startMs, texts: [s.text] });
   }
+
+  // la bolla che contiene il punto richiesto: l'ultima iniziata prima
+  let focused = -1;
+  if (focus) groups.forEach((g, i) => g.start <= focus.ms && (focused = i));
+  if (focus && focused < 0 && groups.length) focused = 0;
+  const focusedEl = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!focus || !focusedEl.current) return;
+    stick.current = false;
+    focusedEl.current.scrollIntoView({ block: "center" });
+  }, [focus]);
 
   return (
     <div
@@ -47,7 +61,7 @@ export default function TranscriptPanel({
         </p>
       )}
       {groups.map((g, i) => (
-        <div key={i} className={"bubble " + g.source}>
+        <div key={i} ref={i === focused ? focusedEl : undefined} className={"bubble " + g.source + (i === focused ? " focused" : "")}>
           <div className="bubble-meta">
             {g.source === "me" ? t("Tu") : g.source === "file" ? t("Audio") : t("Altri")} · {mmss(g.start)}
           </div>

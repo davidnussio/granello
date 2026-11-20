@@ -266,6 +266,9 @@ pub struct Session {
     pub pending: Arc<AtomicUsize>,
     /// true se l'audio arriva da un file caricato invece che dai dispositivi.
     pub importing: bool,
+    /// Da dove riparte il tempo del meeting e quando è partita la cattura.
+    base_ms: i64,
+    started: Instant,
 }
 
 /// Come finisce il thread di trascrizione di un file caricato.
@@ -527,6 +530,8 @@ System Settings → Privacy & Security → Microphone and that the microphone is
             transcribe_thread: Some(transcribe_thread),
             pending,
             importing: false,
+            base_ms: cfg.base_ms,
+            started: Instant::now(),
         })
     }
 
@@ -581,7 +586,15 @@ System Settings → Privacy & Security → Microphone and that the microphone is
             transcribe_thread: Some(transcribe_thread),
             pending,
             importing: true,
+            base_ms: cfg.base_ms,
+            started: Instant::now(),
         })
+    }
+
+    /// A che punto del meeting (ms) è la registrazione dal vivo, sulla stessa scala dei
+    /// segmenti della trascrizione. `None` mentre si trascrive un file: lì non c'è un "adesso".
+    pub fn position_ms(&self) -> Option<i64> {
+        (!self.importing).then(|| self.base_ms + self.started.elapsed().as_millis() as i64)
     }
 
     /// Ferma la cattura. La trascrizione dei blocchi in coda continua in background

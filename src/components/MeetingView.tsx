@@ -8,6 +8,8 @@ import TranscriptPanel from "./TranscriptPanel";
 import ChatPanel from "./ChatPanel";
 import { dayLabel, mmss, time } from "../format";
 import { t } from "../i18n";
+import type { Editor } from "@tiptap/react";
+import { MOMENT_EVENTS, emptyMoments, fillMomentsIn, fillMomentsMd, insertMoment, momentMd } from "../editor/plugins/moment";
 
 interface Props {
   id: string;
@@ -83,6 +85,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const [devices, setDevices] = useState<string[]>([]);
   const [systemDevice, setSystemDevice] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<{ doneMs: number; totalMs: number | null } | null>(null);
+  const [transcriptFocus, setTranscriptFocus] = useState<{ ms: number } | null>(null);
+  // l'editor delle note, quando è a schermo: i momenti segnati vanno lì
+  const notesEditor = useRef<Editor | null>(null);
+  const notesRef = useRef("");
+  const fillRef = useRef<(auto: boolean) => void>(() => {});
+  const markRef = useRef<(from?: Editor) => void>(() => {});
+  const fillingRef = useRef(false);
 
   // la sessione su questo meeting è una registrazione dal vivo oppure un file in trascrizione
   const inSession = rec.meetingId === id;
@@ -144,6 +153,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
         if (!hasEnhancedRef.current) {
           toast(t("Trascrizione completata"), { label: t("✦ Genera note AI"), run: () => enhanceRef.current() });
         }
+        // ora c'è tutta la trascrizione: l'AI scrive cosa si diceva nei momenti segnati
+        fillRef.current(true);
       }),
       on("llm-delta", (d) => {
         if (d.streamId === streamRef.current) setStreaming((s) => (s ?? "") + d.delta);
@@ -171,6 +182,76 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const saveTitle = useDebounced<string>((title) => {
     api.updateMeeting({ id, title }).then(onChanged).catch((e) => toast(errorText(e)));
   }, 500);
+
+  const setNotes = (md: string) => {
+    setMeeting((m) => (m ? { ...m, notesMd: md } : m));
+    saveNotes(md);
+  };
+
+  // Segna il momento attuale della registrazione. `from` è l'editor da cui parte il comando "/".
+  const markMoment = async (from?: Editor) => {
+    const position = isRecording ? await api.recordingPosition(id).catch(() => null) : null;
+    // comando "/" a registrazione ferma: marcatore a 0:00, con il minuto da scrivere a mano
+    if (position === null && !from) return;
+    const ms = position ?? 0;
+    const editor = from ?? notesEditor.current;
+    if (editor && !editor.isDestroyed) insertMoment(editor, ms);
+    else setNotes(`${notesRef.current.trimEnd()}\n\n${momentMd(ms)}\n`.trimStart());
+    if (position !== null) toast(t("Momento segnato a {time}", { time: mmss(ms) }));
+  };
+  markRef.current = markMoment;
+
+  // Fa scrivere all'AI cosa si diceva nei momenti ancora vuoti. `auto`: a fine registrazione,
+  // senza disturbare se non c'è niente da fare o l'AI non è configurata.
+  const fillMoments = async (auto: boolean) => {
+    const moments = emptyMoments(notesRef.current);
+    if (!moments.length || fillingRef.current) return;
+    if (auto && !(await api.aiReady().catch(() => false))) return;
+    fillingRef.current = true;
+    if (!auto) toast(t("Chiedo all'AI cosa si stava dicendo…"));
+    try {
+      const fills = await api.fillMoments(id, moments);
+      if (!fills.length) {
+        if (!auto) toast(t("La trascrizione non dice niente attorno a quei momenti"));
+        return;
+      }
+      const editor = notesEditor.current;
+      if (editor && !editor.isDestroyed) fillMomentsIn(editor, fills);
+      else setNotes(fillMomentsMd(notesRef.current, fills));
+      toast(fills.length === 1 ? t("Un momento segnato è stato riempito") : t("{n} momenti segnati sono stati riempiti", { n: fills.length }));
+    } catch (e) {
+      toast(errorText(e));
+    } finally {
+      fillingRef.current = false;
+    }
+  };
+  fillRef.current = fillMoments;
+
+  useEffect(() => {
+    const onMark = (e: Event) => markRef.current((e as CustomEvent<Editor | undefined>).detail ?? undefined);
+    const onFill = () => fillRef.current(false);
+    const onShow = (e: Event) => {
+      setSide("transcript");
+      setTranscriptFocus({ ms: (e as CustomEvent<number>).detail });
+    };
+    // ⇧⌘M (Ctrl+Shift+M): segna il momento ovunque sia il cursore
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        markRef.current();
+      }
+    };
+    window.addEventListener(MOMENT_EVENTS.mark, onMark);
+    window.addEventListener(MOMENT_EVENTS.fill, onFill);
+    window.addEventListener(MOMENT_EVENTS.show, onShow);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener(MOMENT_EVENTS.mark, onMark);
+      window.removeEventListener(MOMENT_EVENTS.fill, onFill);
+      window.removeEventListener(MOMENT_EVENTS.show, onShow);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
 
   const toggleRecording = async () => {
     setBusyRec(true);
@@ -230,6 +311,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
 
   enhanceRef.current = enhance;
   hasEnhancedRef.current = !!meeting?.enhancedMd;
+  notesRef.current = meeting?.notesMd ?? "";
 
   // rigenerare sostituisce le note AI (e le modifiche fatte a mano): serve una conferma
   const requestEnhance = () => {
@@ -437,10 +519,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               docKey={id + ":notes"}
               value={meeting.notesMd}
               placeholder={t("Scrivi i punti importanti, al resto pensa la trascrizione. Digita / per i comandi.")}
-              onChange={(md) => {
-                setMeeting((m) => (m ? { ...m, notesMd: md } : m));
-                saveNotes(md);
-              }}
+              onEditor={(editor) => (notesEditor.current = editor)}
+              onChange={setNotes}
             />
           )}
           {tab === "enhanced" &&
@@ -511,6 +591,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               <Meter label={t("Tu")} value={level.mic} />
               {level.system !== null && <Meter label={t("Altri")} value={level.system} />}
               <span className="muted small mono">{mmss(elapsed)}</span>
+              <button
+                className="btn small ghost"
+                onClick={() => markMoment()}
+                title={t("Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)")}
+              >
+                {t("⚑ Segna")}
+              </button>
             </>
           )}
           {(finishing || (isRecording && rec.pendingChunks > 1)) && (
@@ -536,7 +623,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             </button>
           </div>
           {side === "transcript" ? (
-            <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} />
+            <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} focus={transcriptFocus} />
           ) : (
             <ChatPanel
               scope={id}

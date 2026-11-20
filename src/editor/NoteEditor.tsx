@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import { defaultPlugins, resolvePlugins, type EditorPlugin } from "./index";
 import { SlashBridge, SlashMenu, slashExtension } from "./SlashMenu";
 import BubbleToolbar from "./BubbleToolbar";
@@ -14,6 +14,8 @@ interface Props {
   className?: string;
   /** Plugin attivi. Default: `defaultPlugins`. Va passato un array stabile (non ricreato a ogni render). */
   plugins?: EditorPlugin[];
+  /** Riceve l'editor quando è pronto e null quando viene tolto: per chi deve inserire blocchi da fuori. */
+  onEditor?: (editor: Editor | null) => void;
 }
 
 function getMarkdown(editor: { storage: Record<string, unknown> }): string {
@@ -29,6 +31,7 @@ export default function NoteEditor({
   editable = true,
   className,
   plugins = defaultPlugins,
+  onEditor,
 }: Props) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -68,6 +71,13 @@ export default function NoteEditor({
   useEffect(() => {
     editor?.setEditable(editable);
   }, [editor, editable]);
+
+  const onEditorRef = useRef(onEditor);
+  onEditorRef.current = onEditor;
+  useEffect(() => {
+    onEditorRef.current?.(editor);
+    return () => onEditorRef.current?.(null);
+  }, [editor]);
 
   return (
     <div

@@ -798,3 +798,14 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .embed-play { display: grid; place-content: center; width: 52px; height: 52px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); color: var(--accent); font-size: 18px; padding-left: 3px; }
 .embed-url { max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; font-size: 12px; color: var(--muted); }
 .ProseMirror .embed.ProseMirror-selectednode .embed-frame { border-color: var(--accent); }
+
+/* momento segnato durante la registrazione */
+.ProseMirror .data-block.block-moment { display: flex; align-items: flex-start; gap: 6px; padding: 7px 10px; border-left: 3px solid var(--accent); }
+.moment-flag { flex: none; color: var(--accent); line-height: 24px; }
+.data-block .moment-time { flex: none; width: 62px; font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--muted); line-height: 20px; }
+.moment-text { flex: 1; min-width: 0; resize: none; overflow: hidden; border: none; background: none; outline: none; color: inherit; font: inherit; line-height: 1.45; padding: 2px 5px; border-radius: 5px; }
+.moment-text:hover { background: var(--panel); }
+.moment-text:focus { background: var(--panel); box-shadow: 0 0 0 1px var(--accent); }
+.block-moment.empty .moment-text::placeholder { font-style: italic; }
+.block-moment .block-btn { margin-top: 1px; }
+.bubble.focused { outline: 2px solid var(--accent); outline-offset: 1px; }

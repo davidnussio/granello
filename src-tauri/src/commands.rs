@@ -572,6 +572,14 @@ pub fn recording_status(state: State<AppState>) -> RecordingStatus {
     }
 }
 
+/// A che punto del meeting è la registrazione dal vivo, per segnare un momento nelle note.
+/// `None` se su quel meeting non si sta registrando.
+#[tauri::command]
+pub fn recording_position(state: State<AppState>, meeting_id: String) -> Option<i64> {
+    let s = state.session.lock();
+    s.as_ref().filter(|s| s.meeting_id == meeting_id).and_then(|s| s.position_ms())
+}
+
 // ---------------- AI ----------------
 
 /// Un modello pronto all'uso: provider, indirizzo, chiave e nome del modello.
@@ -691,8 +699,59 @@ pub async fn enhance_notes(
     Ok(text)
 }
 
+/// Un momento segnato nelle note, con ciò che si stava dicendo.
+#[derive(serde::Serialize)]
+pub struct MomentFill {
+    ms: i64,
+    text: String,
+}
+
+const MAX_MOMENTS: usize = 40;
+
+/// Per ogni momento segnato (`moments`, in ms dall'inizio del meeting) chiede al modello cosa
+/// si stava dicendo lì. Ritorna solo i momenti per cui la trascrizione dice qualcosa.
+/// Le note le aggiorna l'interfaccia: l'utente potrebbe averle cambiate nel frattempo.
+#[tauri::command]
+pub async fn fill_moments(state: State<'_, AppState>, meeting_id: String, moments: Vec<i64>) -> CmdResult<Vec<MomentFill>> {
+    let (model, system, user, asked) = {
+        let db = state.db.lock();
+        let settings = db.get_settings().map_err(err)?;
+        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+        let segments = db.segments(&meeting_id).map_err(err)?;
+        let mut asked: Vec<(i64, String)> = Vec::new();
+        for ms in moments {
+            if asked.len() >= MAX_MOMENTS || asked.iter().any(|(m, _)| *m == ms) {
+                continue;
+            }
+            let excerpt = prompts::moment_excerpt(&segments, ms, &settings.user_name);
+            if !excerpt.is_empty() {
+                asked.push((ms, excerpt));
+            }
+        }
+        if asked.is_empty() {
+            return Ok(Vec::new());
+        }
+        let system = prompts::moments_system(&settings.language);
+        let user = prompts::moments_user(&meeting, &asked);
+        (resolve_model(&state, &settings, &settings.notes_model)?, system, user, asked)
+    };
+    let messages = [llm::Msg::user(user)];
+    model.check_context(&system, &messages)?;
+    let cancel = AtomicBool::new(false);
+    let done = llm::stream_message(&state.llm_http, &model.request(&system, &messages, MOMENTS_MAX_TOKENS, false), &cancel, |_| {})
+        .await
+        .map_err(err)?;
+    let texts = prompts::parse_moments(&done.text, asked.len());
+    Ok(asked
+        .into_iter()
+        .zip(texts)
+        .filter_map(|((ms, _), text)| text.map(|text| MomentFill { ms, text }))
+        .collect())
+}
+
 /// Il limite comprende anche il ragionamento del modello, quindi va tenuto largo.
 const ENHANCE_MAX_TOKENS: u32 = 16_000;
+const MOMENTS_MAX_TOKENS: u32 = 6_000;
 const CHAT_MAX_TOKENS: u32 = 8_000;
 
 fn strip_code_fence(s: &str) -> String {

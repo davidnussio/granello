@@ -52,6 +52,11 @@ export const api = {
   /** Dispositivo per l'audio degli altri (null = solo microfono); vale anche a registrazione in corso. */
   setSystemDevice: (device: string | null) => invoke<void>("set_system_device", { device }),
   recordingStatus: () => invoke<RecordingStatus>("recording_status"),
+  /** A che punto del meeting (ms) è la registrazione dal vivo; null se lì non si registra. */
+  recordingPosition: (meetingId: string) => invoke<number | null>("recording_position", { meetingId }),
+  /** Fa scrivere all'AI cosa si diceva nei momenti segnati (ms). Torna solo quelli con una trascrizione. */
+  fillMoments: (meetingId: string, moments: number[]) =>
+    invoke<{ ms: number; text: string }[]>("fill_moments", { meetingId, moments }),
 
   enhanceNotes: (meetingId: string, streamId: string) =>
     invoke<string>("enhance_notes", { meetingId, streamId }),

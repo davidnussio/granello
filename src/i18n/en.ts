@@ -446,6 +446,21 @@ const en: Record<string, string> = {
   "Carica {provider}": "Load {provider}",
   "Incorpora": "Embed",
   "YouTube, Loom, Figma, Vimeo, una mappa": "YouTube, Loom, Figma, Vimeo, a map",
+  "Cosa si stava dicendo? A fine riunione lo scrive l'AI": "What was being said? The AI writes it when the meeting ends",
+  "Cosa si stava dicendo in quel momento": "What was being said at that moment",
+  "Minuto del meeting (minuti:secondi)": "Meeting time (minutes:seconds)",
+  "Minuto del meeting": "Meeting time",
+  "Fai scrivere all'AI cosa si stava dicendo": "Have the AI write what was being said",
+  "Apri la trascrizione a questo punto": "Open the transcript at this point",
+  "Segna il momento": "Mark the moment",
+  "Il minuto della registrazione; l'AI aggiunge cosa si diceva": "The recording time; the AI adds what was being said",
+  "Momento segnato a {time}": "Moment marked at {time}",
+  "Chiedo all'AI cosa si stava dicendo…": "Asking the AI what was being said…",
+  "La trascrizione non dice niente attorno a quei momenti": "The transcript has nothing around those moments",
+  "Un momento segnato è stato riempito": "One marked moment was filled in",
+  "{n} momenti segnati sono stati riempiti": "{n} marked moments were filled in",
+  "Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)": "Mark this moment in the notes: when the meeting ends the AI writes what was being said (⇧⌘M)",
+  "⚑ Segna": "⚑ Mark",
 };
 
 export default en;

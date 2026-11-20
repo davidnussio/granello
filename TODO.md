@@ -6,7 +6,7 @@ OAuth…) live in the "Next steps" section of the [README](README.md).
 ## Editor components
 
 Blocks that could be added to the notes editor. The classics and the cool ones are
-done; the last group is not started. The editor also has headings, lists, checklists, quote,
+done; the last group has started with the moment marker. The editor also has headings, lists, checklists, quote,
 code block, divider, links and snippets.
 
 **Storage:** notes are stored as Markdown, and every block has a readable Markdown
@@ -53,7 +53,7 @@ They build on what only Granello has in one place: a timestamped transcript, peo
 calendar and AI.
 
 - [ ] **Transcript quote**: select a sentence said in the meeting and it becomes a quote with who said it and the minute. One click reopens the transcript at that point.
-- [ ] **Moment marker**: press a key while recording and the note keeps a marker with the timestamp. When the meeting ends, the AI fills it in with what was being said.
+- [x] **Moment marker**: press a key while recording and the note keeps a marker with the timestamp. When the meeting ends, the AI fills it in with what was being said.
 - [ ] **Decision**: a "we decided X" block with who was there and the transcript sentences that back it up. All decisions become searchable across meetings.
 - [ ] **Action item with an owner**: a checklist where each item has a person and a due date, and that reappears on its own in the next meeting with the same people until it is closed.
 - [ ] **Open question**: a question left unanswered, which Granello brings up again at the next meeting with whoever was supposed to answer.
