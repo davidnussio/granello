@@ -4,6 +4,11 @@
 //! Su macOS ogni chiave viene letta dal Portachiavi una sola volta per avvio e poi tenuta in
 //! memoria: senza una firma Developer ID il permesso "Consenti sempre" si perde a ogni build,
 //! e ogni lettura chiederebbe di nuovo la password. Vedi "Prossimi passi" nel README.
+//!
+//! Per lo stesso motivo le build di sviluppo (`tauri dev`) non usano il Portachiavi: ogni
+//! ricompilazione chiederebbe la password a ogni avvio, una volta per chiave, e Touch ID lì
+//! non è disponibile. Tengono le chiavi in file 0600 nella cartella dati, come sugli altri
+//! sistemi; la prima volta le copiano dal Portachiavi. Le build di rilascio usano il Portachiavi.
 
 use anyhow::Result;
 use std::path::Path;
@@ -66,22 +71,59 @@ impl KeyCache {
 #[cfg(target_os = "macos")]
 static CACHE: std::sync::LazyLock<KeyCache> = std::sync::LazyLock::new(KeyCache::default);
 
+/// Le build di sviluppo non sono firmate in modo stabile: lì il Portachiavi chiederebbe la
+/// password a ogni avvio, per ogni chiave.
 #[cfg(target_os = "macos")]
-pub fn get_api_key(_dir: &Path, provider_id: &str) -> Result<Option<String>> {
-    if let Some(k) = env_key(provider_id) {
-        return Ok(Some(k));
+const USE_KEYCHAIN: bool = !cfg!(debug_assertions);
+
+#[cfg(target_os = "macos")]
+fn keychain_get(provider_id: &str) -> Result<Option<String>> {
+    match keyring::Entry::new(SERVICE, &account(provider_id))?.get_password() {
+        Ok(k) => Ok(Some(k)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.into()),
     }
-    CACHE.get(provider_id, || {
-        match keyring::Entry::new(SERVICE, &account(provider_id))?.get_password() {
-            Ok(k) => Ok(Some(k)),
-            Err(keyring::Error::NoEntry) => Ok(None),
-            Err(e) => Err(e.into()),
-        }
-    })
+}
+
+/// Segna che per questo provider il Portachiavi è già stato guardato una volta.
+#[cfg(target_os = "macos")]
+fn imported_marker(dir: &Path, provider_id: &str) -> std::path::PathBuf {
+    key_file(dir, provider_id).with_extension("imported")
 }
 
 #[cfg(target_os = "macos")]
-pub fn set_api_key(_dir: &Path, provider_id: &str, key: &str) -> Result<()> {
+pub fn get_api_key(dir: &Path, provider_id: &str) -> Result<Option<String>> {
+    if let Some(k) = env_key(provider_id) {
+        return Ok(Some(k));
+    }
+    if USE_KEYCHAIN {
+        return CACHE.get(provider_id, || keychain_get(provider_id));
+    }
+    if let Some(k) = file_get(dir, provider_id) {
+        return Ok(Some(k));
+    }
+    // prima volta in sviluppo: la chiave salvata dal Portachiavi viene copiata nel file,
+    // con un'ultima richiesta di password; poi il Portachiavi non si tocca più
+    let marker = imported_marker(dir, provider_id);
+    if marker.exists() {
+        return Ok(None);
+    }
+    let key = CACHE.get(provider_id, || keychain_get(provider_id))?;
+    if let Some(k) = &key {
+        file_set(dir, provider_id, k)?;
+    }
+    let _ = std::fs::write(marker, "");
+    Ok(key)
+}
+
+#[cfg(target_os = "macos")]
+pub fn set_api_key(dir: &Path, provider_id: &str, key: &str) -> Result<()> {
+    if !USE_KEYCHAIN {
+        // una chiave tolta qui non deve tornare dal Portachiavi al prossimo avvio
+        let _ = std::fs::write(imported_marker(dir, provider_id), "");
+        CACHE.set(provider_id, (!key.is_empty()).then(|| key.to_string()));
+        return file_set(dir, provider_id, key);
+    }
     let entry = keyring::Entry::new(SERVICE, &account(provider_id))?;
     if key.is_empty() {
         let _ = entry.delete_credential();
@@ -93,7 +135,6 @@ pub fn set_api_key(_dir: &Path, provider_id: &str, key: &str) -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
 fn key_file(dir: &Path, provider_id: &str) -> std::path::PathBuf {
     if provider_id == ANTHROPIC_ID {
         dir.join("api_key")
@@ -102,19 +143,28 @@ fn key_file(dir: &Path, provider_id: &str) -> std::path::PathBuf {
     }
 }
 
+/// La chiave salvata in un file della cartella dati, leggibile solo dall'utente (0600).
+fn file_get(dir: &Path, provider_id: &str) -> Option<String> {
+    match std::fs::read_to_string(key_file(dir, provider_id)) {
+        Ok(k) if !k.trim().is_empty() => Some(k.trim().to_string()),
+        _ => None,
+    }
+}
+
 #[cfg(not(target_os = "macos"))]
 pub fn get_api_key(dir: &Path, provider_id: &str) -> Result<Option<String>> {
     if let Some(k) = env_key(provider_id) {
         return Ok(Some(k));
     }
-    match std::fs::read_to_string(key_file(dir, provider_id)) {
-        Ok(k) if !k.trim().is_empty() => Ok(Some(k.trim().to_string())),
-        _ => Ok(None),
-    }
+    Ok(file_get(dir, provider_id))
 }
 
 #[cfg(not(target_os = "macos"))]
 pub fn set_api_key(dir: &Path, provider_id: &str, key: &str) -> Result<()> {
+    file_set(dir, provider_id, key)
+}
+
+fn file_set(dir: &Path, provider_id: &str, key: &str) -> Result<()> {
     let path = key_file(dir, provider_id);
     if key.is_empty() {
         let _ = std::fs::remove_file(path);
@@ -132,6 +182,24 @@ pub fn set_api_key(dir: &Path, provider_id: &str, key: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn key_files_are_private_and_removable() {
+        let dir = std::env::temp_dir().join(format!("granello-keys-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert_eq!(file_get(&dir, "gladia"), None);
+        file_set(&dir, "gladia", "sk-file").unwrap();
+        assert_eq!(file_get(&dir, "gladia").as_deref(), Some("sk-file"));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(key_file(&dir, "gladia")).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
+        file_set(&dir, "gladia", "").unwrap();
+        assert_eq!(file_get(&dir, "gladia"), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn accounts_are_per_provider() {
