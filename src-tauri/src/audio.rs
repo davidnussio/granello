@@ -379,7 +379,8 @@ fn spawn_transcriber(
     let base_ms = cfg.base_ms;
     // solo dal vivo: di un file caricato esiste già l'originale
     let keep_audio = cfg.keep_audio.clone().filter(|_| import.is_none());
-    let save_recording = cfg.save_recording.clone().filter(|_| import.is_none());
+    // anche un file caricato diventa una registrazione da riascoltare (solo l'audio, se è un video)
+    let save_recording = cfg.save_recording.clone();
     let speakers = cfg.speakers.clone();
     std::thread::Builder::new().name("granello-transcribe".into()).spawn(move || {
         let mut keeper = keep_audio.and_then(|(path, origin)| {
@@ -964,6 +965,18 @@ mod tests {
         // nessun blocco oltre il massimo (più il margine di mezzo secondo del passo)
         let longest = chunks.iter().map(|c| c.samples.len()).max().unwrap();
         assert!(longest <= 21 * 16_000, "blocco di {longest} campioni");
+        // salvati come registrazione, i blocchi ricostruiscono il file sulla sua linea del tempo:
+        // le pause tornano silenzio e la durata resta quella dell'originale (46 s)
+        let saved = std::env::temp_dir().join(format!("granello-import-{}.wav", std::process::id()));
+        {
+            let mut keeper = crate::keep::Keeper::open(&saved).unwrap();
+            for c in &chunks {
+                keeper.add(c.start_ms - 5000, &c.samples).unwrap();
+            }
+        }
+        let duration = crate::recordings::wav_duration_ms(std::fs::metadata(&saved).unwrap().len());
+        std::fs::remove_file(&saved).unwrap();
+        assert!((42_000..=46_500).contains(&duration), "registrazione di {duration} ms");
         // tutto l'audio non silenzioso è stato consegnato: 46s meno i ~5s di pause
         let total: usize = chunks.iter().map(|c| c.samples.len()).sum();
         assert!(total > 40 * 16_000 && total <= 46 * 16_000 + 16, "{total} campioni");

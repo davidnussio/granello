@@ -808,7 +808,8 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
         // l'audio si conserva solo per l'affinamento online: opzione attiva, chiave presente,
         // meeting senza vincoli di privacy
         speakers: Default::default(),
-        save_recording: (file.is_none() && settings.save_recordings)
+        save_recording: settings
+            .save_recordings
             .then(|| -> Option<audio::SaveRecording> {
                 let started_at = chrono::Utc::now().timestamp_millis();
                 let dir = recordings::dir(&state.data_dir, settings.recordings_dir.as_deref());
