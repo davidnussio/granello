@@ -73,6 +73,8 @@ export function slashExtension(commands: CommandItem[], bridge: SlashBridge) {
 }
 
 const MENU_MAX_HEIGHT = 320;
+/** Largo quanto basta perché titolo e suggerimento stiano su una riga. */
+const MENU_WIDTH = 420;
 
 export function SlashMenu({ bridge }: { bridge: SlashBridge }) {
   const [state, setState] = useState<MenuState>(null);
@@ -114,7 +116,9 @@ export function SlashMenu({ bridge }: { bridge: SlashBridge }) {
   // sotto il cursore, oppure sopra se in basso non c'è spazio
   const below = window.innerHeight - rect.bottom > MENU_MAX_HEIGHT + 16;
   const style: React.CSSProperties = {
-    left: Math.max(8, Math.min(rect.left, window.innerWidth - 288)),
+    left: Math.max(8, Math.min(rect.left, window.innerWidth - MENU_WIDTH - 8)),
+    width: MENU_WIDTH,
+    maxWidth: "calc(100vw - 16px)",
     ...(below ? { top: rect.bottom + 6 } : { bottom: window.innerHeight - rect.top + 6 }),
     maxHeight: MENU_MAX_HEIGHT,
   };
@@ -136,6 +140,8 @@ export function SlashMenu({ bridge }: { bridge: SlashBridge }) {
               role="option"
               aria-selected={i === selected}
               className={"slash-item" + (i === selected ? " on" : "")}
+              // un suggerimento lungo viene troncato: passandoci sopra si legge intero
+              title={item.hint}
               onMouseEnter={() => setSelected(i)}
               // mousedown: il click toglierebbe il fuoco all'editor chiudendo il menu
               onMouseDown={(e) => {
