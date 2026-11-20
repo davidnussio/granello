@@ -836,9 +836,9 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 
 /* AI nei blocchi: pulsante ✦ e campo della richiesta */
 .ProseMirror .data-block { position: relative; }
-.block-ai-btn { position: absolute; top: -10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--accent); font-size: 11px; line-height: 1; opacity: 0; transition: opacity 0.12s; }
-.data-block:hover > .block-ai-btn, .data-block:focus-within > .block-ai-btn, .block-ai-btn.on { opacity: 1; }
-.block-ai-btn:hover, .block-ai-btn.on { border-color: var(--accent); }
+.block-ai-btn { position: absolute; top: 4px; right: 4px; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: none; border-radius: 6px; background: var(--card); color: var(--muted); opacity: 0; transition: opacity 0.12s; }
+.data-block:hover > .block-ai-btn, .data-block:focus-within > .block-ai-btn { opacity: 0.7; }
+.data-block > .block-ai-btn:hover, .data-block > .block-ai-btn.on { opacity: 1; color: var(--text); background: var(--panel); }
 .block-ai-bar { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 8px; border: 1px solid var(--accent); border-radius: 8px; background: var(--panel); }
 .block-ai-mark { color: var(--accent); }
 .data-block .block-ai-input { flex: 1; }
@@ -880,7 +880,7 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .sparkles { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; }
 .btn .sparkles, .chip .sparkles, .seg .sparkles, .nav-item .sparkles { margin-right: 0.1em; }
 .title-ai .sparkles { width: 20px; height: 20px; }
-.block-ai-btn .sparkles { width: 13px; height: 13px; vertical-align: middle; }
+.block-ai-btn .sparkles { width: 15px; height: 15px; }
 .block-btn .sparkles, .mic-btn .sparkles { width: 14px; height: 14px; vertical-align: middle; }
 .slash-icon .sparkles, .tb-btn .sparkles { width: 15px; height: 15px; vertical-align: middle; }
 .block-ai-mark, .ai-mark { display: inline-flex; align-items: center; }
