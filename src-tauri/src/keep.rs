@@ -23,8 +23,32 @@ pub fn exists(data_dir: &Path, meeting_id: &str) -> bool {
 /// Cancella l'audio conservato, se c'è.
 pub fn remove(data_dir: &Path, meeting_id: &str) {
     if let Some(p) = path(data_dir, meeting_id) {
+        let _ = std::fs::remove_file(p.with_extension("origin"));
         let _ = std::fs::remove_file(p);
     }
+}
+
+/// Il punto del meeting (ms) da cui parte l'audio conservato. Riprendendo una registrazione
+/// già affinata il file comincia da lì, non dall'inizio del meeting: è quello che permette
+/// di sostituire solo la parte nuova della trascrizione.
+pub fn origin(data_dir: &Path, meeting_id: &str) -> i64 {
+    path(data_dir, meeting_id)
+        .and_then(|p| std::fs::read_to_string(p.with_extension("origin")).ok())
+        .and_then(|s| s.trim().parse().ok())
+        .unwrap_or(0)
+}
+
+/// Prepara l'audio da conservare per una sessione che parte al punto `base_ms` del meeting e
+/// ritorna il file con il suo punto di partenza. Se c'è già dell'audio non ancora affinato,
+/// la sessione lo prosegue e il punto di partenza resta quello.
+pub fn begin(data_dir: &Path, meeting_id: &str, base_ms: i64) -> Option<(PathBuf, i64)> {
+    let p = path(data_dir, meeting_id)?;
+    if p.is_file() {
+        return Some((p, origin(data_dir, meeting_id)));
+    }
+    std::fs::create_dir_all(p.parent()?).ok()?;
+    std::fs::write(p.with_extension("origin"), base_ms.to_string()).ok()?;
+    Some((p, base_ms))
 }
 
 fn header(data_len: u32) -> [u8; HEADER as usize] {
@@ -137,6 +161,14 @@ mod tests {
         assert_eq!(std::fs::read(&p).unwrap().len(), bytes.len());
         remove(&dir, "abc-123");
         assert!(!exists(&dir, "abc-123"));
+        // una ripresa dopo l'affinamento parte dal suo punto del meeting, e lo ricorda
+        assert_eq!(begin(&dir, "abc-123", 90_000).unwrap().1, 90_000);
+        assert_eq!(origin(&dir, "abc-123"), 90_000);
+        drop(Keeper::open(&p).unwrap());
+        // un'altra ripresa prima dell'affinamento prosegue lo stesso audio
+        assert_eq!(begin(&dir, "abc-123", 200_000).unwrap().1, 90_000);
+        remove(&dir, "abc-123");
+        assert_eq!(origin(&dir, "abc-123"), 0);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

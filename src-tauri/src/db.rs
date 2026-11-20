@@ -658,11 +658,15 @@ impl Db {
         })
     }
 
-    /// Sostituisce tutta la trascrizione di un meeting (dopo l'affinamento online).
+    /// Sostituisce la trascrizione di un meeting dal punto `from_ms` in poi (dopo l'affinamento
+    /// online): ciò che viene prima, cioè le registrazioni precedenti, resta com'è.
     /// Ogni riga: sorgente (o nome del parlante), inizio, fine, testo.
-    pub fn replace_segments(&self, meeting_id: &str, rows: &[(String, i64, i64, String)]) -> Result<()> {
+    pub fn replace_segments(&self, meeting_id: &str, from_ms: i64, rows: &[(String, i64, i64, String)]) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
-        self.conn.execute("DELETE FROM transcript_segments WHERE meeting_id = ?1", [meeting_id])?;
+        self.conn.execute(
+            "DELETE FROM transcript_segments WHERE meeting_id = ?1 AND start_ms >= ?2",
+            params![meeting_id, from_ms],
+        )?;
         for (source, start_ms, end_ms, text) in rows {
             self.conn.execute(
                 "INSERT INTO transcript_segments (meeting_id, source, start_ms, end_ms, text) VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -1062,6 +1066,19 @@ mod tests {
         assert_eq!(db.segments(&m.id).unwrap()[1].text, REDACTED);
         assert_eq!(redact_text("uno due tre", Some((4, 7))), format!("uno {REDACTED} tre"));
         assert_eq!(redact_text(&format!("uno {REDACTED} tre"), Some((3, 4))), format!("uno{REDACTED} tre"));
+    }
+
+    #[test]
+    fn refining_a_resumed_recording_keeps_what_came_before() {
+        let db = Db::open_in_memory().unwrap();
+        let m = db.create_meeting("Due riprese", None, &[], None).unwrap();
+        db.add_segment(&m.id, "Marco", 1000, 4000, "Prima registrazione, già affinata.").unwrap();
+        db.add_segment(&m.id, "me", 60_000, 63_000, "Seconda registrazione, locale.").unwrap();
+        db.add_segment(&m.id, "them", 64_000, 66_000, "Ancora locale.").unwrap();
+        // l'audio conservato parte dal minuto 1: si sostituisce solo da lì
+        db.replace_segments(&m.id, 60_000, &[("Parlante 2".into(), 60_500, 66_000, "Seconda registrazione, affinata.".into())]).unwrap();
+        let texts: Vec<String> = db.segments(&m.id).unwrap().into_iter().map(|s| format!("{}: {}", s.source, s.text)).collect();
+        assert_eq!(texts, vec!["Marco: Prima registrazione, già affinata.", "Parlante 2: Seconda registrazione, affinata."]);
     }
 
     #[test]

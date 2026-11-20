@@ -593,18 +593,30 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
     if utterances.is_empty() {
         return Err(tr("Gladia non ha trovato parlato nell'audio: la trascrizione locale resta com'è", "Gladia found no speech in the audio: the local transcript is unchanged").into());
     }
+    // l'audio parte dal punto del meeting in cui è cominciata la registrazione conservata:
+    // dopo una ripresa non è l'inizio, e ciò che viene prima non va toccato
+    let origin = keep::origin(&state.data_dir, &meeting_id);
+    let db = state.db.lock();
+    // i parlanti di questa registrazione non sono quelli delle precedenti: i numeri proseguono
+    let taken = db
+        .segments(&meeting_id)
+        .map_err(err)?
+        .iter()
+        .filter(|s| s.start_ms < origin)
+        .filter_map(|s| s.source.strip_prefix("Parlante ").or_else(|| s.source.strip_prefix("Speaker ")).and_then(|n| n.parse::<u32>().ok()))
+        .max()
+        .unwrap_or(0);
     let rows: Vec<(String, i64, i64, String)> = utterances
         .into_iter()
         .map(|u| {
             let who = match u.speaker {
-                Some(n) => trf!("Parlante {}", "Speaker {}", n + 1),
+                Some(n) => trf!("Parlante {}", "Speaker {}", taken + n + 1),
                 None => "them".to_string(),
             };
-            (who, u.start_ms, u.end_ms, u.text)
+            (who, origin + u.start_ms, origin + u.end_ms, u.text)
         })
         .collect();
-    let db = state.db.lock();
-    db.replace_segments(&meeting_id, &rows).map_err(err)?;
+    db.replace_segments(&meeting_id, origin, &rows).map_err(err)?;
     keep::remove(&state.data_dir, &meeting_id);
     db.segments(&meeting_id).map_err(err)
 }
@@ -808,7 +820,7 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
             })
             .flatten(),
         keep_audio: (file.is_none() && settings.online_transcription && meeting.privacy == Privacy::Open && gladia_key(state).is_some())
-            .then(|| keep::path(&state.data_dir, &meeting_id))
+            .then(|| keep::begin(&state.data_dir, &meeting_id, base_ms))
             .flatten(),
     };
     let (db, cache) = (state.db.clone(), state.transcribers.clone());

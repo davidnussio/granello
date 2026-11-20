@@ -305,8 +305,9 @@ pub struct SessionConfig {
     pub prompt: String,
     pub base_ms: i64,
     /// Se presente, l'audio della registrazione dal vivo viene anche scritto in questo file,
-    /// per l'affinamento online a fine riunione (vedi `keep`).
-    pub keep_audio: Option<PathBuf>,
+    /// per l'affinamento online a fine riunione (vedi `keep`). Il numero è il punto del
+    /// meeting (ms) a cui corrisponde l'inizio del file.
+    pub keep_audio: Option<(PathBuf, i64)>,
     /// Se presente, la sessione viene salvata come registrazione da riascoltare.
     pub save_recording: Option<SaveRecording>,
     /// Chi sta parlando al microfono, nel tempo (vedi `Speakers`).
@@ -381,15 +382,16 @@ fn spawn_transcriber(
     let save_recording = cfg.save_recording.clone().filter(|_| import.is_none());
     let speakers = cfg.speakers.clone();
     std::thread::Builder::new().name("granello-transcribe".into()).spawn(move || {
-        let mut keeper = keep_audio.and_then(|path| {
-            crate::keep::Keeper::open(&path).map_err(|e| log::error!("audio conservato: {e}")).ok()
+        let mut keeper = keep_audio.and_then(|(path, origin)| {
+            let keeper = crate::keep::Keeper::open(&path).map_err(|e| log::error!("audio conservato: {e}")).ok()?;
+            Some((keeper, origin))
         });
         let mut recorder = save_recording.as_ref().and_then(|r| {
             crate::keep::Keeper::open(&r.path).map_err(|e| log::error!("registrazione: {e}")).ok()
         });
         for chunk in chunk_rx {
-            if let Some(k) = keeper.as_mut() {
-                if let Err(e) = k.add(chunk.start_ms, &chunk.samples) {
+            if let Some((k, origin)) = keeper.as_mut() {
+                if let Err(e) = k.add(chunk.start_ms - *origin, &chunk.samples) {
                     log::error!("audio conservato: {e}");
                 }
             }
