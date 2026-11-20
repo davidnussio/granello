@@ -9,6 +9,7 @@ import ChatPanel from "./ChatPanel";
 import { dayLabel, mmss, time } from "../format";
 import { t } from "../i18n";
 import type { Editor } from "@tiptap/react";
+import { insertQuote, quoteMd } from "../editor/plugins/transcriptQuote";
 import { MOMENT_EVENTS, emptyMoments, fillMomentsIn, fillMomentsMd, insertMoment, momentMd } from "../editor/plugins/moment";
 
 interface Props {
@@ -89,9 +90,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   // l'editor delle note, quando è a schermo: i momenti segnati vanno lì
   const notesEditor = useRef<Editor | null>(null);
   const notesRef = useRef("");
+  const enhancedEditor = useRef<Editor | null>(null);
+  const [userName, setUserName] = useState("");
   const fillRef = useRef<(auto: boolean) => void>(() => {});
   const markRef = useRef<(from?: Editor) => void>(() => {});
   const fillingRef = useRef(false);
+  const tabRef = useRef<Tab>("notes");
+  const setNotesRef = useRef<(md: string) => void>(() => {});
 
   // la sessione su questo meeting è una registrazione dal vivo oppure un file in trascrizione
   const inSession = rec.meetingId === id;
@@ -119,7 +124,12 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
 
   const loadDevices = useCallback(() => {
     api.listAudioDevices().then(setDevices).catch(() => {});
-    api.getSettings().then((s) => setSystemDevice(s.systemDevice)).catch(() => {});
+    api.getSettings()
+      .then((s) => {
+        setSystemDevice(s.systemDevice);
+        setUserName(s.userName ?? "");
+      })
+      .catch(() => {});
   }, []);
   useEffect(loadDevices, [loadDevices, id]);
 
@@ -187,6 +197,19 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
     setMeeting((m) => (m ? { ...m, notesMd: md } : m));
     saveNotes(md);
   };
+
+  // Una frase selezionata nella trascrizione diventa una citazione nella nota che si sta guardando.
+  const addQuote = useCallback(
+    (picked: { ms: number; source: TranscriptSegment["source"]; text: string }) => {
+      const who = picked.source === "me" ? userName.trim() || t("Io") : picked.source === "file" ? "" : t("Altri");
+      const quote = { ms: picked.ms, who, text: picked.text };
+      const editor = tabRef.current === "enhanced" ? enhancedEditor.current : notesEditor.current;
+      if (editor && !editor.isDestroyed) insertQuote(editor, quote);
+      else setNotesRef.current(`${notesRef.current.trimEnd()}\n\n${quoteMd(quote)}\n`.trimStart());
+      toast(tabRef.current === "enhanced" && editor ? t("Citazione aggiunta alle note AI") : t("Citazione aggiunta alle tue note"));
+    },
+    [userName, toast],
+  );
 
   // Segna il momento attuale della registrazione. `from` è l'editor da cui parte il comando "/".
   const markMoment = async (from?: Editor) => {
@@ -312,6 +335,8 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   enhanceRef.current = enhance;
   hasEnhancedRef.current = !!meeting?.enhancedMd;
   notesRef.current = meeting?.notesMd ?? "";
+  tabRef.current = tab;
+  setNotesRef.current = setNotes;
 
   // rigenerare sostituisce le note AI (e le modifiche fatte a mano): serve una conferma
   const requestEnhance = () => {
@@ -533,6 +558,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
                 docKey={id + ":enhanced:" + enhVersion}
                 value={meeting.enhancedMd ?? ""}
                 className="enhanced"
+                onEditor={(editor) => (enhancedEditor.current = editor)}
                 onChange={(md) => saveEnhanced(md)}
               />
             ))}
@@ -623,7 +649,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             </button>
           </div>
           {side === "transcript" ? (
-            <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} focus={transcriptFocus} />
+            <TranscriptPanel segments={segments} live={isRecording} importing={isImporting} focus={transcriptFocus} onQuote={addQuote} />
           ) : (
             <ChatPanel
               scope={id}

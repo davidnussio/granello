@@ -461,6 +461,14 @@ const en: Record<string, string> = {
   "{n} momenti segnati sono stati riempiti": "{n} marked moments were filled in",
   "Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)": "Mark this moment in the notes: when the meeting ends the AI writes what was being said (⇧⌘M)",
   "⚑ Segna": "⚑ Mark",
+  "La frase detta nel meeting": "The sentence said in the meeting",
+  "Chi l'ha detto": "Who said it",
+  "Citazione dalla trascrizione": "Transcript quote",
+  "Una frase detta, con chi e a che minuto": "Something that was said, with who and when",
+  "❝ Cita nelle note": "❝ Quote in notes",
+  "Io": "Me",
+  "Citazione aggiunta alle note AI": "Quote added to the AI notes",
+  "Citazione aggiunta alle tue note": "Quote added to your notes",
 };
 
 export default en;

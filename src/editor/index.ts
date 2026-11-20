@@ -31,10 +31,11 @@ import { diagram } from "./plugins/diagram";
 import { sketch } from "./plugins/sketch";
 import { embed } from "./plugins/embed";
 import { moment } from "./plugins/moment";
+import { transcriptQuote } from "./plugins/transcriptQuote";
 
 export type { CommandItem, EditorPlugin, PluginContext, SuggestMenu, ToolbarItem } from "./types";
 export { base, formatting, headings, lists, tasks, blocks, links, snippets };
-export { highlight, mention, date, math, callout, toggle, columns, table, media, linkCard, toc, poll, kanban, timeline, prosCons, matrix, rating, timer, progress, chart, diagram, sketch, embed, moment };
+export { highlight, mention, date, math, callout, toggle, columns, table, media, linkCard, toc, poll, kanban, timeline, prosCons, matrix, rating, timer, progress, chart, diagram, sketch, embed, moment, transcriptQuote };
 
 /** Plugin attivi di default. L'ordine determina l'ordine di comandi e pulsanti. */
 export const defaultPlugins: EditorPlugin[] = [
@@ -68,6 +69,7 @@ export const defaultPlugins: EditorPlugin[] = [
   sketch,
   embed,
   moment,
+  transcriptQuote,
   mention,
   date,
 ];

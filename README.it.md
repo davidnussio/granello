@@ -8,6 +8,7 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
 
 - **Note + registrazione**: editor Markdown (TipTap) con menu `/` dei comandi, barra di formattazione sulla selezione, link e checklist, salvataggio automatico, registrazione con livelli audio e cronometro, ripresa sullo stesso meeting.
 - **Momenti segnati**: mentre registri premi ⇧⌘M (o "⚑ Segna") e nella nota resta un marcatore con il minuto, senza spostare il cursore. Finita la trascrizione, l'AI scrive in ogni marcatore cosa si stava dicendo attorno a quel minuto; ↗ sul marcatore apre la trascrizione in quel punto. I marcatori dicono anche alle note AI quali parti contavano per te.
+- **Citazioni dalla trascrizione**: seleziona una frase nel pannello della trascrizione e "❝ Cita nelle note" la trasforma in una citazione con chi l'ha detta e il minuto. Chi parla parte da te o da "Altri" e si può correggere; ↗ riapre la trascrizione in quel punto.
 - **Blocchi dell'editor**: tabelle, riquadri in evidenza, sezioni richiudibili, colonne, immagini (incolla uno screenshot), allegati, anteprime dei link, formule LaTeX, indice sempre aggiornato, evidenziatore, menzioni `@persona` e date; più gli strumenti da riunione: sondaggi, lavagne a colonne, timeline, pro e contro, matrici di decisione, valutazioni a stelle, timer, barre di avanzamento, grafici, diagrammi Mermaid, una lavagna a mano libera e contenuti incorporati. Tutto resta salvato come Markdown leggibile:
 
   | Blocco | Scorciatoia | In Markdown |
@@ -35,6 +36,7 @@ Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Gr
   | Diagramma | menu `/` | un blocco di codice `mermaid` |
   | Lavagna | menu `/` | un blocco di codice `sketch`, una riga per tratto |
   | Incorpora | menu `/` | `[Titolo](https://… "embed")` |
+  | Citazione dalla trascrizione | selezione del testo nella trascrizione, menu `/` | `::: quote 12:34 Nome` … `:::` |
   | Momento segnato | ⇧⌘M o "⚑ Segna" mentre registri, menu `/` | `::: moment 12:34` … `:::` |
 - **Trascrizione locale**: whisper.cpp con Metal su Apple Silicon. L'audio viene tagliato sulle pause (6-20 s), ricampionato a 16 kHz e trascritto in un thread dedicato. Filtra le allucinazioni tipiche ("Sottotitoli a cura di QTSS", "[Musica]"...). Il titolo e i partecipanti vengono passati come prompt iniziale per migliorare nomi e termini.
 - **Due sorgenti**: microfono ("Tu") e un dispositivo di loopback per l'audio della call ("Altri").

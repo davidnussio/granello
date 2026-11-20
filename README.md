@@ -8,6 +8,7 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
 
 - **Notes + recording**: Markdown editor (TipTap) with a `/` command menu, a formatting toolbar on selection, links and checklists, autosave, recording with audio levels and a timer, resuming on the same meeting.
 - **Moment markers**: while recording, press ⇧⌘M (or "⚑ Mark") and the note keeps a marker with the minute, without moving your cursor. When the transcription ends, the AI writes in each marker what was being said around that minute; ↗ on a marker opens the transcript at that point. Markers also tell the AI notes which parts mattered to you.
+- **Transcript quotes**: select a sentence in the transcript panel and "❝ Quote in notes" turns it into a quote with who said it and the minute. The speaker starts as you or "Others" and can be corrected; ↗ reopens the transcript at that point.
 - **Editor blocks**: tables, callouts, collapsible sections, columns, images (paste a screenshot), file attachments, link previews, LaTeX formulas, a live table of contents, highlighting, `@person` mentions and date pills; plus meeting tools: polls, kanban boards, timelines, pros and cons, decision matrices, star ratings, timers, progress bars, charts, Mermaid diagrams, a freehand whiteboard and embeds. Everything is still saved as readable Markdown:
 
   | Block | Shortcut | In Markdown |
@@ -35,6 +36,7 @@ A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, 
   | Diagram | `/` menu | a `mermaid` code block |
   | Whiteboard | `/` menu | a `sketch` code block, one line per stroke |
   | Embed | `/` menu | `[Title](https://… "embed")` |
+  | Transcript quote | select text in the transcript, `/` menu | `::: quote 12:34 Name` … `:::` |
   | Moment marker | ⇧⌘M or "⚑ Mark" while recording, `/` menu | `::: moment 12:34` … `:::` |
 - **Local transcription**: whisper.cpp with Metal on Apple Silicon. Audio is cut on pauses (6-20 s), resampled to 16 kHz and transcribed on a dedicated thread. Typical hallucinations ("Thanks for watching", "[Music]"...) are filtered out. The meeting title and attendees are passed as the initial prompt to improve names and terms.
 - **Two sources**: the microphone ("You") and a loopback device for the call audio ("Others").

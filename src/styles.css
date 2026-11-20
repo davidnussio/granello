@@ -809,3 +809,17 @@ h4.sub { margin: 20px 0 8px; font-size: 11px; text-transform: uppercase; letter-
 .block-moment.empty .moment-text::placeholder { font-style: italic; }
 .block-moment .block-btn { margin-top: 1px; }
 .bubble.focused { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* citazione dalla trascrizione */
+.ProseMirror .data-block.block-quote { display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; border-left: 3px solid var(--accent); }
+.tq-mark { flex: none; color: var(--accent); font-size: 20px; line-height: 26px; }
+.tq-body { flex: 1; min-width: 0; }
+.tq-text { display: block; width: 100%; resize: none; overflow: hidden; border: none; background: none; outline: none; color: inherit; font: inherit; font-style: italic; line-height: 1.45; padding: 2px 5px; border-radius: 5px; }
+.tq-text:hover { background: var(--panel); }
+.tq-text:focus { background: var(--panel); box-shadow: 0 0 0 1px var(--accent); }
+.tq-source { display: flex; align-items: center; gap: 2px; padding-left: 5px; color: var(--muted); font-size: 12.5px; }
+.data-block .tq-who { flex: 0 1 160px; }
+.data-block .tq-time { flex: none; width: 58px; font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
+.transcript { position: relative; }
+.quote-pick { position: absolute; right: 12px; z-index: 2; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
+.bubble-meta { user-select: none; -webkit-user-select: none; }

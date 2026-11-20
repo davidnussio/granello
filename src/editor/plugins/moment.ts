@@ -1,8 +1,9 @@
 import type { Editor } from "@tiptap/react";
 import { dataBlock, type BlockView } from "../dataBlock";
-import { field, h } from "../dom";
+import { area, field, h } from "../dom";
 import { mmss } from "../../format";
 import { t } from "../../i18n";
+import { SHOW_IN_TRANSCRIPT, insertAside, oneLine, parseTime, showInTranscript } from "../meeting";
 import type { EditorPlugin } from "../types";
 
 interface Moment {
@@ -25,17 +26,8 @@ export const MOMENT_EVENTS = {
   /** Chiedi all'AI di riempire i momenti vuoti. */
   fill: "granello:fill-moments",
   /** Mostra la trascrizione a quel punto. `detail`: i millisecondi. */
-  show: "granello:show-moment",
+  show: SHOW_IN_TRANSCRIPT,
 } as const;
-
-/** "12:34" oppure "1:02:03" in millisecondi. */
-export function parseTime(text: string): number | null {
-  const m = /^(?:(\d{1,2}):)?(\d{1,3}):([0-5]\d)$/.exec(text.trim());
-  if (!m) return null;
-  return ((Number(m[1] ?? 0) * 60 + Number(m[2])) * 60 + Number(m[3])) * 1000;
-}
-
-const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 
 /** Il blocco così com'è scritto in Markdown. */
 export function momentMd(ms: number, text = ""): string {
@@ -80,27 +72,9 @@ export function fillMomentsIn(editor: Editor, fills: MomentFill[]): number {
   return count;
 }
 
-/**
- * Mette il marcatore senza spostare il cursore: chi lo segna sta ascoltando o scrivendo,
- * e deve poter continuare. Va dopo il blocco in cui si sta scrivendo (prima, se è una riga
- * vuota), oppure in fondo alla nota.
- */
+/** Mette il marcatore nella nota senza spostare il cursore. */
 export function insertMoment(editor: Editor, ms: number) {
-  const { state } = editor;
-  const node = state.schema.nodes.moment.create({ data: { ms, text: "" } });
-  const { $from } = state.selection;
-  let pos = state.doc.content.size;
-  // la riga vuota che chiude la nota resta in fondo
-  const last = state.doc.lastChild;
-  if (last && last.type.name === "paragraph" && last.content.size === 0) pos -= last.nodeSize;
-  // senza il cursore nell'editor vale l'ultimo punto in cui si è scritto; se non si è mai
-  // scritto (la selezione è ancora all'inizio) il marcatore va in fondo
-  if ((editor.isFocused || $from.pos > 1) && $from.depth > 0) {
-    const block = $from.node(1);
-    const emptyLine = block.type.name === "paragraph" && block.content.size === 0;
-    pos = emptyLine ? $from.before(1) : $from.after(1);
-  }
-  editor.view.dispatch(state.tr.insert(pos, node));
+  insertAside(editor, editor.state.schema.nodes.moment.create({ data: { ms, text: "" } }));
 }
 
 function render(view: BlockView<Moment>) {
@@ -109,33 +83,11 @@ function render(view: BlockView<Moment>) {
   const filled = data.text.trim().length > 0;
   view.dom.classList.toggle("empty", !filled);
 
-  const text = h("textarea", {
+  const text = area(data.text, (next) => view.set({ ...data, text: next }), {
     class: "moment-text",
-    rows: 1,
-    value: data.text,
     readOnly: !editable,
     placeholder: t("Cosa si stava dicendo? A fine riunione lo scrive l'AI"),
     attrs: { "data-focus": "text", "aria-label": t("Cosa si stava dicendo in quel momento") },
-  });
-  const fit = () => {
-    text.style.height = "auto";
-    text.style.height = `${text.scrollHeight}px`;
-  };
-  const commit = () => {
-    const next = oneLine(text.value);
-    if (next !== data.text) view.set({ ...data, text: next });
-  };
-  text.addEventListener("input", fit);
-  text.addEventListener("blur", commit);
-  text.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      text.blur();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      text.value = data.text;
-      text.blur();
-    }
   });
 
   view.dom.replaceChildren(
@@ -175,14 +127,11 @@ function render(view: BlockView<Moment>) {
         type: "button",
         class: "block-btn",
         title: t("Apri la trascrizione a questo punto"),
-        on: { click: () => window.dispatchEvent(new CustomEvent<number>(MOMENT_EVENTS.show, { detail: data.ms })) },
+        on: { click: () => showInTranscript(data.ms) },
       },
       "↗",
     ),
   );
-  // l'altezza si può misurare solo quando il campo è nella pagina
-  if (text.isConnected) fit();
-  else requestAnimationFrame(fit);
 }
 
 /**

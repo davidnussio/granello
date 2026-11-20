@@ -202,6 +202,8 @@ quando il contesto lo rende evidente.\n\
 - \"Altri\" nella trascrizione indica gli altri partecipanti (audio di sistema), non una persona precisa.\n\
 - Un blocco \"::: moment MM:SS\" nelle note segna un momento che l'utente ha ritenuto importante mentre \
 ascoltava: dai risalto a ciò che si diceva in quel punto della trascrizione. Non riportare il blocco nelle note.\n\
+- Un blocco \"::: quote MM:SS Nome\" nelle note è una frase della trascrizione che l'utente ha voluto citare: \
+riportala testualmente, come citazione Markdown (\">\") con chi l'ha detta, nel punto delle note a cui appartiene.\n\
 - Le azioni vanno come checklist Markdown: \"- [ ] Responsabile: azione (scadenza)\".\n\
 - Non usare il trattino lungo.\n\
 - Scrivi anche i titoli delle sezioni nella lingua delle note, traducendo quelli indicati dal template se serve.\n\

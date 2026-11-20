@@ -58,3 +58,33 @@ export function field(
   });
   return input;
 }
+
+/**
+ * Campo di testo su più righe che cresce con il contenuto. Come `field`: conferma con Invio
+ * o uscendo, ripristina con Esc. Il testo resta una riga sola: gli a capo sono solo visivi.
+ */
+export function area(value: string, onCommit: (value: string) => void, props: Props = {}): HTMLTextAreaElement {
+  const text = h("textarea", { rows: 1, value, ...props });
+  const fit = () => {
+    text.style.height = "auto";
+    text.style.height = `${text.scrollHeight}px`;
+  };
+  text.addEventListener("input", fit);
+  text.addEventListener("blur", () => {
+    const next = text.value.replace(/\s+/g, " ").trim();
+    if (next !== value) onCommit(next);
+  });
+  text.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      text.blur();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      text.value = value;
+      text.blur();
+    }
+  });
+  // l'altezza si può misurare solo quando il campo è nella pagina
+  requestAnimationFrame(fit);
+  return text;
+}
