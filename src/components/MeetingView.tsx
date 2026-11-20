@@ -985,15 +985,6 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               <Meter label={t("Tu")} value={level.mic} />
               {level.system !== null && <Meter label={t("Altri")} value={level.system} />}
               <span className="muted small mono">{mmss(elapsed)}</span>
-              <button
-                className="btn small ghost"
-                onClick={() => markMoment()}
-                title={t(
-                  "Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)",
-                )}
-              >
-                {t("⚑ Segna")}
-              </button>
             </>
           )}
           {(finishing || (isRecording && rec.pendingChunks > 1)) && (
@@ -1003,6 +994,18 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             <span className="muted small">{t("Registrazione in corso altrove")}</span>
           )}
           <div className="spacer" />
+          {/* a destra sotto la nota, non nel pannello: resta lì anche quando il pannello è chiuso */}
+          {isRecording && (
+            <button
+              className="btn small mark-btn"
+              onClick={() => markMoment()}
+              title={t(
+                "Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)",
+              )}
+            >
+              {t("⚑ Segna")}
+            </button>
+          )}
           {side === "none" && sideButtons}
         </footer>
       </div>

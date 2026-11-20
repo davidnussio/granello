@@ -3,7 +3,7 @@
 // src-tauri/src/preview.rs). Serve per provare le modifiche all'interfaccia e per le
 // schermate della vetrina. Non entra nella build dell'app.
 //
-// Parametri: ?lang=it|en
+// Parametri: ?lang=it|en, ?rec (il primo meeting è in registrazione)
 import { mockConvertFileSrc, mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 
 interface Fixtures {
@@ -121,7 +121,13 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     logDir: "",
   }),
   system_time_format: () => ({ hour12: false, locale: lang === "it" ? "it-CH" : "en-GB" }),
-  recording_status: () => ({ meetingId: null, recording: false, importing: false, pendingChunks: 0 }),
+  // ?rec: il primo meeting risulta in registrazione, per vedere la barra con i suoi comandi
+  recording_status: () => ({
+    meetingId: params.has("rec") ? (data.meetings as { id: string }[])[0].id : null,
+    recording: params.has("rec"),
+    importing: false,
+    pendingChunks: 0,
+  }),
   recordings_info: () => ({ dir: "", defaultDir: "", ffmpeg: true }),
   list_recordings: (a) => recordings.filter((r) => !a.meetingId || r.meetingId === a.meetingId),
   recording_waveform: (a) => fakeWave(a.id as number),
