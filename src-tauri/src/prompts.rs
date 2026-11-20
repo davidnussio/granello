@@ -270,7 +270,7 @@ pub fn assist_user(kind: AssistKind, context: Option<&str>, instruction: &str, c
 pub fn enhance_system(language: &str) -> String {
     let lang = output_language(language);
     format!(
-        "Sei un assistente che scrive note di meeting eccellenti, nello stile di Granola.\n\
+        "Sei un assistente che scrive note di meeting eccellenti.\n\
 Ricevi: le note grezze scritte a mano dall'utente durante il meeting e la trascrizione automatica.\n\
 Il tuo compito è produrre note arricchite in Markdown, {lang}.\n\n\
 Regole:\n\

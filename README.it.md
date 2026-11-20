@@ -2,7 +2,7 @@
 
 [English](README.md) · **Italiano**
 
-Clone di [Granola](https://granola.ai): scrivi poche note durante il meeting, Granello registra e trascrive **in locale** con whisper.cpp, poi un modello AI (Claude o un modello locale) unisce le tue note e la trascrizione in note complete. Nessun bot entra nella call.
+Blocco note per i meeting su macOS: scrivi poche note durante il meeting, Granello registra e trascrive **in locale** con whisper.cpp, poi un modello AI (Claude o un modello locale) unisce le tue note e la trascrizione in note complete. Nessun bot entra nella call.
 
 ## Funzioni
 

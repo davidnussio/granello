@@ -2,7 +2,7 @@
 
 **English** · [Italiano](README.it.md)
 
-A [Granola](https://granola.ai) clone: jot down a few notes during the meeting, Granello records and transcribes **locally** with whisper.cpp, then an AI model (Claude or a local model) merges your notes and the transcript into complete notes. No bot joins the call.
+A meeting notepad for macOS: jot down a few notes during the meeting, Granello records and transcribes **locally** with whisper.cpp, then an AI model (Claude or a local model) merges your notes and the transcript into complete notes. No bot joins the call.
 
 ## Features
 
