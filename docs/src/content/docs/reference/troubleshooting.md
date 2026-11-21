@@ -42,7 +42,7 @@ The meeting is **hardened** and no local provider is configured, or it has parts
 
 ## Remove pauses and Merge are missing
 
-They need ffmpeg: `brew install ffmpeg`, then reopen Granello.
+They need ffmpeg. Release packages include it. In a build from source, install it (`brew install ffmpeg` on the Mac) or include it as described in [Install](/start/install/), then reopen Granello.
 
 ## Still stuck
 

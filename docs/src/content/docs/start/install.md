@@ -21,6 +21,13 @@ pnpm tauri dev      # run it in development
 pnpm tauri build    # .app and .dmg in src-tauri/target/release/bundle
 ```
 
+Release packages include a small ffmpeg, used to compress recordings and to remove pauses. A build from source uses the ffmpeg installed on the computer, if there is one. To include it as the releases do:
+
+```bash
+scripts/build-ffmpeg.sh
+pnpm tauri build --config src-tauri/tauri.ffmpeg.conf.json
+```
+
 The build is **not signed** with an Apple Developer ID. On the Mac that built it, it opens normally. Copied to another Mac, Gatekeeper blocks it on first launch.
 
 ## Linux and Windows (experimental)

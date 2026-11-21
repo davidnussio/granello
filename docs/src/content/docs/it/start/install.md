@@ -21,6 +21,13 @@ pnpm tauri dev      # avvio in sviluppo
 pnpm tauri build    # .app e .dmg in src-tauri/target/release/bundle
 ```
 
+I pacchetti di rilascio includono un piccolo ffmpeg, che serve a comprimere le registrazioni e a togliere le pause. Una build dal codice usa l'ffmpeg installato sul computer, se c'è. Per includerlo come nei rilasci:
+
+```bash
+scripts/build-ffmpeg.sh
+pnpm tauri build --config src-tauri/tauri.ffmpeg.conf.json
+```
+
 La build **non è firmata** con un Developer ID di Apple. Sul Mac che l'ha compilata si apre normalmente. Copiata su un altro Mac, Gatekeeper la blocca al primo avvio.
 
 ## Linux e Windows (sperimentale)

@@ -24,6 +24,7 @@ on:
       - src-tauri/Cargo.toml
       - src-tauri/Cargo.lock
       - src-tauri/tauri*.conf.json
+      - scripts/build-ffmpeg.sh
 
 permissions:
   contents: write
@@ -92,16 +93,20 @@ jobs:
           - os: macos-latest # Apple Silicon
             label: macOS-arm64
             arch: aarch64
+            triple: aarch64-apple-darwin
           - os: macos-15-intel # Mac Intel, supportato da GitHub fino all'autunno 2027
             label: macOS-intel
             arch: x86_64
+            triple: x86_64-apple-darwin
           # la glibc più vecchia possibile: l'AppImage gira sulle distribuzioni da lì in poi
           - os: ubuntu-22.04
             label: linux-x86_64
             arch: x86_64
+            triple: x86_64-unknown-linux-gnu
           - os: windows-latest
             label: windows-x86_64
             arch: x86_64
+            triple: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -128,6 +133,30 @@ jobs:
       - name: Dipendenze
         run: pnpm install --frozen-lockfile
 
+      # ffmpeg ridotto incluso nell'app: si ricompila solo quando cambia lo script
+      - name: Cache di ffmpeg
+        id: ffmpeg-cache
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/binaries
+          key: ffmpeg-${{ matrix.triple }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+
+      - name: Strumenti per compilare ffmpeg (Windows)
+        if: runner.os == 'Windows' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: make diffutils curl tar xz mingw-w64-x86_64-gcc
+
+      - name: ffmpeg
+        if: runner.os != 'Windows' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        run: scripts/build-ffmpeg.sh ${{ matrix.triple }}
+
+      - name: ffmpeg (Windows)
+        if: runner.os == 'Windows' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        shell: msys2 {0}
+        run: scripts/build-ffmpeg.sh ${{ matrix.triple }}
+
       # Gli artefatti dell'updater (firmati: .app.tar.gz, AppImage, installer) si
       # creano solo qui, così una build locale non chiede la chiave privata.
       - name: Build
@@ -135,7 +164,13 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm tauri build --config '{"bundle":{"createUpdaterArtifacts":true}}'
+        run: pnpm tauri build --config src-tauri/tauri.ffmpeg.conf.json --config '{"bundle":{"createUpdaterArtifacts":true}}'
+
+      - name: ffmpeg è nel pacchetto
+        shell: bash
+        run: |
+          ls -la src-tauri/target/release/ffmpeg*
+          if [ "$RUNNER_OS" = macOS ]; then test -x src-tauri/target/release/bundle/macos/Granello.app/Contents/MacOS/ffmpeg; fi
 
       - name: Nomi degli artefatti
         shell: bash

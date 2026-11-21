@@ -48,7 +48,7 @@ Con **Salva le registrazioni** attivo, la Libreria mostra una scheda per meeting
 - **Togli le pause** taglia le parti senza audio. Dopo, i minuti dell'audio non corrispondono più a quelli della trascrizione.
 - **Unisci** mette in un solo file le registrazioni di un meeting registrato in più riprese.
 
-Per tutte e due serve ffmpeg installato sul Mac. Con ffmpeg le registrazioni vengono anche compresse, a circa 20 MB all'ora.
+Tutte e due usano ffmpeg, che i pacchetti di rilascio includono. Con ffmpeg le registrazioni vengono anche compresse, a circa 20 MB all'ora. Una build dal codice senza ffmpeg tiene le registrazioni in WAV e non offre queste due azioni.
 
 ![Le registrazioni salvate, una scheda per meeting, con la forma d'onda](../../../../assets/shots/it/recordings.webp)
 
