@@ -3,14 +3,14 @@ name: Release
 # Si parte da un tag: aggiorna "version" in package.json, src-tauri/Cargo.toml e
 # src-tauri/tauri.conf.json, committa, poi
 #   git tag -a v0.2.0 -m "Granello 0.2.0" && git push origin main v0.2.0
-# Il workflow crea la release IN BOZZA con i DMG per Mac, l'AppImage per Linux,
-# l'installer per Windows e latest.json. Le app installate
+# Il workflow crea la release IN BOZZA con il DMG per Mac Apple Silicon e
+# latest.json. Per ora solo Apple Silicon: Intel, Linux e Windows stanno sul
+# branch feat/linux-windows. Le app installate
 # leggono releases/latest/download/latest.json, che vede solo le release
 # pubblicate: nessuna si aggiorna finché la bozza non viene pubblicata a mano.
 #
 # Secret richiesti: TAURI_SIGNING_PRIVATE_KEY e TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 # (chiave privata dell'updater; copia nel password manager di David).
-
 #
 # In una pull request che tocca il workflow o la configurazione di build, le build
 # girano lo stesso (artefatti scaricabili dalla pagina del run), senza release.
@@ -94,28 +94,9 @@ jobs:
             label: macOS-arm64
             arch: aarch64
             triple: aarch64-apple-darwin
-          - os: macos-15-intel # Mac Intel, supportato da GitHub fino all'autunno 2027
-            label: macOS-intel
-            arch: x86_64
-            triple: x86_64-apple-darwin
-          # la glibc più vecchia possibile: l'AppImage gira sulle distribuzioni da lì in poi
-          - os: ubuntu-22.04
-            label: linux-x86_64
-            arch: x86_64
-            triple: x86_64-unknown-linux-gnu
-          - os: windows-latest
-            label: windows-x86_64
-            arch: x86_64
-            triple: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
-
-      - name: Librerie di sistema
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libasound2-dev patchelf cmake
 
       - uses: pnpm/action-setup@v4
 
@@ -141,39 +122,22 @@ jobs:
           path: src-tauri/binaries
           key: ffmpeg-${{ matrix.triple }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
 
-      - name: Strumenti per compilare ffmpeg (Windows)
-        if: runner.os == 'Windows' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          install: make diffutils curl tar xz mingw-w64-x86_64-gcc
-
       - name: ffmpeg
-        if: runner.os != 'Windows' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
         run: scripts/build-ffmpeg.sh ${{ matrix.triple }}
 
-      - name: ffmpeg (Windows)
-        if: runner.os == 'Windows' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
-        shell: msys2 {0}
-        run: scripts/build-ffmpeg.sh ${{ matrix.triple }}
-
-      # Gli artefatti dell'updater (firmati: .app.tar.gz, AppImage, installer) si
-      # creano solo qui, così una build locale non chiede la chiave privata.
+      # Gli artefatti dell'updater (.app.tar.gz firmato) si creano solo qui, così
+      # una build locale non chiede la chiave privata.
       - name: Build
-        shell: bash # su Windows PowerShell toglierebbe le virgolette del JSON passato a pnpm.cmd
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --config src-tauri/tauri.ffmpeg.conf.json --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
       - name: ffmpeg è nel pacchetto
-        shell: bash
-        run: |
-          ls -la src-tauri/target/release/ffmpeg*
-          if [ "$RUNNER_OS" = macOS ]; then test -x src-tauri/target/release/bundle/macos/Granello.app/Contents/MacOS/ffmpeg; fi
+        run: test -x src-tauri/target/release/bundle/macos/Granello.app/Contents/MacOS/ffmpeg
 
       - name: Nomi degli artefatti
-        shell: bash
         env:
           VERSION: ${{ needs.check.outputs.version }}
           LABEL: ${{ matrix.label }}
@@ -181,21 +145,9 @@ jobs:
         run: |
           BUNDLE=src-tauri/target/release/bundle
           mkdir artifacts
-          case "$RUNNER_OS" in
-            macOS)
-              mv "$BUNDLE"/dmg/*.dmg "artifacts/Granello-$VERSION-$LABEL.dmg"
-              mv "$BUNDLE"/macos/Granello.app.tar.gz "artifacts/Granello-$VERSION-$ARCH.app.tar.gz"
-              mv "$BUNDLE"/macos/Granello.app.tar.gz.sig "artifacts/Granello-$VERSION-$ARCH.app.tar.gz.sig"
-              ;;
-            Linux)
-              mv "$BUNDLE"/appimage/*.AppImage "artifacts/Granello-$VERSION-$LABEL.AppImage"
-              mv "$BUNDLE"/appimage/*.AppImage.sig "artifacts/Granello-$VERSION-$LABEL.AppImage.sig"
-              ;;
-            Windows)
-              mv "$BUNDLE"/nsis/*-setup.exe "artifacts/Granello-$VERSION-$LABEL-setup.exe"
-              mv "$BUNDLE"/nsis/*-setup.exe.sig "artifacts/Granello-$VERSION-$LABEL-setup.exe.sig"
-              ;;
-          esac
+          mv "$BUNDLE"/dmg/*.dmg "artifacts/Granello-$VERSION-$LABEL.dmg"
+          mv "$BUNDLE"/macos/Granello.app.tar.gz "artifacts/Granello-$VERSION-$ARCH.app.tar.gz"
+          mv "$BUNDLE"/macos/Granello.app.tar.gz.sig "artifacts/Granello-$VERSION-$ARCH.app.tar.gz.sig"
           ls -la artifacts
 
       - uses: actions/upload-artifact@v4
@@ -229,9 +181,8 @@ jobs:
               --arg url "$BASE/Granello-$VERSION-$1" '{signature: $sig, url: $url}'
           }
           jq -n --arg version "$VERSION" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --argjson arm "$(entry aarch64.app.tar.gz)" --argjson intel "$(entry x86_64.app.tar.gz)" \
-            --argjson linux "$(entry linux-x86_64.AppImage)" --argjson windows "$(entry windows-x86_64-setup.exe)" \
-            '{version: $version, pub_date: $date, platforms: {"darwin-aarch64": $arm, "darwin-x86_64": $intel, "linux-x86_64": $linux, "windows-x86_64": $windows}}' \
+            --argjson arm "$(entry aarch64.app.tar.gz)" \
+            '{version: $version, pub_date: $date, platforms: {"darwin-aarch64": $arm}}' \
             > artifacts/latest.json
           cat artifacts/latest.json
 

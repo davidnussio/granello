@@ -1,23 +1,20 @@
 #!/usr/bin/env bash
-# Scrive il cask Homebrew di Granello per una versione pubblicata, con lo SHA-256 dei due DMG.
-# Lo usa .github/workflows/homebrew.yml per aggiornare davidnussio/homebrew-tap.
+# Scrive il cask Homebrew di Granello per una versione pubblicata, con lo SHA-256 del DMG.
+# Lo usa .github/workflows/homebrew.yml per aggiornare davidnussio/homebrew-tap. Per ora
+# solo Mac Apple Silicon.
 #
-#   scripts/homebrew-cask.sh <versione> <sha256 arm64> <sha256 intel> > Casks/granello.rb
+#   scripts/homebrew-cask.sh <versione> <sha256 del DMG arm64> > Casks/granello.rb
 set -euo pipefail
 
 VERSION="$1"
-SHA_ARM="$2"
-SHA_INTEL="$3"
+SHA256="$2"
 
 cat <<EOF
 cask "granello" do
-  arch arm: "arm64", intel: "intel"
-
   version "$VERSION"
-  sha256 arm:   "$SHA_ARM",
-         intel: "$SHA_INTEL"
+  sha256 "$SHA256"
 
-  url "https://github.com/davidnussio/granello/releases/download/v#{version}/Granello-#{version}-macOS-#{arch}.dmg"
+  url "https://github.com/davidnussio/granello/releases/download/v#{version}/Granello-#{version}-macOS-arm64.dmg"
   name "Granello"
   desc "Meeting notepad with local transcription and AI notes"
   homepage "https://granello.dambox.ch/"
@@ -29,6 +26,7 @@ cask "granello" do
 
   # l'app si aggiorna da sola (updater di Tauri)
   auto_updates true
+  depends_on arch: :arm64
   depends_on macos: :ventura
 
   app "Granello.app"

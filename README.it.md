@@ -180,15 +180,11 @@ pnpm screenshots commands  # solo le immagini dei comandi / per la documentazion
 
 `pnpm tauri build` produce un'app **non firmata**: su un altro Mac Gatekeeper la blocca. Per distribuirla servono un certificato *Developer ID Application* e la notarizzazione Apple: imposta `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (password specifica per l'app) e `APPLE_TEAM_ID` prima del build, Tauri firma e notarizza da solo. Le entitlement per microfono e rete sono già in `src-tauri/entitlements.plist`.
 
-### Linux e Windows (sperimentale)
-
-Lo stesso codice si compila su Linux e Windows: whisper.cpp gira sulla CPU, le API key vanno in Gestione credenziali di Windows (in un file 0600 della cartella dati su Linux) e l'audio di sistema arriva dal loopback WASAPI su Windows e dalla sorgente monitor di PulseAudio/PipeWire su Linux. `src-tauri/tauri.linux.conf.json` e `tauri.windows.conf.json` scelgono i pacchetti (AppImage, installer NSIS). La CI esegue clippy e i test su entrambi i sistemi a ogni push. Queste build non sono ancora state provate su computer veri. Dipendenze per compilare su Linux: `libwebkit2gtk-4.1-dev librsvg2-dev libasound2-dev cmake`.
-
 ### Rilasci e aggiornamenti
 
-Stessa `version` in `package.json`, `src-tauri/Cargo.toml` e `src-tauri/tauri.conf.json`, commit, poi un tag `vX.Y.Z`. `.github/workflows/release.yml` esegue i controlli, costruisce il DMG per Apple Silicon e Intel, l'AppImage per Linux e l'installer per Windows, firma i pacchetti di aggiornamento e crea una release **in bozza** con `latest.json`. Le app installate controllano all'avvio `releases/latest/download/latest.json`, che vede solo le release pubblicate: nessuna si aggiorna finché la bozza non viene pubblicata. Prima di installare l'app chiede; si riavvia solo se non sta registrando.
+Stessa `version` in `package.json`, `src-tauri/Cargo.toml` e `src-tauri/tauri.conf.json`, commit, poi un tag `vX.Y.Z`. `.github/workflows/release.yml` esegue i controlli, costruisce il DMG per Apple Silicon, firma i pacchetti di aggiornamento e crea una release **in bozza** con `latest.json`. Le app installate controllano all'avvio `releases/latest/download/latest.json`, che vede solo le release pubblicate: nessuna si aggiorna finché la bozza non viene pubblicata. Prima di installare l'app chiede; si riavvia solo se non sta registrando.
 
-Pubblicare una release avvia anche `.github/workflows/homebrew.yml`, che scrive il cask (`scripts/homebrew-cask.sh`, i due DMG con il loro SHA-256) in `davidnussio/homebrew-tap`: così `brew install --cask davidnussio/tap/granello` lo installa. Serve il secret `HOMEBREW_TAP_TOKEN`; per un tag già pubblicato si lancia a mano da Actions.
+Pubblicare una release avvia anche `.github/workflows/homebrew.yml`, che scrive il cask (`scripts/homebrew-cask.sh`, il DMG con il suo SHA-256) in `davidnussio/homebrew-tap`: così `brew install --cask davidnussio/tap/granello` lo installa. Serve il secret `HOMEBREW_TAP_TOKEN`; per un tag già pubblicato si lancia a mano da Actions.
 
 I pacchetti di aggiornamento sono firmati con una chiave minisign: la pubblica è in `tauri.conf.json`, la privata e la sua password sono i secret di GitHub `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Se la chiave privata va persa, le app installate non si aggiornano più.
 

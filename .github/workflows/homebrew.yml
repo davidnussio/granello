@@ -35,16 +35,14 @@ jobs:
         with:
           path: granello
 
-      - name: SHA-256 dei DMG
+      - name: SHA-256 del DMG
         id: dmg
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${TAG#v}"
-          for arch in arm64 intel; do
-            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "Granello-$VERSION-macOS-$arch.dmg"
-            echo "$arch=$(sha256sum "Granello-$VERSION-macOS-$arch.dmg" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          done
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "Granello-$VERSION-macOS-arm64.dmg"
+          echo "sha256=$(sha256sum "Granello-$VERSION-macOS-arm64.dmg" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v6
@@ -57,11 +55,10 @@ jobs:
         working-directory: tap
         env:
           VERSION: ${{ steps.dmg.outputs.version }}
-          SHA_ARM: ${{ steps.dmg.outputs.arm64 }}
-          SHA_INTEL: ${{ steps.dmg.outputs.intel }}
+          SHA256: ${{ steps.dmg.outputs.sha256 }}
         run: |
           mkdir -p Casks
-          ../granello/scripts/homebrew-cask.sh "$VERSION" "$SHA_ARM" "$SHA_INTEL" > Casks/granello.rb
+          ../granello/scripts/homebrew-cask.sh "$VERSION" "$SHA256" > Casks/granello.rb
           cat Casks/granello.rb
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
