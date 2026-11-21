@@ -5,9 +5,19 @@ description: Download Granello for macOS (Linux and Windows are experimental), o
 
 Granello runs on macOS. Linux and Windows versions exist too, still experimental.
 
+## Homebrew
+
+On a Mac, the quickest way:
+
+```bash
+brew install --cask davidnussio/tap/granello
+```
+
+Homebrew picks the version for Apple Silicon or Intel, and Granello opens straight away, without the Gatekeeper step below.
+
 ## Download
 
-Get the file for your system from the [latest release](https://github.com/davidnussio/granello/releases/latest):
+Or get the file for your system from the [latest release](https://github.com/davidnussio/granello/releases/latest):
 
 | System | File |
 | --- | --- |

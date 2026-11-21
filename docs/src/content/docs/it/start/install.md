@@ -5,9 +5,19 @@ description: Scarica Granello per macOS (Linux e Windows sono sperimentali), apr
 
 Granello gira su macOS. Esistono anche le versioni per Linux e Windows, ancora sperimentali.
 
+## Homebrew
+
+Su Mac, il modo più rapido:
+
+```bash
+brew install --cask davidnussio/tap/granello
+```
+
+Homebrew sceglie la versione per Apple Silicon o Intel, e Granello si apre subito, senza il passaggio di Gatekeeper descritto sotto.
+
 ## Download
 
-Scarica il file per il tuo sistema dall'[ultimo rilascio](https://github.com/davidnussio/granello/releases/latest):
+Oppure scarica il file per il tuo sistema dall'[ultimo rilascio](https://github.com/davidnussio/granello/releases/latest):
 
 | Sistema | File |
 | --- | --- |
