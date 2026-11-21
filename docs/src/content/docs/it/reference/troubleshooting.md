@@ -42,7 +42,7 @@ Il meeting è **blindato** e non c'è un provider locale configurato, oppure ha 
 
 ## Mancano Togli le pause e Unisci
 
-Serve ffmpeg: `brew install ffmpeg`, poi riapri Granello.
+Serve ffmpeg. I pacchetti di rilascio lo includono. In una build dal codice installalo (`brew install ffmpeg` sul Mac) oppure includilo come spiegato in [Installazione](/it/start/install/), poi riapri Granello.
 
 ## Ancora bloccato
 

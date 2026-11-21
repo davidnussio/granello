@@ -48,7 +48,7 @@ With **Save recordings** on, the Library shows one card per meeting with its rec
 - **Remove pauses** cuts the silent parts. Afterwards the audio's minutes no longer match the transcript.
 - **Merge** joins the recordings of a meeting recorded in several takes into one file.
 
-Both need ffmpeg installed on your Mac. With it, recordings are also compressed, to about 20 MB per hour.
+Both use ffmpeg, which release packages include. With it, recordings are also compressed, to about 20 MB per hour. A build from source without ffmpeg keeps recordings as WAV and does not offer these two actions.
 
 ![Saved recordings, one card per meeting, with the waveform](../../../assets/shots/en/recordings.webp)
 

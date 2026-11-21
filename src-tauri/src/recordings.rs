@@ -28,12 +28,17 @@ pub fn file_name(started_at_ms: i64, meeting_id: &str) -> String {
     format!("{when} {short}.wav")
 }
 
-/// Il programma ffmpeg, se è installato. Un'app avviata dal Finder non vede il PATH del
-/// terminale, quindi si guarda anche dove lo mettono Homebrew e MacPorts.
+/// Il programma ffmpeg. Le build di rilascio lo includono accanto all'eseguibile (sidecar di
+/// Tauri, compilato da `scripts/build-ffmpeg.sh`); in sviluppo si usa quello installato. Un'app
+/// avviata dal Finder non vede il PATH del terminale, quindi si guarda anche dove lo mettono
+/// Homebrew e MacPorts.
 pub fn ffmpeg() -> Option<PathBuf> {
-    let path = std::env::var_os("PATH").unwrap_or_default();
     let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
-    std::env::split_paths(&path)
+    let bundled = std::env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf));
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    bundled
+        .into_iter()
+        .chain(std::env::split_paths(&path))
         .chain(["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"].map(PathBuf::from))
         .map(|dir| dir.join(name))
         .find(|p| p.is_file())

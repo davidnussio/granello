@@ -7,3 +7,6 @@ preview/fixtures
 /shots
 .astro
 .vercel
+
+# ffmpeg compilato da scripts/build-ffmpeg.sh
+src-tauri/binaries

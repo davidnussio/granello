@@ -1,0 +1,2 @@
+# gli script girano anche nella shell MSYS2 di Windows: niente CRLF
+*.sh text eol=lf
