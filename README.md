@@ -191,6 +191,8 @@ The same code builds on Linux and Windows: whisper.cpp runs on the CPU, API keys
 
 Set the same `version` in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, commit, then push a tag `vX.Y.Z`. `.github/workflows/release.yml` runs the checks, builds the DMG for Apple Silicon and Intel, the Linux AppImage and the Windows installer, signs the update packages and creates a **draft** release with `latest.json`. Installed apps check `releases/latest/download/latest.json` at startup, which only sees published releases: nothing updates until the draft is published. Before installing, the app asks; it restarts only if it is not recording.
 
+Publishing a release also runs `.github/workflows/homebrew.yml`, which writes the cask (`scripts/homebrew-cask.sh`, both DMGs with their SHA-256) to `davidnussio/homebrew-tap`, so `brew install --cask davidnussio/tap/granello` installs it. It needs the `HOMEBREW_TAP_TOKEN` secret; for an already published tag, run it by hand from Actions.
+
 The update packages are signed with a minisign key: the public key is in `tauri.conf.json`, the private key and its password are the GitHub secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Losing the private key means installed apps can no longer update.
 
 First launch (the Home screen shows what's missing):
