@@ -11,6 +11,7 @@ import Home from "./components/Home";
 import LibraryView from "./components/LibraryView";
 import type { Demo } from "./components/DemoData";
 import { getLang, resolveLang, setLang, t } from "./i18n";
+import { isMac } from "./platform";
 import { setTimeFormat } from "./format";
 
 export interface SetupStatus {
@@ -288,7 +289,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <div className="titlebar" data-tauri-drag-region />
+      {isMac && <div className="titlebar" data-tauri-drag-region />}
       <Sidebar
         view={view}
         setView={setView}
