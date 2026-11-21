@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { api, errorText } from "../api";
 import { t } from "../i18n";
+import { keyStore, thisDevice } from "../platformText";
 
 /** Identificatore della chiave di Gladia, accanto a quelle dei provider AI. */
 const KEY_ID = "gladia";
 
 /**
  * Affinamento online della trascrizione: spento di default, perché è l'unico caso in cui
- * l'audio esce dal Mac. Serve una chiave di Gladia, che resta nel Portachiavi.
+ * l'audio esce dal computer. Serve una chiave di Gladia, che resta con le altre API key.
  */
 export default function OnlineTranscription({
   enabled,
@@ -42,7 +43,8 @@ export default function OnlineTranscription({
       <h3>{t("Trascrizione online con i parlanti")}</h3>
       <p className="muted small">
         {t(
-          'A fine riunione l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla; la trascrizione locale viene sostituita. Per farlo l\'audio della riunione viene tenuto su questo Mac fino al caricamento e poi cancellato. Non vale per i meeting con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.',
+          'A fine riunione l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla; la trascrizione locale viene sostituita. Per farlo l\'audio della riunione viene tenuto su {device} fino al caricamento e poi cancellato. Non vale per i meeting con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.',
+          { device: thisDevice() },
         )}
       </p>
       <label className="row gap check">
@@ -60,7 +62,7 @@ export default function OnlineTranscription({
           <input
             type="password"
             value={key}
-            placeholder={hasKey ? t("Chiave salvata nel Portachiavi") : t("Incolla la chiave")}
+            placeholder={hasKey ? t("Chiave salvata {where}", { where: keyStore() }) : t("Incolla la chiave")}
             onChange={(e) => setKey(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && key.trim() && saveKey(key)}
           />

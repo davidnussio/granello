@@ -1,5 +1,6 @@
 import type { Privacy } from "../types";
 import { t } from "../i18n";
+import { thisDevice } from "../platformText";
 
 /** Il livello in due parole, per le etichette. */
 export const privacyLabel = (privacy: Privacy) =>
@@ -13,11 +14,13 @@ export const privacyLabel = (privacy: Privacy) =>
 export const privacyHint = (privacy: Privacy) =>
   privacy === "hardened"
     ? t(
-        "Blindata: non esce niente da questo Mac. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.",
+        "Blindata: non esce niente da {device}. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.",
+        { device: thisDevice() },
       )
     : privacy === "audio"
       ? t(
-          "Audio locale: l'audio si trascrive solo su questo Mac. Il testo può andare al provider AI configurato.",
+          "Audio locale: l'audio si trascrive solo su {device}. Il testo può andare al provider AI configurato.",
+          { device: thisDevice() },
         )
       : t("Standard: valgono le impostazioni generali.");
 

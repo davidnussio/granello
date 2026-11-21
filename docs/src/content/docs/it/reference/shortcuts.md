@@ -3,6 +3,8 @@ title: Scorciatoie da tastiera
 description: Le scorciatoie di Granello, nell'app, in una nota e nella Libreria.
 ---
 
+Le scorciatoie sono scritte come su Mac. Su Windows e Linux ⌘ è Ctrl e ⇧ è Maiusc: ⌘⇧H diventa Ctrl+Maiusc+H, e l'app le mostra così.
+
 ## Ovunque
 
 | Scorciatoia | Cosa fa |

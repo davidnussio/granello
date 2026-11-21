@@ -8,6 +8,8 @@ import type { Person, Settings, WhisperModelInfo } from "../types";
 import AiSettings from "./AiSettings";
 import CalendarSettings from "./CalendarSettings";
 import { t } from "../i18n";
+import { thisDevice } from "../platformText";
+import { byOs } from "../platform";
 
 interface Props {
   toast: (t: string) => void;
@@ -262,7 +264,16 @@ export default function SettingsView({
           </select>
           <small className="muted">
             {t(
-              '"Audio di sistema" registra quello che esce dal computer (Teams, Zoom, Meet…) senza installare nulla: serve macOS 14.6 o successivo e, la prima volta, il permesso di registrare l\'audio di sistema. "Microsoft Teams Audio" non contiene le voci della call. Con le cuffie eviti che il microfono riprenda anche gli altri.',
+              '"Audio di sistema" registra quello che esce dal computer (Teams, Zoom, Meet…) senza installare nulla. {requirement}"Microsoft Teams Audio" non contiene le voci della call. Con le cuffie eviti che il microfono riprenda anche gli altri.',
+              {
+                requirement: byOs(
+                  t(
+                    "Serve macOS 14.6 o successivo e, la prima volta, il permesso di registrare l'audio di sistema.",
+                  ) + " ",
+                  "",
+                  t("Serve PulseAudio o PipeWire.") + " ",
+                ),
+              },
             )}
           </small>
         </label>
@@ -329,7 +340,8 @@ export default function SettingsView({
           <h3>{t("Dati e privacy")}</h3>
           <p className="muted small">
             {t(
-              "Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e scartato. Fanno eccezione due opzioni, spente finché non le attivi: il salvataggio delle registrazioni, che tiene l'audio in una cartella di questo Mac, e la trascrizione online, che lo tiene fino al caricamento su Gladia e poi lo cancella. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.",
+              "Note, trascrizioni e modelli restano su {device}. L'audio non viene salvato: viene trascritto in locale e scartato. Fanno eccezione due opzioni, spente finché non le attivi: il salvataggio delle registrazioni, che tiene l'audio in una cartella di {device}, e la trascrizione online, che lo tiene fino al caricamento su Gladia e poi lo cancella. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.",
+              { device: thisDevice() },
             )}
           </p>
           <div className="row gap">
@@ -337,7 +349,11 @@ export default function SettingsView({
               className="btn small"
               onClick={() => revealItemInDir(info.dataDir).catch((e) => toast(errorText(e)))}
             >
-              {t("Mostra i dati nel Finder")}
+              {byOs(
+                t("Mostra i dati nel Finder"),
+                t("Mostra i dati in Esplora file"),
+                t("Mostra la cartella dei dati"),
+              )}
             </button>
             {info.logDir && (
               <button
