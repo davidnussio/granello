@@ -102,6 +102,17 @@ let vaults = [
   },
 ];
 
+let sync = {
+  available: true,
+  blocked: null,
+  dir: null as string | null,
+  lastSync: null as number | null,
+  devices: 0,
+  pending: 0,
+  conflicts: 0,
+  error: null,
+};
+
 const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   list_meetings: () => data.meetings,
   get_meeting: (a) => data.details[a.id as string],
@@ -206,6 +217,21 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   open_vault: (a) => {
     vaults = vaults.map((v) => ({ ...v, active: v.id === a.id }));
     return vaults;
+  },
+  // il sync vive in memoria: serve a vedere la sezione nelle impostazioni
+  sync_status: () => sync,
+  pick_sync_dir: () => "/Users/anteprima/Library/Mobile Documents/com~apple~CloudDocs/Granello",
+  enable_sync: (a) => {
+    sync = { ...sync, dir: a.dir as string, lastSync: Date.now(), devices: 1 };
+    return sync;
+  },
+  disable_sync: () => {
+    sync = { ...sync, dir: null, lastSync: null, devices: 0 };
+    return sync;
+  },
+  sync_now: () => {
+    sync = { ...sync, lastSync: Date.now() };
+    return sync;
   },
   list_templates: () => data.templates,
   // i template si possono salvare davvero, in memoria: serve a provare le note di partenza

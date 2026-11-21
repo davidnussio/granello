@@ -40,6 +40,26 @@ export interface Vault {
   available: boolean;
 }
 
+/**
+ * Il sync del vault aperto attraverso una cartella (fase 0: solo nelle build di sviluppo).
+ */
+export interface SyncStatus {
+  /** Il sync c'è in questa build. */
+  available: boolean;
+  /** Perché il vault aperto non si può sincronizzare, se non si può. */
+  blocked: string | null;
+  /** La cartella di sync, se è attivo. */
+  dir: string | null;
+  lastSync: number | null;
+  /** I dispositivi che hanno scritto nella cartella, questo compreso. */
+  devices: number;
+  /** Modifiche di questo Mac non ancora scritte nella cartella. */
+  pending: number;
+  /** Versioni di note tenute da parte dopo una modifica fatta in contemporanea su due Mac. */
+  conflicts: number;
+  error: string | null;
+}
+
 /** Una parte di trascrizione: un segmento intero, oppure i suoi caratteri da `start` a `end`. */
 export interface TranscriptPart {
   id: number;

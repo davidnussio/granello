@@ -262,11 +262,25 @@ const en: Record<string, string> = {
     "An empty folder for a new vault, or the folder of a vault that already exists (even one created on another computer): Granello finds its meetings.",
   "Aggiungi il vault": "Add the vault",
   "Vault aperto": "Open vault",
+  "Sync tra i tuoi Mac": "Sync between your Macs",
   Chiudi: "Close",
   "Chiudi: i dati di esempio restano in Impostazioni → Dati e privacy":
     "Close: the sample data stays in Settings → Data and privacy",
   "I dati di esempio restano in Impostazioni → Dati e privacy.":
     "The sample data stays in Settings → Data and privacy.",
+  "Anteprima per sviluppatori: la cartella di sync contiene note e trascrizioni in chiaro. Provala solo con i dati di esempio.":
+    "Developer preview: the sync folder holds notes and transcripts in clear text. Try it only with the sample data.",
+  "Ultimo sync: {when}": "Last sync: {when}",
+  "Non ancora sincronizzato": "Not synced yet",
+  "Dispositivi: {n}": "Devices: {n}",
+  "Modifiche da inviare: {n}": "Changes to send: {n}",
+  "Versioni di note tenute da parte: {n}": "Note versions kept aside: {n}",
+  "Sincronizzo…": "Syncing…",
+  "Sincronizza ora": "Sync now",
+  "Smetti di sincronizzare": "Stop syncing",
+  "Sincronizza il vault aperto con gli altri tuoi Mac attraverso una cartella, per esempio in iCloud Drive. Scegli una cartella vuota, oppure quella in cui un altro Mac sincronizza già questo vault. Il vault resta dov'è: nella cartella vanno solo le modifiche. Audio e allegati per ora non viaggiano.":
+    "Sync the open vault with your other Macs through a folder, for example in iCloud Drive. Choose an empty folder, or the one where another Mac already syncs this vault. The vault stays where it is: only the changes go into the folder. Audio and attachments do not travel yet.",
+  "Scegli la cartella di sync…": "Choose the sync folder…",
   "Vault aperto: {name}. Scegline un altro per aprirlo.":
     "Open vault: {name}. Choose another one to open it.",
   "non disponibile": "not available",

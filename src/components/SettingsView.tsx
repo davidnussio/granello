@@ -6,6 +6,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { api, errorText, on, SYSTEM_AUDIO, type AppInfo, type ModelDownload } from "../api";
 import type { Person, Settings, Vault, WhisperModelInfo } from "../types";
 import VaultSettings from "./VaultSettings";
+import SyncSettings from "./SyncSettings";
 import AiSettings from "./AiSettings";
 import CalendarSettings from "./CalendarSettings";
 import { t } from "../i18n";
@@ -366,7 +367,10 @@ export default function SettingsView({
         </>
       )}
       {section === "vaults" && (
-        <VaultSettings vaults={vaults} onChanged={onVaultsChanged} onOpen={onOpenVault} toast={toast} />
+        <>
+          <VaultSettings vaults={vaults} onChanged={onVaultsChanged} onOpen={onOpenVault} toast={toast} />
+          <SyncSettings vaultId={vaults.find((v) => v.active)?.id ?? ""} toast={toast} />
+        </>
       )}
       {section === "data" && (
         <>

@@ -18,6 +18,7 @@ mod models;
 mod preview;
 mod prompts;
 mod secrets;
+mod sync;
 mod transcribe;
 mod updater;
 mod vaults;
@@ -104,11 +105,17 @@ pub fn run() {
             }
             spawn_calendar_watcher(app.handle().clone());
             updater::spawn_check(app.handle().clone());
+            sync::spawn(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_meetings,
             commands::set_demo_card_hidden,
+            sync::sync_status,
+            sync::pick_sync_dir,
+            sync::enable_sync,
+            sync::disable_sync,
+            sync::sync_now,
             commands::get_meeting,
             commands::create_meeting,
             commands::update_meeting,

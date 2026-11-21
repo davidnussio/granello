@@ -116,6 +116,8 @@ export default function App() {
     toast(t("I dati di esempio restano in Impostazioni → Dati e privacy."));
   };
 
+  /** Cresce quando un altro dispositivo cambia il meeting aperto: lo fa ricaricare. */
+  const [syncRev, setSyncRev] = useState(0);
 
   const refreshMeetings = useCallback(() => {
     api
@@ -189,6 +191,21 @@ export default function App() {
     const timer = setTimeout(refreshMeetings, 150);
     return () => clearTimeout(timer);
   }, [refreshMeetings]);
+
+  // modifiche arrivate da un altro dispositivo: elenco, progetti e, se è tra quelli toccati,
+  // il meeting aperto
+  useEffect(
+    () =>
+      on("vault-synced", (ids) => {
+        refreshMeetings();
+        api
+          .listProjects()
+          .then(setProjects)
+          .catch(() => {});
+        if (view.kind === "meeting" && ids.includes(view.id)) setSyncRev((r) => r + 1);
+      }),
+    [view, refreshMeetings],
+  );
 
   useEffect(() => {
     refreshEvents();
@@ -375,7 +392,7 @@ export default function App() {
         )}
         {view.kind === "meeting" && (
           <MeetingView
-            key={view.id}
+            key={`${view.id}:${syncRev}`}
             id={view.id}
             rec={rec}
             toast={toast}

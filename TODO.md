@@ -33,11 +33,87 @@ These tasks add an online option without giving up privacy first.
 
 ## Sync between devices
 
-Today everything lives in one SQLite file on one Mac.
+Today each vault is one SQLite file plus its attachments and recordings, on one Mac. A
+SQLite file cannot be synced as a file (iCloud or Dropbox copy it while the app writes,
+and the WAL travels apart from the database), so the plan is a small sync protocol with
+pluggable backends, one vault at a time.
 
-- [ ] **Sync in the style of the Divano app**: a small sync server (Divano's runs on Node, Vercel and Neon) that devices push to and pull from, so the same meetings, notes, tags and projects are on every device. The app keeps working offline and syncs when it can.
-- [ ] **End-to-end encryption**: data is encrypted on the device before it leaves, with a key the server never sees. The server stores and relays opaque blobs and cannot read notes or transcripts. This keeps the privacy-first promise even with sync on, and has to fit with the PRIVACY levels above (a hardened meeting may opt out of sync altogether).
-- [ ] **CRDT for merging**: notes and metadata are stored as a CRDT, so edits made on two devices while offline merge without conflicts and without a server that understands the content (it can't, being encrypted). To decide: which CRDT library, and whether the Markdown note is the CRDT itself or is derived from it.
+**Shape**
+
+- The **vault folder stays where it is** (an encrypted or external disk too) and keeps
+  `granello.db`, the local copy of attachments and recordings, and `sync.json` (which
+  backend, and how far this device has read each other device's log). None of it is synced.
+- The **sync folder** is somewhere else (iCloud Drive, Dropbox, S3…) and holds only
+  encrypted data: `log/<device>/…`, `blobs/<sha256>`, `snapshot/…`.
+- The database stops being the source of truth: it is the state built from the logs, kept
+  so the app opens and searches at once. A broken or lost `granello.db` is rebuilt from the
+  latest snapshot plus the logs that follow it.
+
+**Phase 0 (in progress): try it with iCloud Drive**
+
+Development builds only, with demo data: without encryption the sync folder holds notes and
+transcripts in clear text.
+
+- [ ] Settings → Vaults, on the open vault: choose a sync folder (e.g. in iCloud Drive), sync
+  now, stop syncing, with the status (last sync, devices, pending changes, conflicts).
+- [ ] SQLite triggers note every change to meetings, transcript segments, projects and people
+  in an outbox; every few seconds the outbox becomes a file in `log/<device>/`, and the files
+  of the other devices are merged by clock and applied.
+- [ ] Last writer wins per field. For the notes and the AI notes, a concurrent edit keeps the
+  losing version in the database (`sync_conflicts`): no screen to resolve it yet.
+- [ ] Hardened meetings, and a vault whose minimum privacy is hardened, do not sync.
+- [ ] Not in phase 0: audio and attachments (the meeting arrives without them), chat,
+  encryption, snapshots, watching the folder (it is polled).
+- Known limits: a meeting that becomes hardened after it synced stays on the other devices;
+  an open meeting changed on another device is reloaded, and an edit typed in the last
+  second before the reload can be lost.
+
+**Steps**
+
+- [ ] **Operation log**: every change (meeting title, note, tag, project, privacy…) is an
+  operation stamped with a hybrid logical clock. Each device writes only in its own folder
+  of the log, a new immutable file per batch (never appended to: a sync service may upload
+  a file while it is being written), written to a temporary name and then renamed. A device
+  reads the others' files and applies them to its database in a deterministic order.
+- [ ] **Blobs by content**: recordings and attachments are stored as `blobs/<sha256>` and a
+  meeting only references them (hash, size, duration). Transcripts and notes always sync;
+  audio downloads **on demand** ("Download (34 MB)" in the player), and a rule frees space
+  (keep the last N days locally).
+- [ ] **End-to-end encryption**: logs, blobs and snapshots are encrypted on the device with
+  a per-vault key before they leave. A backend stores and relays opaque data and cannot read
+  notes or transcripts. To decide: how the key reaches a second device (passphrase, QR code
+  from a device already set up).
+- [ ] **Snapshots and compaction**: from time to time a device writes an encrypted snapshot
+  of the state with the position it reached in every log. A new device starts from the
+  latest snapshot; logs older than a snapshot every device has read can be deleted.
+- [ ] **Minimal protocol**: `putBlob / getBlob / hasBlob` and `appendLog(device, batch) /
+  listLogs(since)`, plus listing and reading snapshots. Backends implement only this.
+- [ ] **First backend: a folder**. Covers iCloud Drive, Dropbox, Google Drive, Syncthing, a
+  NAS or a USB disk with no server. iCloud, Dropbox and Google Drive already keep files on
+  demand on macOS ("dataless" placeholders): reading one blocks until it is downloaded, so
+  blobs are checked first and downloaded in the background. For iCloud this is a folder
+  in iCloud Drive chosen by the user, not the app's own iCloud container or CloudKit: those
+  need an Apple Developer account, entitlements and a signed app.
+- [ ] **More backends**: S3-compatible (R2, B2, MinIO), WebDAV, and a Granello sync server
+  in the style of the Divano app (Node, Vercel, Neon), which is then one backend among
+  others, not the only way.
+- [ ] **Conflicts**: metadata (title, tags, project, privacy) is last-writer-wins per field.
+  For the note body, when two devices changed it since the last sync both versions are kept
+  and the meeting shows "conflicting version" to resolve by hand. Later, a CRDT for the body
+  (Yjs with `y-prosemirror`) if conflicts turn out to be common, as long as the stored note
+  stays readable Markdown.
+- [ ] **Settings → Vaults**: per vault, sync off (as today) or one backend, with its status
+  (last sync, devices, pending blobs) and a "Sync now" button. One backend per vault to start.
+
+**To decide before writing code**
+
+- [ ] **Hardened privacy and sync**: "nothing leaves the Mac" may rule out even an encrypted
+  iCloud folder. Proposal: hardened meetings never sync, or only to local backends (NAS,
+  disk). It is a public promise, so it needs David's call.
+- [ ] **Own devices only, or sharing with other people?** Sharing brings users, permissions
+  and keys per person. Proposal: own devices only.
+- [ ] **iPhone later?** If yes, the folder backend works there only through iCloud Drive,
+  and S3 or the server matter more.
 
 ## Editor components
 

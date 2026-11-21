@@ -23,6 +23,7 @@ import type {
   TranscriptPart,
   TranscriptSegment,
   Vault,
+  SyncStatus,
   WhisperModelInfo,
 } from "./types";
 
@@ -77,6 +78,15 @@ export const api = {
   removeVault: (id: string) => invoke<Vault[]>("remove_vault", { id }),
   /** Apre un vault: da qui in poi i comandi leggono e scrivono i suoi meeting. */
   openVault: (id: string) => invoke<Vault[]>("open_vault", { id }),
+  /** Il sync del vault aperto (fase 0: solo nelle build di sviluppo). */
+  syncStatus: () => invoke<SyncStatus>("sync_status"),
+  /** Fa scegliere la cartella di sync. null se la scelta viene annullata. */
+  pickSyncDir: () => invoke<string | null>("pick_sync_dir"),
+  /** Sincronizza il vault aperto in una cartella, e fa subito il primo giro. */
+  enableSync: (dir: string) => invoke<SyncStatus>("enable_sync", { dir }),
+  /** Smette di sincronizzare il vault aperto: la cartella resta com'è. */
+  disableSync: () => invoke<SyncStatus>("disable_sync"),
+  syncNow: () => invoke<SyncStatus>("sync_now"),
   /** C'è dell'audio conservato per l'affinamento online di questo meeting? */
   keptAudio: (meetingId: string) => invoke<boolean>("kept_audio", { meetingId }),
   discardAudio: (meetingId: string) => invoke<void>("discard_audio", { meetingId }),
@@ -251,6 +261,8 @@ type Events = {
   "llm-delta": LlmDelta;
   "model-download": ModelDownload;
   "calendar-updated": null;
+  /** Sono arrivate modifiche da un altro dispositivo: gli id dei meeting toccati. */
+  "vault-synced": string[];
   "meeting-starting": CalendarEvent;
 };
 

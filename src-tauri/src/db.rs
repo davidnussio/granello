@@ -14,7 +14,48 @@ fn now_ms() -> i64 {
 
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
-const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8];
+const MIGRATIONS: &[&str] =
+    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9];
+
+/// Sync tra dispositivi (fase 0, vedi `sync.rs`). Un segmento della trascrizione riceve un id
+/// che vale su ogni dispositivo: quello numerico resta locale. Le altre tabelle sono del sync:
+/// le modifiche ancora da scrivere nel log, l'orologio di ogni campo, lo stato e le versioni
+/// rimaste indietro in una modifica concorrente.
+const SCHEMA_V9: &str = r#"
+ALTER TABLE transcript_segments ADD COLUMN uid TEXT NOT NULL DEFAULT '';
+UPDATE transcript_segments SET uid = lower(hex(randomblob(16)));
+CREATE UNIQUE INDEX idx_segments_uid ON transcript_segments(uid);
+
+CREATE TABLE sync_state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+INSERT INTO sync_state (key, value) VALUES ('record', '0'), ('seq', '0');
+
+CREATE TABLE sync_outbox (
+    entity TEXT NOT NULL,
+    key TEXT NOT NULL,
+    field TEXT NOT NULL,
+    PRIMARY KEY (entity, key, field)
+) WITHOUT ROWID;
+
+CREATE TABLE sync_clock (
+    entity TEXT NOT NULL,
+    key TEXT NOT NULL,
+    field TEXT NOT NULL,
+    hlc TEXT NOT NULL,
+    PRIMARY KEY (entity, key, field)
+) WITHOUT ROWID;
+
+CREATE TABLE sync_conflicts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    meeting_id TEXT NOT NULL,
+    field TEXT NOT NULL,
+    value TEXT NOT NULL,
+    hlc TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+"#;
 
 /// Un progetto si distingue per colore, non più per un'emoji: la colonna cambia nome e le
 /// emoji scelte finora si perdono (il progetto torna al colore predefinito).
@@ -169,6 +210,7 @@ impl Db {
         conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;")?;
         let db = Db { conn };
         db.migrate()?;
+        crate::sync::install(&db.conn)?;
         db.seed_templates()?;
         Ok(db)
     }
@@ -193,6 +235,11 @@ impl Db {
             self.reindex_all()?;
         }
         Ok(())
+    }
+
+    /// La connessione, per il sync: legge e scrive le tabelle senza passare dai metodi.
+    pub(crate) fn conn(&self) -> &Connection {
+        &self.conn
     }
 
     fn reindex_all(&self) -> Result<()> {
@@ -670,7 +717,7 @@ impl Db {
     }
 
     /// Le righe di un meeting, senza aprire una transazione: per chi ne ha già una aperta.
-    fn delete_meeting_rows(&self, id: &str) -> Result<()> {
+    pub(crate) fn delete_meeting_rows(&self, id: &str) -> Result<()> {
         self.conn.execute("DELETE FROM meetings WHERE id = ?1", [id])?;
         self.conn.execute("DELETE FROM meetings_fts WHERE meeting_id = ?1", [id])?;
         self.conn.execute("DELETE FROM chat_messages WHERE scope = ?1", [id])?;
@@ -786,7 +833,7 @@ impl Db {
         Ok(out)
     }
 
-    fn reindex(&self, id: &str) -> Result<()> {
+    pub(crate) fn reindex(&self, id: &str) -> Result<()> {
         let Some(m) = self.get_meeting(id)? else { return Ok(()) };
         let transcript = self
             .segments(id)?
@@ -830,8 +877,8 @@ impl Db {
         text: &str,
     ) -> Result<TranscriptSegment> {
         self.conn.execute(
-            "INSERT INTO transcript_segments (meeting_id, source, start_ms, end_ms, text) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![meeting_id, source, start_ms, end_ms, text],
+            "INSERT INTO transcript_segments (meeting_id, source, start_ms, end_ms, text, uid) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![meeting_id, source, start_ms, end_ms, text, segment_uid()],
         )?;
         Ok(TranscriptSegment {
             id: self.conn.last_insert_rowid(),
@@ -855,8 +902,8 @@ impl Db {
         )?;
         for (source, start_ms, end_ms, text) in rows {
             self.conn.execute(
-                "INSERT INTO transcript_segments (meeting_id, source, start_ms, end_ms, text) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![meeting_id, source, start_ms, end_ms, text],
+                "INSERT INTO transcript_segments (meeting_id, source, start_ms, end_ms, text, uid) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![meeting_id, source, start_ms, end_ms, text, segment_uid()],
             )?;
         }
         self.reindex(meeting_id)?;
@@ -1174,6 +1221,11 @@ impl Db {
     }
 }
 
+/// L'id di un segmento che vale su tutti i dispositivi.
+fn segment_uid() -> String {
+    uuid::Uuid::new_v4().simple().to_string()
+}
+
 fn tokens(q: &str) -> Vec<String> {
     q.split(|c: char| !c.is_alphanumeric())
         .filter(|t| t.chars().count() >= 2)
@@ -1399,6 +1451,42 @@ mod tests {
         db.set_meetings_project(std::slice::from_ref(&b.id), None).unwrap();
         assert_eq!(project(&b.id), None);
         assert_eq!(db.list_projects().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn segments_get_an_id_for_every_device_on_migration() {
+        let dir = std::env::temp_dir().join(format!("granello-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("db.sqlite");
+        {
+            // un database com'era prima del sync: fino allo schema 8
+            let conn = Connection::open(&path).unwrap();
+            for schema in &MIGRATIONS[..8] {
+                conn.execute_batch(schema).unwrap();
+            }
+            conn.pragma_update(None, "user_version", 8).unwrap();
+            conn.execute_batch(
+                "INSERT INTO meetings (id, title, created_at) VALUES ('m', 'Vecchio', 1);
+                 INSERT INTO transcript_segments (meeting_id, source, start_ms, end_ms, text) VALUES
+                   ('m', 'me', 0, 1000, 'uno'), ('m', 'them', 1000, 2000, 'due');",
+            )
+            .unwrap();
+        }
+        let db = Db::open(&path).unwrap();
+        db.add_segment("m", "me", 2000, 3000, "tre").unwrap();
+        let uids: Vec<String> = {
+            let mut stmt = db.conn.prepare("SELECT uid FROM transcript_segments ORDER BY start_ms").unwrap();
+            stmt.query_map([], |r| r.get(0)).unwrap().collect::<rusqlite::Result<_>>().unwrap()
+        };
+        assert_eq!(uids.len(), 3);
+        assert!(uids.iter().all(|u| u.len() == 32));
+        assert_eq!(uids.iter().collect::<std::collections::HashSet<_>>().len(), 3, "tutti diversi");
+        // il sync parte spento: niente da scrivere nel log
+        let record: String = db.conn.query_row("SELECT value FROM sync_state WHERE key = 'record'", [], |r| r.get(0)).unwrap();
+        assert_eq!(record, "0");
+        let pending: i64 = db.conn.query_row("SELECT COUNT(*) FROM sync_outbox", [], |r| r.get(0)).unwrap();
+        assert_eq!(pending, 0);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

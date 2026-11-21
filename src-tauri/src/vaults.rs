@@ -37,6 +37,10 @@ struct Vault {
     path: String,
     #[serde(default)]
     min_privacy: Privacy,
+    /// La cartella in cui questo Mac sincronizza il vault (fase 0 del sync). Sta qui e non nel
+    /// vault: lo stesso vault può essere in una cartella diversa su ogni Mac.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    sync_dir: Option<String>,
 }
 
 /// Quello che si salva: i vault aggiunti, quale è aperto e la privacy minima del principale.
@@ -47,6 +51,8 @@ struct Registry {
     /// Vuoto = il vault principale.
     active: String,
     main_min_privacy: Privacy,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    main_sync_dir: Option<String>,
 }
 
 impl Registry {
@@ -87,7 +93,7 @@ impl Registry {
                 name
             ));
         }
-        let vault = Vault { id: uuid::Uuid::new_v4().to_string(), name, path: path.to_string(), min_privacy };
+        let vault = Vault { id: uuid::Uuid::new_v4().to_string(), name, path: path.to_string(), min_privacy, sync_dir: None };
         self.vaults.push(vault.clone());
         Ok(vault)
     }
@@ -117,9 +123,32 @@ fn open_db(dir: &Path) -> CmdResult<Db> {
     Ok(db)
 }
 
+/// La cartella in cui questo Mac sincronizza un vault, se il sync è attivo.
+pub fn sync_dir(main: &Db, id: &str) -> Option<PathBuf> {
+    let registry = Registry::load(main);
+    let dir = if id == MAIN_ID {
+        registry.main_sync_dir
+    } else {
+        registry.vaults.into_iter().find(|v| v.id == id).and_then(|v| v.sync_dir)
+    };
+    dir.map(PathBuf::from)
+}
+
+/// Attiva (`Some`) o spegne (`None`) il sync di un vault su questo Mac.
+pub fn set_sync_dir(main: &Db, id: &str, dir: Option<String>) -> CmdResult<()> {
+    let mut registry = Registry::load(main);
+    if id == MAIN_ID {
+        registry.main_sync_dir = dir;
+    } else {
+        let vault = registry.vaults.iter_mut().find(|v| v.id == id).ok_or(tr("Vault non trovato", "Vault not found"))?;
+        vault.sync_dir = dir;
+    }
+    registry.save(main)
+}
+
 /// Porta i meeting al livello minimo del vault e cancella l'audio che quelli alzati avevano
 /// conservato per la trascrizione online: con un livello di privacy non deve più poter uscire.
-fn enforce(db: &Db, dir: &Path, min: Privacy) -> CmdResult<()> {
+pub(crate) fn enforce(db: &Db, dir: &Path, min: Privacy) -> CmdResult<()> {
     for id in db.raise_privacy(min).map_err(err)? {
         crate::keep::remove(dir, &id);
     }
@@ -347,6 +376,16 @@ mod tests {
         registry.main_min_privacy = Privacy::Audio;
         registry.save(&db).unwrap();
         assert_eq!(Registry::load(&db), registry);
+
+        // la cartella di sync è di questo Mac, per vault
+        assert_eq!(sync_dir(&db, &first.id), None);
+        set_sync_dir(&db, &first.id, Some("/iCloud/Granello".into())).unwrap();
+        set_sync_dir(&db, MAIN_ID, Some("/iCloud/Principale".into())).unwrap();
+        assert_eq!(sync_dir(&db, &first.id), Some(PathBuf::from("/iCloud/Granello")));
+        assert_eq!(sync_dir(&db, MAIN_ID), Some(PathBuf::from("/iCloud/Principale")));
+        set_sync_dir(&db, &first.id, None).unwrap();
+        assert_eq!(sync_dir(&db, &first.id), None);
+        assert!(set_sync_dir(&db, "non-esiste", None).is_err());
     }
 
     #[test]
