@@ -33,7 +33,7 @@ Un vault è una cartella con il suo database, i suoi allegati e le sue registraz
 
 **Impostazioni → Vault** aggiunge un vault: dagli un nome, scegli la sua cartella e un livello minimo di privacy. Una cartella vuota diventa un vault nuovo; la cartella di un vault che esiste già, anche creato su un altro Mac, viene ritrovata con i suoi meeting.
 
-- **Se ne apre uno alla volta.** Con più di un vault, un menu in cima alla barra laterale ne apre un altro. Elenco dei meeting, Libreria, ricerca e chat mostrano solo il vault aperto. Non si può cambiare vault mentre è in corso una registrazione o una generazione dell'AI.
+- **Se ne apre uno alla volta.** Con più di un vault, un'icona accanto a Impostazioni, in fondo alla barra laterale, ne apre un altro. Elenco dei meeting, Libreria, ricerca e chat mostrano solo il vault aperto. Non si può cambiare vault mentre è in corso una registrazione o una generazione dell'AI.
 - **Cosa contiene un vault**: `granello.sqlite` (meeting, note, note AI, trascrizioni, tag, progetti, persone, chat), `attachments/`, `recordings/`, `audio/` e `waveforms/`.
 - **Cosa resta su questo Mac per tutti i vault**: impostazioni, template, indirizzi dei calendari, l'elenco dei vault, i modelli whisper e le API key.
 - **Privacy minima**: nessuna, almeno audio locale, o sempre blindata. I meeting nuovi del vault partono da quel livello e non possono scendere sotto. Alzare il minimo alza subito i meeting del vault che stavano sotto. Vedi i [livelli di privacy](/it/privacy/levels/).

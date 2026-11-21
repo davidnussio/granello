@@ -27,23 +27,6 @@ export default function Sidebar(p: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-top">
-        {/* con un vault solo non c'è niente da scegliere */}
-        {p.vaults.length > 1 && (
-          <select
-            className="chip select vault-select"
-            value={p.vaults.find((v) => v.active)?.id ?? ""}
-            aria-label={t("Vault aperto")}
-            title={t("Il vault aperto: l'app mostra i suoi meeting. Scegline un altro per aprirlo.")}
-            onChange={(e) => p.onOpenVault(e.target.value)}
-          >
-            {p.vaults.map((v) => (
-              <option key={v.id} value={v.id} disabled={!v.available}>
-                ◫ {v.name}
-                {v.available ? "" : ` · ${t("non disponibile")}`}
-              </option>
-            ))}
-          </select>
-        )}
         <button className="btn primary wide" onClick={p.onNew} title={t("Nuove note (⌘N)")}>
           {t("+ Nuove note")}
         </button>
@@ -156,6 +139,30 @@ export default function Sidebar(p: Props) {
         <button className="nav-item" onClick={() => p.setView({ kind: "settings" })}>
           {t("⚙ Impostazioni")}
         </button>
+        {/* con un vault solo non c'è niente da scegliere. Il menu è quello di sistema: il
+            select sta, invisibile, sopra l'icona */}
+        {p.vaults.length > 1 && (
+          <label
+            className="vault-switch"
+            title={t("Vault aperto: {name}. Scegline un altro per aprirlo.", {
+              name: p.vaults.find((v) => v.active)?.name ?? "",
+            })}
+          >
+            <span aria-hidden="true">◫</span>
+            <select
+              value={p.vaults.find((v) => v.active)?.id ?? ""}
+              aria-label={t("Vault aperto")}
+              onChange={(e) => p.onOpenVault(e.target.value)}
+            >
+              {p.vaults.map((v) => (
+                <option key={v.id} value={v.id} disabled={!v.available}>
+                  {v.name}
+                  {v.available ? "" : ` · ${t("non disponibile")}`}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
     </aside>
   );

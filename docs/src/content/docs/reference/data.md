@@ -33,7 +33,7 @@ A vault is a folder with its own database, attachments and recordings: the meeti
 
 **Settings → Vaults** adds a vault: give it a name, choose its folder and a minimum privacy level. An empty folder becomes a new vault; the folder of a vault that already exists, even one made on another Mac, is found again with its meetings.
 
-- **One vault is open at a time.** With more than one vault, a menu at the top of the sidebar opens another. The meeting list, the Library, search and chat show only the open vault. You cannot switch while a recording or an AI generation is running.
+- **One vault is open at a time.** With more than one vault, an icon next to Settings, at the bottom of the sidebar, opens another. The meeting list, the Library, search and chat show only the open vault. You cannot switch while a recording or an AI generation is running.
 - **What a vault holds**: `granello.sqlite` (meetings, notes, AI notes, transcripts, tags, projects, people, chat), `attachments/`, `recordings/`, `audio/` and `waveforms/`.
 - **What stays on this Mac for every vault**: settings, templates, calendar addresses, the list of vaults, the whisper models and the API keys.
 - **Minimum privacy**: none, at least local audio, or always hardened. New meetings in the vault start at that level and cannot go below it. Raising the minimum raises the vault's meetings that were below it right away. See [privacy levels](/privacy/levels/).
