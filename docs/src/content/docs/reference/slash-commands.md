@@ -9,7 +9,7 @@ Type `/` in a note to open the command menu. Keep typing to filter it (it unders
 
 Everything a command inserts is saved as readable Markdown: each command below shows how. Several blocks have a shortcut you can type instead of opening the menu.
 
-With the cursor inside a table, the menu starts with the table's own commands: **Add row below**, **Add column to the right**, **Delete row**, **Delete column**, **Delete table**.
+With the cursor inside a table, the menu starts with the table's own commands: **Add row above**, **Add row below**, **Add column to the left**, **Add column to the right**, **Delete row**, **Delete column**, **Delete table**. Inside a columns block it starts with the columns' commands: **Add column to the left**, **Add column to the right**, **Delete column**, **Remove the columns, keep the text**, **Delete the whole block**.
 
 ## Structure
 
@@ -101,7 +101,11 @@ Shortcut: `---` + Enter. Markdown: `---`.
 
 ### Table
 
-A table with a header row. Tab moves to the next cell; inside a table, the `/` menu adds and deletes rows and columns.
+A table with a header row. Tab moves to the next cell, Enter to the one below; in the last row Enter adds a new one.
+
+With the pointer or the cursor on a cell, two handles appear, one to the left of the row and one above the column: each opens a menu to add a row or a column next to it, delete it, or delete the table. The **+** bars below and to the right of the table add a row or a column at the end. The same actions are in the `/` menu.
+
+Backspace in an empty row removes it, and in a table that is completely empty removes the table. At the start of the paragraph after the table, Backspace selects the table: press it again to delete it.
 
 Shortcut: `|` + space. Markdown: a Markdown table.
 
@@ -118,6 +122,10 @@ Markdown: `::: details Title` … `:::`.
 ### Two columns
 
 Two blocks side by side.
+
+Each column has a handle at its top left: it opens a menu to add a column next to it (up to three), delete the column, remove the columns while keeping the text, or delete the whole block. The same actions are in the `/` menu.
+
+Backspace in an empty column removes it; with two columns the text of the other one stays. At the start of the paragraph after the columns, Backspace selects the block: press it again to delete it.
 
 Markdown: `:::: columns`, with a `::: column` … `:::` for each column.
 

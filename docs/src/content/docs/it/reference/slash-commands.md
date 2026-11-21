@@ -9,7 +9,7 @@ Digita `/` in una nota per aprire il menu dei comandi. Continua a scrivere per f
 
 Tutto quello che un comando inserisce si salva come Markdown leggibile: per ogni comando qui sotto c'è come. Diversi blocchi hanno una scorciatoia da digitare al posto del menu.
 
-Con il cursore dentro una tabella, il menu comincia con i comandi della tabella: **Aggiungi riga sotto**, **Aggiungi colonna a destra**, **Elimina riga**, **Elimina colonna**, **Elimina tabella**.
+Con il cursore dentro una tabella, il menu comincia con i comandi della tabella: **Aggiungi riga sopra**, **Aggiungi riga sotto**, **Aggiungi colonna a sinistra**, **Aggiungi colonna a destra**, **Elimina riga**, **Elimina colonna**, **Elimina tabella**. Dentro un blocco di colonne comincia con i comandi delle colonne: **Aggiungi colonna a sinistra**, **Aggiungi colonna a destra**, **Elimina colonna**, **Togli le colonne, tieni il testo**, **Elimina tutto il blocco**.
 
 ## Struttura
 
@@ -101,7 +101,11 @@ Scorciatoia: `---` + Invio. Markdown: `---`.
 
 ### Tabella
 
-Una tabella con una riga di intestazione. Tab passa alla cella dopo; dentro una tabella, il menu `/` aggiunge ed elimina righe e colonne.
+Una tabella con una riga di intestazione. Tab passa alla cella dopo, Invio a quella sotto; nell'ultima riga Invio ne aggiunge una.
+
+Con il puntatore o il cursore su una cella compaiono due maniglie, una a sinistra della riga e una sopra la colonna: aprono un menu per aggiungere una riga o una colonna accanto, eliminarla, o eliminare la tabella. Le barre **+** sotto e a destra della tabella aggiungono una riga o una colonna in fondo. Le stesse azioni sono nel menu `/`.
+
+Cancella (⌫) in una riga vuota la toglie, e in una tabella tutta vuota toglie la tabella. All'inizio del paragrafo dopo la tabella, Cancella seleziona la tabella: premilo ancora per eliminarla.
 
 Scorciatoia: `|` + spazio. Markdown: una tabella Markdown.
 
@@ -118,6 +122,10 @@ Markdown: `::: details Titolo` … `:::`.
 ### Due colonne
 
 Due blocchi affiancati.
+
+Ogni colonna ha una maniglia in alto a sinistra: apre un menu per aggiungere una colonna accanto (fino a tre), eliminare la colonna, togliere le colonne tenendo il testo, o eliminare tutto il blocco. Le stesse azioni sono nel menu `/`.
+
+Cancella (⌫) in una colonna vuota la toglie; con due colonne resta il testo dell'altra. All'inizio del paragrafo dopo le colonne, Cancella seleziona il blocco: premilo ancora per eliminarlo.
 
 Markdown: `:::: columns`, con un `::: column` … `:::` per colonna.
 

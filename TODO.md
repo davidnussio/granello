@@ -54,7 +54,7 @@ attendees), and a generic editor can't copy them.
 
 ### Classics
 
-- [x] **Table**: rows and columns with a header, Tab to move between cells.
+- [x] **Table**: rows and columns with a header, Tab and Enter to move between cells, handles to add and delete rows and columns.
 - [x] **Callout**: a highlighted box with an icon (note, warning, decision).
 - [x] **Toggle**: a collapsible section with a title, for details you don't always want in view.
 - [x] **Image**: paste or drag a screenshot into the note.
@@ -65,7 +65,7 @@ attendees), and a generic editor can't copy them.
 - [x] **Link preview**: a pasted URL becomes a card with title and site.
 - [x] **Formula**: LaTeX maths, inline or as a block.
 - [x] **Table of contents**: an outline generated from the note's headings.
-- [x] **Columns**: two or three blocks side by side.
+- [x] **Columns**: two or three blocks side by side, with a handle per column to add, delete or unwrap.
 
 ### Cool ones
 
