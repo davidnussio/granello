@@ -108,6 +108,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_meetings,
+            commands::set_demo_card_hidden,
             commands::get_meeting,
             commands::create_meeting,
             commands::update_meeting,

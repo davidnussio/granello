@@ -158,6 +158,8 @@ export interface Settings {
   recordingsDir: string | null;
   /** Alla fine toglie dalla registrazione le pause senza audio (serve ffmpeg). */
   trimSilence: boolean;
+  /** La scheda dei dati di esempio nella Home è stata chiusa: restano in Impostazioni. */
+  hideDemoCard: boolean;
 }
 
 /** Una registrazione salvata: l'audio di una sessione di registrazione di un meeting. */

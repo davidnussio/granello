@@ -90,6 +90,7 @@ export default function App() {
       .then((s) => {
         applyLang(s.uiLanguage);
         applyTimeFormat(s.timeFormat);
+        setDemoHidden(s.hideDemoCard);
       })
       .catch(() => {});
   }, [applyLang, applyTimeFormat]);
@@ -106,6 +107,15 @@ export default function App() {
     window.addEventListener("granello:notify", onNotify);
     return () => window.removeEventListener("granello:notify", onNotify);
   }, [toast]);
+
+  /** La scheda dei dati di esempio nella Home è stata chiusa. */
+  const [demoHidden, setDemoHidden] = useState(true);
+  const hideDemo = () => {
+    setDemoHidden(true);
+    api.setDemoCardHidden(true).catch((e) => toast(errorText(e)));
+    toast(t("I dati di esempio restano in Impostazioni → Dati e privacy."));
+  };
+
 
   const refreshMeetings = useCallback(() => {
     api
@@ -355,6 +365,8 @@ export default function App() {
             onToggleCalendar={toggleCalendar}
             setup={setup}
             demo={demo}
+            demoHidden={demoHidden}
+            onHideDemo={hideDemo}
             onNew={newMeeting}
             onOpenEvent={openEvent}
             onRefresh={() => refreshEvents(true)}

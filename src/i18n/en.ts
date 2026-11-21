@@ -262,6 +262,11 @@ const en: Record<string, string> = {
     "An empty folder for a new vault, or the folder of a vault that already exists (even one created on another computer): Granello finds its meetings.",
   "Aggiungi il vault": "Add the vault",
   "Vault aperto": "Open vault",
+  Chiudi: "Close",
+  "Chiudi: i dati di esempio restano in Impostazioni → Dati e privacy":
+    "Close: the sample data stays in Settings → Data and privacy",
+  "I dati di esempio restano in Impostazioni → Dati e privacy.":
+    "The sample data stays in Settings → Data and privacy.",
   "Vault aperto: {name}. Scegline un altro per aprirlo.":
     "Open vault: {name}. Choose another one to open it.",
   "non disponibile": "not available",

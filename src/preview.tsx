@@ -237,6 +237,9 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
         };
   },
   get_settings: () => data.settings,
+  set_demo_card_hidden: (a) => {
+    data.settings = { ...(data.settings as object), hideDemoCard: a.hidden };
+  },
   demo_status: () => data.demoCount,
   list_whisper_models: () => whisperModels,
   ai_ready: () => true,

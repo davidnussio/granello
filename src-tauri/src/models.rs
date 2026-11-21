@@ -301,6 +301,8 @@ pub struct Settings {
     pub recordings_dir: Option<String>,
     /// Alla fine toglie dalla registrazione le pause senza audio (serve ffmpeg).
     pub trim_silence: bool,
+    /// La scheda dei dati di esempio nella Home è stata chiusa: restano in Impostazioni.
+    pub hide_demo_card: bool,
 }
 
 /// Una registrazione salvata: l'audio di una sessione di registrazione di un meeting.

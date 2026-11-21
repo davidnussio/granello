@@ -1679,6 +1679,15 @@ pub fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings)
     Ok(s)
 }
 
+/// Chiude (o riapre) la scheda dei dati di esempio nella Home. Tocca solo quella preferenza.
+#[tauri::command]
+pub fn set_demo_card_hidden(state: State<AppState>, hidden: bool) -> CmdResult<()> {
+    let main = state.main.lock();
+    let mut s = main.get_settings().map_err(err)?;
+    s.hide_demo_card = hidden;
+    main.save_settings(&s).map_err(err)
+}
+
 /// Come macOS mostra l'ora, per l'opzione "come il sistema".
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]

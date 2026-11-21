@@ -4001,10 +4001,29 @@ span.lib-cross {
 
 /* dati di esempio: invito in Home */
 .demo-card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 16px;
   margin-bottom: 28px;
+  padding-right: 44px;
+}
+.demo-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+}
+.demo-close:hover {
+  background: rgba(127, 127, 127, 0.14);
+  color: var(--text);
 }
 .demo-card > div {
   flex: 1;

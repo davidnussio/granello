@@ -168,6 +168,8 @@ export const api = {
 
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
+  /** Chiude (o riapre) la scheda dei dati di esempio nella Home. */
+  setDemoCardHidden: (hidden: boolean) => invoke<void>("set_demo_card_hidden", { hidden }),
   hasApiKey: (providerId: string) => invoke<boolean>("has_api_key", { providerId }),
   setApiKey: (providerId: string, key: string) => invoke<void>("set_api_key", { providerId, key }),
   aiReady: () => invoke<boolean>("ai_ready"),
