@@ -1,4 +1,6 @@
 :root {
+  /* lo spazio in alto per i pulsanti della finestra di macOS, che stanno sopra l'app */
+  --titlebar: 28px;
   --bg: #fbf9f4;
   --panel: #f3efe6;
   --card: #ffffff;
@@ -68,8 +70,12 @@ button:disabled {
   top: 0;
   left: 0;
   right: 0;
-  height: 28px;
+  height: var(--titlebar);
   z-index: 50;
+}
+/* su Windows e Linux la barra del titolo è quella del sistema, fuori dalla pagina */
+:root:not([data-os="mac"]) {
+  --titlebar: 0px;
 }
 
 /* ---------- sidebar ---------- */
@@ -79,7 +85,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding-top: 36px;
+  padding-top: calc(var(--titlebar) + 8px);
 }
 .sidebar-top {
   padding: 0 12px 8px;
@@ -450,7 +456,7 @@ h3 {
   min-height: 0;
 }
 .meeting-header {
-  padding: 40px 56px 6px;
+  padding: calc(var(--titlebar) + 12px) 56px 6px;
 }
 .title-input {
   width: 100%;
@@ -1368,7 +1374,7 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 40px 16px 10px;
+  padding: calc(var(--titlebar) + 12px) 16px 10px;
 }
 
 .transcript {
@@ -1415,7 +1421,7 @@ h3 {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 34px 28px 10px;
+  padding: calc(var(--titlebar) + 6px) 28px 10px;
   border-bottom: 1px solid var(--line);
 }
 .chat-log {
@@ -3350,7 +3356,7 @@ h4.sub {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 40px 28px 14px;
+  padding: calc(var(--titlebar) + 12px) 28px 14px;
 }
 .lib-title {
   font-size: 22px;

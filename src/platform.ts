@@ -17,6 +17,10 @@ function detect(): Os {
 export const os: Os = detect();
 export const isMac = os === "mac";
 
+// Per i CSS: solo su macOS la finestra non ha la barra del titolo e i suoi pulsanti stanno
+// sopra l'app (titleBarStyle "Overlay"); su Windows e Linux la barra è quella del sistema.
+document.documentElement.dataset.os = os;
+
 /** Il valore per il sistema attuale. Senza `linux` vale quello di Windows. */
 export function byOs<T>(mac: T, windows: T, linux: T = windows): T {
   return os === "mac" ? mac : os === "windows" ? windows : linux;
