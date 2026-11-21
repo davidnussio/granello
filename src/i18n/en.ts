@@ -21,7 +21,7 @@ const en: Record<string, string> = {
   // AI settings
   "{name}: {n} modelli disponibili": "{name}: {n} models available",
   "{name} non ha modelli caricati": "{name} has no models loaded",
-  "API key salvata nel Portachiavi": "API key saved to the Keychain",
+  "API key salvata {where}": "API key saved {where}",
   "API key rimossa": "API key removed",
   "Scrivi il nome del modello di {name}": "Type the name of the {name} model to use",
   "Provider per {label}": "Provider for {label}",
@@ -44,11 +44,11 @@ const en: Record<string, string> = {
   "Contesto (token)": "Context (tokens)",
   "non impostato": "not set",
   "API key": "API key",
-  "•••••••••• salvata nel Portachiavi": "•••••••••• saved in the Keychain",
+  "•••••••••• salvata {where}": "•••••••••• saved {where}",
   "Non serve per i server locali": "Not needed for local servers",
   Salva: "Save",
-  "Resta tutto su questo Mac. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare un meeting che non ci sta.":
-    "Everything stays on this Mac. Local servers silently truncate text longer than the model's context (Ollama starts with a small one): enter the context configured on the server and Granello will warn you before sending a meeting that doesn't fit.",
+  "Resta tutto su {device}. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare un meeting che non ci sta.":
+    "Everything stays on {device}. Local servers silently truncate text longer than the model's context (Ollama starts with a small one): enter the context configured on the server and Granello will warn you before sending a meeting that doesn't fit.",
   "Indirizzo non cifrato (http) verso un altro computer: note e trascrizioni viaggiano in chiaro sulla rete.":
     "Unencrypted address (http) to another computer: notes and transcripts travel over the network in clear text.",
   "Aggiungi:": "Add:",
@@ -138,8 +138,11 @@ const en: Record<string, string> = {
   "Altri: {device}": "Others: {device}",
   "Altri: audio di sistema": "Others: system audio",
   "Audio di sistema (consigliato)": "System audio (recommended)",
-  '"Audio di sistema" registra quello che esce dal computer (Teams, Zoom, Meet…) senza installare nulla: serve macOS 14.6 o successivo e, la prima volta, il permesso di registrare l\'audio di sistema. "Microsoft Teams Audio" non contiene le voci della call. Con le cuffie eviti che il microfono riprenda anche gli altri.':
-    '"System audio" records what the computer plays (Teams, Zoom, Meet…) with nothing to install: it needs macOS 14.6 or later and, the first time, the permission to record system audio. "Microsoft Teams Audio" does not carry the voices of the call. Headphones keep the microphone from picking up the others too.',
+  '"Audio di sistema" registra quello che esce dal computer (Teams, Zoom, Meet…) senza installare nulla. {requirement}"Microsoft Teams Audio" non contiene le voci della call. Con le cuffie eviti che il microfono riprenda anche gli altri.':
+    '"System audio" records what the computer plays (Teams, Zoom, Meet…) with nothing to install. {requirement}"Microsoft Teams Audio" does not carry the voices of the call. Headphones keep the microphone from picking up the others too.',
+  "Serve macOS 14.6 o successivo e, la prima volta, il permesso di registrare l'audio di sistema.":
+    "It needs macOS 14.6 or later and, the first time, the permission to record system audio.",
+  "Serve PulseAudio o PipeWire.": "It needs PulseAudio or PipeWire.",
   "Trascrive un file audio o video invece di registrare dal vivo":
     "Transcribes an audio or video file instead of recording live",
   "Trascrivo il file… {pct}%": "Transcribing the file… {pct}%",
@@ -215,9 +218,11 @@ const en: Record<string, string> = {
     'Google Calendar: calendar settings → "Secret address in iCal format". Outlook: Calendar → Publish calendar → ICS link.',
   "Notifica prima dell'inizio (minuti)": "Notify before the start (minutes)",
   "Dati e privacy": "Data and privacy",
-  "Note, trascrizioni e modelli restano su questo Mac. L'audio non viene salvato: viene trascritto in locale e scartato. Fanno eccezione due opzioni, spente finché non le attivi: il salvataggio delle registrazioni, che tiene l'audio in una cartella di questo Mac, e la trascrizione online, che lo tiene fino al caricamento su Gladia e poi lo cancella. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.":
-    "Notes, transcripts and models stay on this Mac. Audio is never saved: it is transcribed locally and discarded. Two options are the exception, off until you turn them on: saving recordings, which keeps the audio in a folder on this Mac, and online transcription, which keeps it until it is uploaded to Gladia and then deletes it. Only the text of your notes and transcript is sent to the AI provider you chose, when you generate AI notes or use the chat.",
+  "Note, trascrizioni e modelli restano su {device}. L'audio non viene salvato: viene trascritto in locale e scartato. Fanno eccezione due opzioni, spente finché non le attivi: il salvataggio delle registrazioni, che tiene l'audio in una cartella di {device}, e la trascrizione online, che lo tiene fino al caricamento su Gladia e poi lo cancella. Al provider AI scelto vengono inviati solo il testo delle note e della trascrizione quando generi le note AI o usi la chat.":
+    "Notes, transcripts and models stay on {device}. Audio is never saved: it is transcribed locally and discarded. Two options are the exception, off until you turn them on: saving recordings, which keeps the audio in a folder on {device}, and online transcription, which keeps it until it is uploaded to Gladia and then deletes it. Only the text of your notes and transcript is sent to the AI provider you chose, when you generate AI notes or use the chat.",
   "Mostra i dati nel Finder": "Show data in Finder",
+  "Mostra i dati in Esplora file": "Show data in File Explorer",
+  "Mostra la cartella dei dati": "Show the data folder",
   "Mostra i log": "Show logs",
 
   // sidebar
@@ -624,10 +629,10 @@ const en: Record<string, string> = {
     "Deletes the selected text for good: this can't be undone",
   "Oscurare per sempre?": "Redact for good?",
   "Privacy di questo meeting": "Privacy of this meeting",
-  "Blindata: non esce niente da questo Mac. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.":
-    "Hardened: nothing leaves this Mac. AI notes, chat and every AI feature use a local model only, or are unavailable.",
-  "Audio locale: l'audio si trascrive solo su questo Mac. Il testo può andare al provider AI configurato.":
-    "Local audio: the audio is transcribed on this Mac only. The text may go to the configured AI provider.",
+  "Blindata: non esce niente da {device}. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.":
+    "Hardened: nothing leaves {device}. AI notes, chat and every AI feature use a local model only, or are unavailable.",
+  "Audio locale: l'audio si trascrive solo su {device}. Il testo può andare al provider AI configurato.":
+    "Local audio: the audio is transcribed on {device} only. The text may go to the configured AI provider.",
   "Standard: valgono le impostazioni generali.": "Standard: the general settings apply.",
   "Privacy: standard": "Privacy: standard",
   "Privacy: audio locale": "Privacy: local audio",
@@ -646,13 +651,13 @@ const en: Record<string, string> = {
   "Trascrizione affinata: ora distingue i parlanti. Clic su un nome per cambiarlo.":
     "Transcript refined: it now tells speakers apart. Click a name to change it.",
   "Trascrizione online con i parlanti": "Online transcription with speakers",
-  'A fine riunione l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla; la trascrizione locale viene sostituita. Per farlo l\'audio della riunione viene tenuto su questo Mac fino al caricamento e poi cancellato. Non vale per i meeting con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.':
-    'When the meeting ends the audio is uploaded to Gladia, which transcribes it and tells speakers apart; the local transcript is replaced. For this the meeting\'s audio is kept on this Mac until the upload and then deleted. It does not apply to meetings with "local audio" or "hardened" privacy, nor while parts are to review.',
+  'A fine riunione l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla; la trascrizione locale viene sostituita. Per farlo l\'audio della riunione viene tenuto su {device} fino al caricamento e poi cancellato. Non vale per i meeting con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.':
+    'When the meeting ends the audio is uploaded to Gladia, which transcribes it and tells speakers apart; the local transcript is replaced. For this the meeting\'s audio is kept on {device} until the upload and then deleted. It does not apply to meetings with "local audio" or "hardened" privacy, nor while parts are to review.',
   "Affina la trascrizione online dopo la riunione": "Refine the transcript online after the meeting",
   "Senza la chiave di Gladia l'audio non viene conservato e non parte niente.":
     "Without the Gladia key no audio is kept and nothing runs.",
   "Chiave API di Gladia": "Gladia API key",
-  "Chiave salvata nel Portachiavi": "Key saved in the Keychain",
+  "Chiave salvata {where}": "Key saved {where}",
   "Incolla la chiave": "Paste the key",
   'Nessuna registrazione salvata. Attiva "Salva le registrazioni" nelle Impostazioni: da lì in poi l\'audio di ogni riunione resta qui.':
     'No saved recordings. Turn on "Save recordings" in Settings: from then on every meeting\'s audio stays here.',
@@ -663,8 +668,8 @@ const en: Record<string, string> = {
   "Tolgo le pause…": "Removing pauses…",
   "Togli le pause": "Remove pauses",
   Registrazioni: "Recordings",
-  "Di norma l'audio viene trascritto e scartato. Attivando il salvataggio, l'audio di ogni riunione resta in una cartella di questo Mac e si riascolta dalla Libreria o dal meeting. Non viene inviato a nessuno.":
-    "Normally audio is transcribed and discarded. With saving on, every meeting's audio stays in a folder on this Mac and can be played back from the Library or the meeting. It is not sent anywhere.",
+  "Di norma l'audio viene trascritto e scartato. Attivando il salvataggio, l'audio di ogni riunione resta in una cartella di {device} e si riascolta dalla Libreria o dal meeting. Non viene inviato a nessuno.":
+    "Normally audio is transcribed and discarded. With saving on, every meeting's audio stays in a folder on {device} and can be played back from the Library or the meeting. It is not sent anywhere.",
   "Salva le registrazioni": "Save recordings",
   Cartella: "Folder",
   "Cambia…": "Change…",
@@ -672,11 +677,13 @@ const en: Record<string, string> = {
   "Cambiando cartella, le registrazioni già fatte restano dov'erano e si continuano a riascoltare.":
     "When you change folder, existing recordings stay where they were and can still be played.",
   "Togli le pause senza audio alla fine della registrazione": "Remove silent pauses when the recording ends",
-  "Serve ffmpeg, che su questo Mac non c'è (si installa con: brew install ffmpeg). Senza, le registrazioni restano in WAV, circa 115 MB all'ora.":
-    "This needs ffmpeg, which isn't on this Mac (install it with: brew install ffmpeg). Without it recordings stay in WAV, about 115 MB per hour.",
+  "Serve ffmpeg, che su {device} non c'è (si installa con: {install}). Senza, le registrazioni restano in WAV, circa 115 MB all'ora.":
+    "This needs ffmpeg, which isn't on {device} (install it with: {install}). Without it recordings stay in WAV, about 115 MB per hour.",
   "Con ffmpeg le registrazioni vengono compresse (circa 20 MB all'ora). Togliendo le pause, i minuti dell'audio non corrispondono più a quelli della trascrizione.":
     "With ffmpeg recordings are compressed (about 20 MB per hour). With pauses removed, the audio timings no longer match the transcript's.",
   "Mostra nel Finder": "Show in Finder",
+  "Mostra in Esplora file": "Show in File Explorer",
+  "Mostra la cartella": "Show the folder",
   "Indica chi ha detto il testo selezionato": "Say who spoke the selected text",
   "Chi parla…": "Who's speaking…",
   "Altro nome…": "Another name…",
@@ -747,6 +754,11 @@ const en: Record<string, string> = {
   "Campi aggiornati dall'AI: controllali prima di salvare.":
     "Fields updated by the AI: review them before saving.",
   "Ripristina com'era": "Undo",
+  "questo Mac": "this Mac",
+  "questo computer": "this computer",
+  "nel Portachiavi": "in the Keychain",
+  "in Gestione credenziali": "in Credential Manager",
+  "in un file leggibile solo da te": "in a file only you can read",
 };
 
 export default en;

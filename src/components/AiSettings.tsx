@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, errorText } from "../api";
 import type { ModelRef, Provider, Settings } from "../types";
 import { t } from "../i18n";
+import { keyStore, thisDevice } from "../platformText";
 
 interface Props {
   s: Settings;
@@ -96,7 +97,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
       setKeyDraft((x) => ({ ...x, [p.id]: "" }));
       setHasKey((x) => ({ ...x, [p.id]: !!key }));
       api.hasApiKey(p.id).then((v) => setHasKey((x) => ({ ...x, [p.id]: v })));
-      toast(key ? t("API key salvata nel Portachiavi") : t("API key rimossa"));
+      toast(key ? t("API key salvata {where}", { where: keyStore() }) : t("API key rimossa"));
     } catch (e) {
       toast(errorText(e));
     }
@@ -233,7 +234,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
                   value={draft}
                   placeholder={
                     saved
-                      ? t("•••••••••• salvata nel Portachiavi")
+                      ? t("•••••••••• salvata {where}", { where: keyStore() })
                       : builtin
                         ? "sk-ant-…"
                         : t("Non serve per i server locali")
@@ -248,7 +249,8 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
             {p.kind === "openai" && isLocal(p.baseUrl) && (
               <small className="muted">
                 {t(
-                  "Resta tutto su questo Mac. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare un meeting che non ci sta.",
+                  "Resta tutto su {device}. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare un meeting che non ci sta.",
+                  { device: thisDevice() },
                 )}
               </small>
             )}

@@ -3,6 +3,8 @@ title: Keyboard shortcuts
 description: The shortcuts of Granello, in the app, in a note and in the Library.
 ---
 
+The shortcuts are written as on the Mac. On Windows and Linux, ⌘ is Ctrl and ⇧ is Shift: ⌘⇧H becomes Ctrl+Shift+H, and the app shows them that way.
+
 ## Everywhere
 
 | Shortcut | What it does |

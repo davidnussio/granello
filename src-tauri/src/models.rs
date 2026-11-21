@@ -335,7 +335,7 @@ impl Settings {
             self.language = "it".into();
         }
         if self.whisper_model.is_empty() {
-            self.whisper_model = "large-v3-turbo-q5_0".into();
+            self.whisper_model = crate::transcribe::DEFAULT_MODEL.into();
         }
         if self.notify_before_min <= 0 {
             self.notify_before_min = 1;
@@ -474,7 +474,7 @@ mod tests {
         assert_eq!(s.notify_before_min, 60);
         assert_eq!(s.language, "it");
         assert_eq!(s.mic_device, None);
-        assert_eq!(s.whisper_model, "large-v3-turbo-q5_0");
+        assert_eq!(s.whisper_model, crate::transcribe::DEFAULT_MODEL);
 
         let bad = |f: fn(&mut Settings)| {
             let mut s = Settings::default();

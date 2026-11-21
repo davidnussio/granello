@@ -18,6 +18,7 @@ import PrivacyIcon, { privacyHint, privacyLabel } from "./PrivacyIcon";
 import ChatPanel from "./ChatPanel";
 import { dayLabel, mmss, time } from "../format";
 import { t } from "../i18n";
+import { thisDevice } from "../platformText";
 import { Sparkles, sparkle } from "../sparkles";
 import type { Editor } from "@tiptap/react";
 import { setAiMeeting, setTranscriptState } from "../editor/aiContext";
@@ -734,11 +735,13 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
               title={
                 meeting.privacy === "hardened"
                   ? t(
-                      "Blindata: non esce niente da questo Mac. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.",
+                      "Blindata: non esce niente da {device}. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.",
+                      { device: thisDevice() },
                     )
                   : meeting.privacy === "audio"
                     ? t(
-                        "Audio locale: l'audio si trascrive solo su questo Mac. Il testo può andare al provider AI configurato.",
+                        "Audio locale: l'audio si trascrive solo su {device}. Il testo può andare al provider AI configurato.",
+                        { device: thisDevice() },
                       )
                     : t("Standard: valgono le impostazioni generali.")
               }

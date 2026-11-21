@@ -9,17 +9,32 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 pub const SAMPLE_RATE: u32 = 16_000;
 
+/// Il modello per le nuove installazioni. Fuori da macOS whisper.cpp gira sulla CPU, senza
+/// Metal: un modello grande non terrebbe il passo con la riunione.
+pub const DEFAULT_MODEL: &str = if MAC { "large-v3-turbo-q5_0" } else { "small" };
+
+const MAC: bool = cfg!(target_os = "macos");
+
 /// (nome, MB, descrizione)
 const MODELS: &[(&str, u32, (&str, &str))] = &[
     ("base", 142, ("Veloce, qualità base. Utile per provare.", "Fast, basic quality. Good for a first try.")),
-    ("small", 466, ("Buon compromesso su Mac Intel.", "A good trade-off on Intel Macs.")),
+    (
+        "small",
+        466,
+        if MAC {
+            ("Buon compromesso su Mac Intel.", "A good trade-off on Intel Macs.")
+        } else {
+            ("Consigliato: buona qualità e abbastanza veloce sulla CPU.", "Recommended: good quality and fast enough on the CPU.")
+        },
+    ),
     (
         "large-v3-turbo-q5_0",
         547,
-        (
-            "Consigliato su Apple Silicon: quasi qualità large, veloce.",
-            "Recommended on Apple Silicon: near-large quality, fast.",
-        ),
+        if MAC {
+            ("Consigliato su Apple Silicon: quasi qualità large, veloce.", "Recommended on Apple Silicon: near-large quality, fast.")
+        } else {
+            ("Quasi qualità large, ma lento sulla CPU.", "Near-large quality, but slow on the CPU.")
+        },
     ),
     ("large-v3-turbo", 1620, ("Qualità massima turbo, più memoria.", "Best turbo quality, more memory.")),
     ("medium", 1530, ("Alternativa multilingue robusta.", "A solid multilingual alternative.")),
