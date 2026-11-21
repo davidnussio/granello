@@ -30,7 +30,7 @@ Speech models can repeat a hint on silence or noise. Granello filters these repe
 
 ## macOS says the app cannot be opened
 
-A build made on another Mac is not signed with an Apple Developer ID, so Gatekeeper blocks it. Build it on the Mac where you use it: see [install](/start/install/).
+Granello is not signed with an Apple Developer ID yet, so macOS blocks it the first time. Open *System Settings → Privacy & Security* and click *Open Anyway*. If macOS says the app is damaged, run `xattr -dr com.apple.quarantine /Applications/Granello.app` in Terminal. See [install](/start/install/).
 
 ## The AI notes stop with an error about size
 

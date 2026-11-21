@@ -1,0 +1,74 @@
+name: Homebrew
+
+# Quando una release viene pubblicata (la bozza creata da release.yml, pubblicata a
+# mano), aggiorna il cask in davidnussio/homebrew-tap:
+#   brew install --cask davidnussio/tap/granello
+# Si rilancia per un tag già pubblicato da Actions → Homebrew → Run workflow.
+#
+# Secret richiesto: HOMEBREW_TAP_TOKEN, un token con permesso di scrittura sui
+# contenuti di davidnussio/homebrew-tap (lo stesso di Ingombro e lazyjq).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag della release pubblicata (es. v0.1.0)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew
+  cancel-in-progress: false
+
+jobs:
+  cask:
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: granello
+
+      - name: SHA-256 dei DMG
+        id: dmg
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${TAG#v}"
+          for arch in arm64 intel; do
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "Granello-$VERSION-macOS-$arch.dmg"
+            echo "$arch=$(sha256sum "Granello-$VERSION-macOS-$arch.dmg" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          done
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v6
+        with:
+          repository: davidnussio/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Cask e commit
+        working-directory: tap
+        env:
+          VERSION: ${{ steps.dmg.outputs.version }}
+          SHA_ARM: ${{ steps.dmg.outputs.arm64 }}
+          SHA_INTEL: ${{ steps.dmg.outputs.intel }}
+        run: |
+          mkdir -p Casks
+          ../granello/scripts/homebrew-cask.sh "$VERSION" "$SHA_ARM" "$SHA_INTEL" > Casks/granello.rb
+          cat Casks/granello.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/granello.rb
+          if git diff --cached --quiet; then
+            echo "Il cask è già alla $VERSION"
+            exit 0
+          fi
+          git commit -m "granello $VERSION"
+          git push
