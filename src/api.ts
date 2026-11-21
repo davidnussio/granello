@@ -87,8 +87,16 @@ export const api = {
   /** Toglie i meeting di esempio; ritorna quanti ne ha tolti. */
   removeDemo: () => invoke<number>("remove_demo"),
   listProjects: () => invoke<Project[]>("list_projects"),
-  /** Promuove un tag a progetto (false), lo archivia (true) o lo riporta a tag normale (null). */
-  setProject: (tag: string, archived: boolean | null) => invoke<Project[]>("set_project", { tag, archived }),
+  /** Crea un progetto (senza `id`) o ne cambia nome, icona e descrizione. */
+  saveProject: (project: { id?: string; name: string; icon: string; description: string }) =>
+    invoke<Project>("save_project", project),
+  /** Archivia un progetto chiuso (true) o lo riporta tra quelli attivi (false). */
+  archiveProject: (id: string, archived: boolean) => invoke<Project[]>("archive_project", { id, archived }),
+  /** Elimina un progetto: i suoi meeting restano, senza progetto. */
+  deleteProject: (id: string) => invoke<Project[]>("delete_project", { id }),
+  /** Mette i meeting in un progetto, o li toglie dal loro (null). */
+  setMeetingsProject: (ids: string[], projectId: string | null) =>
+    invoke<void>("set_meetings_project", { ids, projectId }),
   /** Apre la stampa di sistema sulla finestra (da lì si salva anche in PDF). */
   printWindow: () => invoke<void>("print_window"),
   /** Aggiunge e toglie tag a più meeting insieme. */

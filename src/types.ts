@@ -7,6 +7,8 @@ export interface Meeting {
   calendarEventId: string | null;
   attendees: string[];
   tags: string[];
+  /** Il progetto in cui sta, se ne ha uno. */
+  projectId: string | null;
   templateId: string | null;
   notesMd: string;
   enhancedMd: string | null;
@@ -33,6 +35,7 @@ export interface MeetingSummary {
   hasEnhanced: boolean;
   attendees: string[];
   tags: string[];
+  projectId: string | null;
   snippet: string | null;
 }
 
@@ -205,9 +208,13 @@ export interface RecordingStatus {
   pendingChunks: number;
 }
 
-/** Un tag promosso a progetto. */
+/** Un progetto: raccoglie i meeting che gli appartengono. Un meeting sta in uno al massimo. */
 export interface Project {
-  tag: string;
+  id: string;
+  name: string;
+  /** Un'emoji scelta dall'utente; vuota = l'icona predefinita. */
+  icon: string;
+  description: string;
   archived: boolean;
 }
 

@@ -18,6 +18,9 @@ pub struct Meeting {
     pub enhanced_md: Option<String>,
     #[serde(default)]
     pub privacy: Privacy,
+    /// Il progetto in cui sta, se ne ha uno.
+    #[serde(default)]
+    pub project_id: Option<String>,
 }
 
 /// Quanto di un meeting può uscire da questo Mac.
@@ -60,6 +63,7 @@ pub struct MeetingSummary {
     pub has_enhanced: bool,
     pub attendees: Vec<String>,
     pub tags: Vec<String>,
+    pub project_id: Option<String>,
     pub snippet: Option<String>,
 }
 
@@ -91,11 +95,15 @@ pub struct TagCount {
     pub count: i64,
 }
 
-/// Un tag promosso a progetto.
+/// Un progetto: raccoglie i meeting che gli appartengono. Un meeting sta in uno al massimo.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
-    pub tag: String,
+    pub id: String,
+    pub name: String,
+    /// Un'emoji scelta dall'utente; vuota = l'icona predefinita.
+    pub icon: String,
+    pub description: String,
     pub archived: bool,
 }
 

@@ -324,6 +324,8 @@ export default function App() {
             toast={toast}
             onChanged={refreshMeetings}
             onRecChanged={refreshRec}
+            projects={projects}
+            onProjectsChanged={setProjects}
             onDeleted={() => {
               setView({ kind: "home" });
               refreshMeetings();

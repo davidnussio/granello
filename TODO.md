@@ -5,9 +5,10 @@ OAuth…) live in the "Next steps" section of the [README](README.md).
 
 ## Library
 
-Browse meetings by project, person, tag and period (cascading columns). Projects are promoted tags.
+Browse meetings by project, person, tag and period (cascading columns). A meeting belongs to one project at most.
 
-- [x] Columns with preview, keyboard navigation, projects (promote, archive).
+- [x] Columns with preview, keyboard navigation, projects (create with name, icon and description, archive, delete).
+- [ ] **Vaults**: in Settings, a vault is a folder you choose (an encrypted or external disk too) with its own database, attachments and recordings; its meetings exist only there. A vault can force the highest privacy level on everything it holds.
 - [x] Cross two dimensions (a person inside a project) with a filter on top.
 - [x] Tag several selected meetings at once.
 - [x] A view of items across meetings (decisions, action items, quotes). It reads what the notes already have: decision callouts, checklists and transcript quotes. The dedicated decision and action-item blocks (see "Editor components") will feed the same view.

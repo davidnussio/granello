@@ -5,12 +5,13 @@ import { dayLabel, mmss, time } from "../format";
 import { locale, t } from "../i18n";
 import { sparkle } from "../sparkles";
 import Recordings from "./Recordings";
+import ProjectDialog, { projectLabel } from "./ProjectDialog";
 
 interface Props {
   projects: Project[];
   onProjectsChanged: (projects: Project[]) => void;
   onOpen: (meetingId: string) => void;
-  /** I tag di qualche meeting sono cambiati: chi tiene un elenco di meeting lo ricarica. */
+  /** Tag o progetto di qualche meeting sono cambiati: chi tiene un elenco di meeting lo ricarica. */
   onMeetingsChanged: () => void;
   toast: (text: string) => void;
 }
@@ -45,6 +46,8 @@ interface Group {
   label: string;
   meetings: MeetingSummary[];
   archived?: boolean;
+  /** Solo nella dimensione dei progetti: il progetto di questa voce. */
+  project?: Project;
 }
 
 const DIMS: { id: Dim; icon: string; label: () => string }[] = [
@@ -104,21 +107,22 @@ function byPeriod(meetings: MeetingSummary[]): Group[] {
 function groupsOf(dim: GroupDim, meetings: MeetingSummary[], projects: Project[]): Group[] {
   if (dim === "people") return groupBy(meetings, (m) => m.attendees);
   if (dim === "period") return byPeriod(meetings);
-  const isProject = new Map(projects.map((p) => [p.tag, p]));
-  const tags = groupBy(meetings, (m) => m.tags);
-  if (dim === "tags") return tags.filter((g) => !isProject.has(g.key));
+  if (dim === "tags") return groupBy(meetings, (m) => m.tags);
   // un progetto resta in elenco anche prima di avere meeting
   return projects
     .map((p) => ({
-      key: p.tag,
-      label: p.tag,
-      meetings: tags.find((g) => g.key === p.tag)?.meetings ?? [],
+      key: p.id,
+      label: projectLabel(p),
+      meetings: meetings.filter((m) => m.projectId === p.id),
       archived: p.archived,
+      project: p,
     }))
-    .toSorted((a, b) => Number(a.archived) - Number(b.archived) || a.label.localeCompare(b.label));
+    .toSorted(
+      (a, b) => Number(a.archived) - Number(b.archived) || a.project.name.localeCompare(b.project.name),
+    );
 }
 
-const hash = (dim: GroupDim) => (dim === "tags" || dim === "projects" ? "#" : "");
+const hash = (dim: GroupDim) => (dim === "tags" ? "#" : "");
 
 /** Il testo di un elemento senza la sintassi Markdown: menzioni, date, link, evidenziatore. */
 function plain(text: string): string {
@@ -189,6 +193,10 @@ export default function LibraryView({
   /** Meeting scelti insieme (Cmd o Maiusc + clic), per dare loro un tag in un colpo. */
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const [newTag, setNewTag] = useState("");
+  /** La finestra del progetto: "new" per crearne uno, un progetto per modificarlo. */
+  const [editing, setEditing] = useState<Project | "new" | null>(null);
+  /** Il progetto di cui si è chiesto di confermare l'eliminazione. */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
 
   const reload = useCallback(
@@ -289,20 +297,43 @@ export default function LibraryView({
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- conta solo l'id: ricaricare il dettaglio a ogni nuovo oggetto `current` lo azzererebbe
   }, [current?.id]);
 
-  const setProject = useCallback(
-    async (tag: string, archived: boolean | null) => {
-      try {
-        onProjectsChanged(await api.setProject(tag, archived));
-        if (archived === false) {
-          setDim("projects");
-          setGroupKey(tag);
-        }
-      } catch (e) {
-        toast(errorText(e));
-      }
-    },
-    [onProjectsChanged, toast],
-  );
+  const archiveProject = async (p: Project) => {
+    try {
+      onProjectsChanged(await api.archiveProject(p.id, !p.archived));
+    } catch (e) {
+      toast(errorText(e));
+    }
+  };
+
+  /** Il primo clic chiede conferma, il secondo elimina: i meeting restano, senza progetto. */
+  const deleteProject = async (p: Project) => {
+    if (confirmDelete !== p.id) {
+      setConfirmDelete(p.id);
+      return;
+    }
+    setConfirmDelete(null);
+    try {
+      onProjectsChanged(await api.deleteProject(p.id));
+      await reload();
+      onMeetingsChanged();
+    } catch (e) {
+      toast(errorText(e));
+    }
+  };
+
+  /** Mette i meeting selezionati in un progetto, o li toglie dal loro. */
+  const moveSelection = async (projectId: string | null) => {
+    try {
+      await api.setMeetingsProject(
+        selection.map((m) => m.id),
+        projectId,
+      );
+      await reload();
+      onMeetingsChanged();
+    } catch (e) {
+      toast(errorText(e));
+    }
+  };
 
   /** Clic su un meeting: da solo lo sceglie, con Cmd lo aggiunge alla selezione, con Maiusc fino a lì. */
   const pick = (m: MeetingSummary, e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => {
@@ -411,6 +442,11 @@ export default function LibraryView({
     .replace(/[\s,]+/g, "-");
 
   const archivedCount = projects.filter((p) => p.archived).length;
+  const projectOf = (m: MeetingSummary) => projects.find((p) => p.id === m.projectId);
+  /** Il progetto comune a tutti i meeting selezionati, se è lo stesso per tutti. */
+  const selectionProject = selection.every((m) => m.projectId === selection[0]?.projectId)
+    ? (selection[0]?.projectId ?? "")
+    : "mixed";
   const info = detail && current && detail.id === current.id ? digest(detail) : null;
   const facts = info
     ? [
@@ -547,6 +583,11 @@ export default function LibraryView({
           role="listbox"
           aria-label={DIMS.find((d) => d.id === dim)!.label()}
         >
+          {dim === "projects" && !cross && (
+            <button className="lib-new" onClick={() => setEditing("new")}>
+              {t("+ Nuovo progetto")}
+            </button>
+          )}
           {groups.map((g) => (
             <div
               key={g.key}
@@ -556,6 +597,7 @@ export default function LibraryView({
                 role="option"
                 aria-selected={g.key === group?.key}
                 className="lib-row-main"
+                title={g.project?.description || undefined}
                 onClick={() => {
                   setGroupKey(g.key);
                   setCol(1);
@@ -567,34 +609,36 @@ export default function LibraryView({
                 </span>
                 <span className="lib-count">{g.meetings.length}</span>
               </button>
-              {dim === "tags" && !cross && (
-                <button
-                  className="lib-act"
-                  onClick={() => setProject(g.key, false)}
-                  title={t("Rendi questo tag un progetto")}
-                >
-                  {t("Progetto")}
-                </button>
-              )}
-              {dim === "projects" && !cross && (
+              {g.project && !cross && (
                 <>
                   <button
                     className="lib-act"
-                    onClick={() => setProject(g.key, !g.archived)}
+                    onClick={() => setEditing(g.project!)}
+                    aria-label={t("Modifica il progetto")}
+                    title={t("Cambia nome, icona e descrizione")}
+                  >
+                    ✎
+                  </button>
+                  <button
+                    className="lib-act"
+                    onClick={() => archiveProject(g.project!)}
+                    aria-label={g.archived ? t("Riattiva") : t("Archivia")}
                     title={
                       g.archived
                         ? t("Riporta il progetto tra quelli attivi")
                         : t("Archivia: il progetto è chiuso, i meeting restano")
                     }
                   >
-                    {g.archived ? t("Riattiva") : t("Archivia")}
+                    {g.archived ? "⤒" : "⤓"}
                   </button>
                   <button
-                    className="lib-act"
-                    onClick={() => setProject(g.key, null)}
-                    title={t("Torna un tag normale: i meeting restano")}
+                    className={"lib-act" + (confirmDelete === g.key ? " confirm" : "")}
+                    onClick={() => deleteProject(g.project!)}
+                    onBlur={() => setConfirmDelete(null)}
+                    aria-label={t("Elimina il progetto {name}", { name: g.project.name })}
+                    title={t("Elimina il progetto: i suoi meeting restano, senza progetto")}
                   >
-                    ×
+                    {confirmDelete === g.key ? t("Elimina?") : "×"}
                   </button>
                 </>
               )}
@@ -605,7 +649,7 @@ export default function LibraryView({
               {cross
                 ? t("Nessun meeting ha anche {name}.", { name: hash(cross.dim) + cross.label })
                 : dim === "projects"
-                  ? t("Nessun progetto. In Tag, passa su un tag e scegli Progetto.")
+                  ? t("Nessun progetto: creane uno con + Nuovo progetto.")
                   : dim === "tags"
                     ? t("Nessun tag: aggiungine uno a un meeting, sotto il titolo.")
                     : dim === "people"
@@ -727,7 +771,9 @@ export default function LibraryView({
                 ? t("Nessun risultato")
                 : cross || (dim !== "tags" && dim !== "projects")
                   ? t("Nessun meeting qui.")
-                  : t("Nessun meeting qui: aggiungi il tag #{tag} a un meeting.", { tag: group.label })}
+                  : dim === "projects"
+                    ? t("Nessun meeting qui: apri un meeting e scegli questo progetto, in alto a destra.")
+                    : t("Nessun meeting qui: aggiungi il tag #{tag} a un meeting.", { tag: group.label })}
             </p>
           )}
         </div>
@@ -737,8 +783,24 @@ export default function LibraryView({
             <>
               <h2>{t("{n} meeting selezionati", { n: selection.length })}</h2>
               <p className="muted small">
-                {t("Un tag aggiunto o tolto qui vale per tutti i meeting selezionati.")}
+                {t("Il progetto e i tag scelti qui valgono per tutti i meeting selezionati.")}
               </p>
+              <select
+                className="chip select lib-bulk-project"
+                value={selectionProject}
+                aria-label={t("Progetto dei meeting selezionati")}
+                onChange={(e) => moveSelection(e.target.value || null)}
+              >
+                {selectionProject === "mixed" && <option value="mixed">{t("Progetti diversi")}</option>}
+                <option value="">{t("Nessun progetto")}</option>
+                {projects
+                  .filter((p) => !p.archived || p.id === selectionProject)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {projectLabel(p)}
+                    </option>
+                  ))}
+              </select>
               <form
                 className="lib-bulk-add"
                 onSubmit={(e) => {
@@ -807,6 +869,7 @@ export default function LibraryView({
               <p className="muted small">
                 {dayLabel(current.createdAt)} · {time(current.createdAt)}
               </p>
+              {projectOf(current) && <p className="small lib-project">{projectLabel(projectOf(current)!)}</p>}
               {current.attendees.length > 0 && <p className="small">{current.attendees.join(", ")}</p>}
               {current.tags.length > 0 && (
                 <p className="lib-tags">
@@ -829,7 +892,9 @@ export default function LibraryView({
                 {t("Apri il meeting")}
               </button>
               <p className="muted small lib-hint">
-                {t("⌘ clic o Maiusc clic su altri meeting: li selezioni insieme per dare loro un tag.")}
+                {t(
+                  "⌘ clic o Maiusc clic su altri meeting: li selezioni insieme per dare loro un progetto o un tag.",
+                )}
               </p>
             </>
           ) : (
@@ -837,6 +902,18 @@ export default function LibraryView({
           )}
         </div>
       </div>
+      {editing && (
+        <ProjectDialog
+          project={editing === "new" ? undefined : editing}
+          onClose={() => setEditing(null)}
+          onSaved={(saved, all) => {
+            setEditing(null);
+            onProjectsChanged(all);
+            setDim("projects");
+            setGroupKey(saved.id);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -14,7 +14,33 @@ fn now_ms() -> i64 {
 
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
-const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6];
+const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7];
+
+/// Progetti veri: non più tag promossi, ma voci con un nome, un'icona e una descrizione.
+/// Un meeting sta in un progetto al massimo. I tag che erano progetti lo diventano con lo
+/// stesso nome, e i meeting che li portano ci entrano (se ne portano più d'uno vale il primo);
+/// il tag resta sui meeting come tag normale.
+const SCHEMA_V7: &str = r#"
+ALTER TABLE projects RENAME TO projects_v3;
+CREATE TABLE projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    icon TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    archived INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
+INSERT INTO projects (id, name, archived, created_at)
+SELECT lower(hex(randomblob(16))), tag, archived, created_at FROM projects_v3;
+DROP TABLE projects_v3;
+
+ALTER TABLE meetings ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL;
+UPDATE meetings SET project_id = (
+    SELECT p.id FROM json_each(meetings.tags) j JOIN projects p ON p.name = j.value
+    ORDER BY j.key LIMIT 1
+);
+CREATE INDEX idx_meetings_project ON meetings(project_id);
+"#;
 
 /// Template: oltre alle istruzioni per l'AI, le note da cui parte il meeting (Markdown).
 const SCHEMA_V6: &str = r#"
@@ -221,6 +247,7 @@ impl Db {
             notes_md: row.get("notes_md")?,
             enhanced_md: row.get("enhanced_md")?,
             privacy: Privacy::parse(&row.get::<_, String>("privacy")?),
+            project_id: row.get("project_id")?,
         })
     }
 
@@ -377,7 +404,7 @@ impl Db {
     }
 
     /// Inserisce i meeting di esempio (sostituendo quelli già presenti) e segna i loro progetti.
-    /// Un tag che l'utente ha già reso progetto resta com'è.
+    /// Un progetto che l'utente ha già con quel nome resta com'è.
     pub fn insert_demo(&self, data: &crate::demo::DemoData) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
         for m in &data.meetings {
@@ -402,12 +429,23 @@ impl Db {
             self.upsert_people(&m.attendees.iter().map(|a| (a.clone(), None)).collect::<Vec<_>>())?;
             self.reindex(&m.id)?;
         }
-        for (tags, archived) in [(&data.projects, false), (&data.archived, true)] {
-            for tag in tags {
+        // i progetti di esempio portano il nome di un tag: ci entrano i meeting con quel tag
+        for (names, archived) in [(&data.projects, false), (&data.archived, true)] {
+            for name in names {
                 self.conn.execute(
-                    "INSERT OR IGNORE INTO projects (tag, archived, created_at) VALUES (?1, ?2, ?3)",
-                    params![tag, archived, now_ms()],
+                    "INSERT OR IGNORE INTO projects (id, name, archived, created_at) VALUES (?1, ?2, ?3, ?4)",
+                    params![uuid::Uuid::new_v4().to_string(), name, archived, now_ms()],
                 )?;
+            }
+        }
+        for m in &data.meetings {
+            let names = data.projects.iter().chain(&data.archived);
+            if let Some(name) = m.tags.iter().find(|t| names.clone().any(|n| n == *t)) {
+                self.conn.execute(
+                    "UPDATE meetings SET project_id = (SELECT id FROM projects WHERE name = ?1) WHERE id = ?2",
+                    params![name, m.id],
+                )?;
+                self.reindex(&m.id)?;
             }
         }
         tx.commit()?;
@@ -427,11 +465,11 @@ impl Db {
         for id in &ids {
             self.delete_meeting_rows(id)?;
         }
-        for tag in data.projects.iter().chain(&data.archived) {
+        for name in data.projects.iter().chain(&data.archived) {
             self.conn.execute(
-                "DELETE FROM projects WHERE tag = ?1
-                 AND NOT EXISTS (SELECT 1 FROM meetings m, json_each(m.tags) j WHERE j.value = ?1)",
-                [tag],
+                "DELETE FROM projects WHERE name = ?1
+                 AND NOT EXISTS (SELECT 1 FROM meetings m WHERE m.project_id = projects.id)",
+                [name],
             )?;
         }
         for name in data.people() {
@@ -447,23 +485,90 @@ impl Db {
 
     // ---------- progetti ----------
 
-    /// I tag promossi a progetto, in ordine alfabetico.
+    /// I progetti in ordine alfabetico.
     pub fn list_projects(&self) -> Result<Vec<Project>> {
-        let mut stmt = self.conn.prepare("SELECT tag, archived FROM projects ORDER BY tag")?;
-        let rows = stmt.query_map([], |r| Ok(Project { tag: r.get(0)?, archived: r.get(1)? }))?;
+        let mut stmt =
+            self.conn.prepare("SELECT id, name, icon, description, archived FROM projects ORDER BY name")?;
+        let rows = stmt.query_map([], |r| {
+            Ok(Project {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                icon: r.get(2)?,
+                description: r.get(3)?,
+                archived: r.get(4)?,
+            })
+        })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// `Some(archived)`: il tag è un progetto, attivo o archiviato. `None`: torna un tag normale.
-    pub fn set_project(&self, tag: &str, archived: Option<bool>) -> Result<()> {
-        match archived {
-            Some(archived) => self.conn.execute(
-                "INSERT INTO projects (tag, archived, created_at) VALUES (?1, ?2, ?3)
-                 ON CONFLICT(tag) DO UPDATE SET archived = excluded.archived",
-                params![tag, archived, now_ms()],
-            )?,
-            None => self.conn.execute("DELETE FROM projects WHERE tag = ?1", [tag])?,
-        };
+    /// Crea un progetto (`id` vuoto) o ne cambia nome, icona e descrizione. Due progetti non
+    /// possono avere lo stesso nome, senza distinguere le maiuscole.
+    pub fn save_project(&self, id: &str, name: &str, icon: &str, description: &str) -> Result<Project> {
+        let taken: Option<String> = self
+            .conn
+            .query_row("SELECT id FROM projects WHERE name = ?1", [name], |r| r.get(0))
+            .optional()?;
+        if taken.as_deref().is_some_and(|other| other != id) {
+            return Err(crate::tra!(
+                "Esiste già un progetto con il nome «{name}». Scegline un altro.",
+                "A project named \"{name}\" already exists. Choose another name."
+            ));
+        }
+        let id = if id.is_empty() { uuid::Uuid::new_v4().to_string() } else { id.to_string() };
+        let tx = self.conn.unchecked_transaction()?;
+        self.conn.execute(
+            "INSERT INTO projects (id, name, icon, description, created_at) VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(id) DO UPDATE SET name = excluded.name, icon = excluded.icon,
+             description = excluded.description",
+            params![id, name, icon, description, now_ms()],
+        )?;
+        // il nome del progetto è nell'indice di ricerca dei suoi meeting
+        self.reindex_project(&id)?;
+        tx.commit()?;
+        self.list_projects()?
+            .into_iter()
+            .find(|p| p.id == id)
+            .ok_or_else(|| anyhow::anyhow!("progetto non trovato dopo il salvataggio"))
+    }
+
+    pub fn archive_project(&self, id: &str, archived: bool) -> Result<()> {
+        self.conn.execute("UPDATE projects SET archived = ?1 WHERE id = ?2", params![archived, id])?;
+        Ok(())
+    }
+
+    /// Elimina il progetto: i suoi meeting restano, senza progetto.
+    pub fn delete_project(&self, id: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        let ids = self.project_meetings(id)?;
+        self.conn.execute("DELETE FROM projects WHERE id = ?1", [id])?;
+        for m in ids {
+            self.reindex(&m)?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Mette i meeting in un progetto, o li toglie da quello in cui sono (`None`).
+    pub fn set_meetings_project(&self, ids: &[String], project: Option<&str>) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        for id in ids {
+            self.conn.execute("UPDATE meetings SET project_id = ?1 WHERE id = ?2", params![project, id])?;
+            self.reindex(id)?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    fn project_meetings(&self, id: &str) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare("SELECT id FROM meetings WHERE project_id = ?1")?;
+        let rows = stmt.query_map([id], |r| r.get(0))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    fn reindex_project(&self, id: &str) -> Result<()> {
+        for m in self.project_meetings(id)? {
+            self.reindex(&m)?;
+        }
         Ok(())
     }
 
@@ -565,7 +670,8 @@ impl Db {
         match q {
             None => {
                 let mut stmt = self.conn.prepare(
-                    "SELECT id, title, created_at, enhanced_md IS NOT NULL AND enhanced_md != '', attendees, tags
+                    "SELECT id, title, created_at, enhanced_md IS NOT NULL AND enhanced_md != '', attendees, tags,
+                            project_id
                      FROM meetings ORDER BY created_at DESC",
                 )?;
                 let rows = stmt.query_map([], |r| {
@@ -578,6 +684,7 @@ impl Db {
                         has_enhanced: r.get(3)?,
                         attendees: serde_json::from_str(&att).unwrap_or_default(),
                         tags: serde_json::from_str(&tags).unwrap_or_default(),
+                        project_id: r.get(6)?,
                         snippet: None,
                     })
                 })?;
@@ -593,7 +700,7 @@ impl Db {
                 let mut stmt = self.conn.prepare(
                     "SELECT m.id, m.title, m.created_at,
                             m.enhanced_md IS NOT NULL AND m.enhanced_md != '', m.attendees,
-                            snippet(meetings_fts, -1, '«', '»', '…', 12), m.tags
+                            snippet(meetings_fts, -1, '«', '»', '…', 12), m.tags, m.project_id
                      FROM meetings_fts f JOIN meetings m ON m.id = f.meeting_id
                      WHERE meetings_fts MATCH ?1
                      ORDER BY bm25(meetings_fts, 0.0, 10.0, 4.0, 3.0, 1.0) LIMIT 50",
@@ -608,6 +715,7 @@ impl Db {
                         has_enhanced: r.get(3)?,
                         attendees: serde_json::from_str(&att).unwrap_or_default(),
                         tags: serde_json::from_str(&tags).unwrap_or_default(),
+                        project_id: r.get(7)?,
                         snippet: r.get(5)?,
                     })
                 })?;
@@ -663,13 +771,23 @@ impl Db {
             .map(|s| s.text)
             .collect::<Vec<_>>()
             .join(" ");
+        let project: String = match &m.project_id {
+            Some(p) => self
+                .conn
+                .query_row("SELECT name FROM projects WHERE id = ?1", [p], |r| r.get(0))
+                .optional()?
+                .unwrap_or_default(),
+            None => String::new(),
+        };
         self.conn.execute("DELETE FROM meetings_fts WHERE meeting_id = ?1", [id])?;
         self.conn.execute(
             "INSERT INTO meetings_fts (meeting_id, title, notes, enhanced, transcript) VALUES (?1, ?2, ?3, ?4, ?5)",
-            // tag e partecipanti stanno con il titolo: così si trovano cercandoli
+            // progetto, tag e partecipanti stanno con il titolo: così si trovano cercandoli
             params![
                 id,
-                [m.title.as_str(), &m.tags.join(" "), &m.attendees.join(" ")].join(" · ").trim_end_matches([' ', '·']),
+                [m.title.as_str(), &project, &m.tags.join(" "), &m.attendees.join(" ")]
+                    .join(" · ")
+                    .trim_end_matches([' ', '·']),
                 m.notes_md,
                 m.enhanced_md.unwrap_or_default(),
                 transcript
@@ -1092,8 +1210,8 @@ mod tests {
     fn demo_data_comes_and_goes_without_touching_real_meetings() {
         let db = Db::open_in_memory().unwrap();
         let mine = db.create_meeting("Il mio meeting", None, &["Marco Bianchi".into()], None).unwrap();
-        db.set_tags(&mine.id, &["mio".into()]).unwrap();
-        db.set_project("mio", Some(false)).unwrap();
+        let project = db.save_project("", "Mio", "", "").unwrap();
+        db.set_meetings_project(std::slice::from_ref(&mine.id), Some(&project.id)).unwrap();
         let before_people = db.list_people().unwrap().len();
 
         let data = crate::demo::load(crate::i18n::Lang::It).unwrap();
@@ -1104,13 +1222,17 @@ mod tests {
         let first = &data.meetings[0];
         assert_eq!(db.segments(&first.id).unwrap().len(), first.segments.len());
         assert!(db.list_projects().unwrap().len() > 1);
+        // i meeting di esempio stanno nel progetto che porta il nome di un loro tag
+        let demo_project = db.list_projects().unwrap().into_iter().find(|p| p.name == data.projects[0]).unwrap();
+        assert!(db.list_meetings(None).unwrap().iter().any(|m| m.project_id.as_deref() == Some(&demo_project.id)));
 
         assert_eq!(db.remove_demo(&data).unwrap(), data.meetings.len());
         assert_eq!(db.demo_count().unwrap(), 0);
         let left = db.list_meetings(None).unwrap();
         assert_eq!(left.len(), 1);
         assert_eq!(left[0].id, mine.id);
-        assert_eq!(db.list_projects().unwrap(), vec![Project { tag: "mio".into(), archived: false }]);
+        assert_eq!(db.list_projects().unwrap(), vec![project.clone()]);
+        assert_eq!(left[0].project_id, Some(project.id));
         assert_eq!(db.list_people().unwrap().len(), before_people);
     }
 
@@ -1158,17 +1280,76 @@ mod tests {
     }
 
     #[test]
-    fn projects_are_promoted_tags() {
+    fn projects_hold_meetings_one_each() {
         let db = Db::open_in_memory().unwrap();
-        db.set_project("cliente-x", Some(false)).unwrap();
-        db.set_project("rebranding", Some(false)).unwrap();
-        db.set_project("cliente-x", Some(true)).unwrap();
-        assert_eq!(
-            db.list_projects().unwrap(),
-            vec![Project { tag: "cliente-x".into(), archived: true }, Project { tag: "rebranding".into(), archived: false }]
-        );
-        db.set_project("cliente-x", None).unwrap();
+        let nord = db.save_project("", "Cliente Nord", "🧭", "Rinnovo del contratto").unwrap();
+        let app = db.save_project("", "App mobile", "", "").unwrap();
+        assert_eq!((nord.icon.as_str(), nord.description.as_str(), nord.archived), ("🧭", "Rinnovo del contratto", false));
+        // in ordine alfabetico
+        let names: Vec<String> = db.list_projects().unwrap().into_iter().map(|p| p.name).collect();
+        assert_eq!(names, vec!["App mobile", "Cliente Nord"]);
+        // due progetti non possono avere lo stesso nome, nemmeno con altre maiuscole
+        assert!(db.save_project("", "cliente nord", "", "").is_err());
+        assert!(db.save_project(&app.id, "Cliente Nord", "", "").is_err());
+
+        let a = db.create_meeting("Prezzi", None, &[], None).unwrap();
+        let b = db.create_meeting("Roadmap", None, &[], None).unwrap();
+        assert_eq!(a.project_id, None);
+        db.set_meetings_project(&[a.id.clone(), b.id.clone()], Some(&nord.id)).unwrap();
+        // un meeting sta in un progetto solo: spostarlo lo toglie dall'altro
+        db.set_meetings_project(std::slice::from_ref(&b.id), Some(&app.id)).unwrap();
+        let project = |id: &str| db.get_meeting(id).unwrap().unwrap().project_id;
+        assert_eq!((project(&a.id), project(&b.id)), (Some(nord.id.clone()), Some(app.id.clone())));
+        // il nome del progetto si trova con la ricerca, anche dopo averlo cambiato
+        assert_eq!(db.list_meetings(Some("nord")).unwrap().len(), 1);
+        let renamed = db.save_project(&nord.id, "Cliente Sud", "🧭", "").unwrap();
+        assert_eq!(renamed.id, nord.id);
+        assert_eq!(db.list_meetings(Some("nord")).unwrap().len(), 0);
+        assert_eq!(db.list_meetings(Some("sud")).unwrap()[0].id, a.id);
+
+        db.archive_project(&nord.id, true).unwrap();
+        assert!(db.list_projects().unwrap().iter().find(|p| p.id == nord.id).unwrap().archived);
+        // eliminare un progetto lascia i suoi meeting, senza progetto
+        db.delete_project(&nord.id).unwrap();
+        assert_eq!(project(&a.id), None);
+        assert_eq!(db.list_meetings(Some("sud")).unwrap().len(), 0);
+        db.set_meetings_project(std::slice::from_ref(&b.id), None).unwrap();
+        assert_eq!(project(&b.id), None);
         assert_eq!(db.list_projects().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn promoted_tags_become_projects_on_migration() {
+        let dir = std::env::temp_dir().join(format!("granello-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("db.sqlite");
+        {
+            // un database com'era quando i progetti erano tag promossi: fino allo schema 6
+            let conn = Connection::open(&path).unwrap();
+            for schema in &MIGRATIONS[..6] {
+                conn.execute_batch(schema).unwrap();
+            }
+            conn.pragma_update(None, "user_version", 6).unwrap();
+            conn.execute_batch(
+                r#"INSERT INTO projects (tag, archived, created_at) VALUES ('cliente-x', 0, 1), ('sito', 1, 2);
+                   INSERT INTO meetings (id, title, created_at, tags) VALUES
+                     ('uno', 'Uno', 1, '["prezzi","sito","cliente-x"]'),
+                     ('due', 'Due', 2, '["cliente-x"]'),
+                     ('tre', 'Tre', 3, '["altro"]');"#,
+            )
+            .unwrap();
+        }
+        let db = Db::open(&path).unwrap();
+        let projects = db.list_projects().unwrap();
+        let id = |name: &str| projects.iter().find(|p| p.name == name).unwrap().id.clone();
+        assert_eq!(projects.iter().map(|p| (p.name.as_str(), p.archived)).collect::<Vec<_>>(), vec![("cliente-x", false), ("sito", true)]);
+        let meeting = |m: &str| db.get_meeting(m).unwrap().unwrap();
+        // con più tag-progetto vale il primo; il tag resta sul meeting
+        assert_eq!(meeting("uno").project_id, Some(id("sito")));
+        assert_eq!(meeting("uno").tags, vec!["prezzi", "sito", "cliente-x"]);
+        assert_eq!(meeting("due").project_id, Some(id("cliente-x")));
+        assert_eq!(meeting("tre").project_id, None);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

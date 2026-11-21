@@ -9,25 +9,31 @@ La Libreria sfoglia i meeting a colonne: scegli una dimensione, poi un valore, p
 
 ## Dimensioni
 
-- **Progetti**: i tag che hai promosso. Un progetto ha una sua sezione e si può archiviare quando è chiuso.
+- **Progetti**: i progetti che hai creato, ognuno con i meeting che gli appartengono.
 - **Persone**: chi ha partecipato.
-- **Tag**: gli altri tag.
+- **Tag**: i tag dei tuoi meeting.
 - **Periodo**: questa settimana, poi un gruppo per mese.
 - **Registrazioni**: l'audio salvato, vedi sotto.
 
 Le frecce muovono tra le colonne e Invio apre il meeting.
 
-## I progetti sono tag
+## Progetti
 
-Un meeting entra in un progetto semplicemente avendo quel tag. Per creare un progetto vai in **Tag**, passa su un tag e scegli **Progetto**. Per chiuderlo scegli **Archivia**: i suoi meeting restano.
+Un progetto raccoglie i meeting che vanno insieme: un cliente, un prodotto, un lavoro. **+ Nuovo progetto** in cima alla colonna Progetti ne crea uno, con nome, icona e descrizione.
+
+Un meeting sta in un progetto al massimo. Per mettere un meeting in un progetto aprilo e scegli il progetto in alto a destra nell'intestazione, sopra i pulsanti copia, stampa ed elimina; da lì puoi anche creare un progetto nuovo. Per spostare più meeting insieme selezionali nella Libreria e scegli il progetto nell'anteprima.
+
+Passando su un progetto puoi modificarlo (✎), archiviarlo quando è chiuso (⤓) o eliminarlo (×). Archiviare ed eliminare tengono i meeting: un progetto archiviato va sotto **Archiviati**, e i meeting di un progetto eliminato restano senza progetto.
+
+I progetti creati con le versioni precedenti, quando un progetto era un tag promosso, vengono convertiti al primo avvio: ognuno tiene il nome e i suoi meeting, e il tag resta sui meeting come tag normale.
 
 ## Incrociare due dimensioni
 
 **+ Incrocia con…** in cima restringe tutto ai meeting che hanno anche un'altra cosa: una persona dentro un progetto, un tag in un mese.
 
-## Dare un tag a più meeting insieme
+## Più meeting insieme
 
-Con ⌘ clic o Maiusc clic selezioni più meeting. L'anteprima ti fa allora aggiungere un tag a tutti, o toglierne uno da tutti.
+Con ⌘ clic o Maiusc clic selezioni più meeting. L'anteprima ti fa allora scegliere il progetto per tutti, aggiungere un tag a tutti, o toglierne uno da tutti.
 
 ## Elementi attraverso i meeting
 

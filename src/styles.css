@@ -1970,6 +1970,75 @@ h3 {
   width: min(620px, 92vw);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
 }
+/* finestra del progetto */
+.project-dialog {
+  width: min(460px, 92vw);
+}
+.project-dialog h3 {
+  margin: 0 0 16px;
+}
+.project-name {
+  display: flex;
+  gap: 8px;
+}
+.project-name input {
+  flex: 1;
+  min-width: 0;
+}
+.project-icon {
+  flex: none;
+  width: 36px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 8px;
+  font-size: 16px;
+}
+.project-icon:hover {
+  border-color: var(--accent);
+}
+.project-icons {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: -6px 0 14px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.project-icons button {
+  height: 32px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 17px;
+}
+.project-icons button:hover,
+.project-icons button.on {
+  background: var(--accent-soft);
+}
+.modal.project-dialog textarea {
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+.project-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+/* il progetto del meeting: in alto a destra, sopra le azioni */
+.project-select {
+  margin-left: auto;
+  flex: none;
+  max-width: 220px;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+.project-select.set {
+  color: var(--accent);
+  background-color: var(--accent-soft);
+  border-color: transparent;
+}
 .modal textarea {
   font-family: ui-monospace, Menlo, monospace;
   font-size: 13px;
@@ -3554,6 +3623,31 @@ button.lib-row {
   background: var(--card);
   color: var(--text);
 }
+.lib-act.confirm {
+  display: inline-block;
+  color: var(--rec);
+}
+.lib-new {
+  margin-bottom: 4px;
+  border: 1px dashed var(--line);
+  background: none;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: left;
+  padding: 6px 9px;
+}
+.lib-new:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.lib-bulk-project {
+  align-self: flex-start;
+  max-width: 100%;
+}
+.lib-project {
+  color: var(--accent);
+}
 .lib-more {
   margin-top: 6px;
   border: none;
@@ -4119,6 +4213,7 @@ span.lib-cross {
   .block-menu,
   .title-ai,
   .meeting-actions,
+  .project-select,
   .meta-row select,
   .chip.add,
   .chip.import,

@@ -9,25 +9,31 @@ The Library browses your meetings in columns: pick a dimension, then a value, th
 
 ## Dimensions
 
-- **Projects**: tags you promoted. A project has its own section and can be archived when it is done.
+- **Projects**: the projects you created, each with the meetings that belong to it.
 - **People**: who took part.
-- **Tags**: the other tags.
+- **Tags**: the tags on your meetings.
 - **Period**: this week, then one group per month.
 - **Recordings**: the saved audio, see below.
 
 Arrow keys move through the columns and Enter opens the meeting.
 
-## Projects are tags
+## Projects
 
-A meeting joins a project simply by carrying its tag. To make a project, go to **Tags**, hover a tag and choose **Project**. To close one, choose **Archive**: its meetings stay.
+A project collects the meetings that belong together: a client, a product, a piece of work. **+ New project** at the top of the Projects column creates one, with a name, an icon and a description.
+
+A meeting belongs to one project at most. To put a meeting in a project, open it and choose the project at the top right of the header, above the copy, print and delete buttons; from there you can also create a new project. To move several meetings at once, select them in the Library and choose the project in the preview.
+
+Hover a project to edit it (✎), archive it when it is done (⤓) or delete it (×). Archiving and deleting keep the meetings: an archived project moves under **Archived**, and the meetings of a deleted project are left without a project.
+
+Projects made with earlier versions, when a project was a promoted tag, are converted on the first launch: each one keeps its name and its meetings, and the tag stays on the meetings as a plain tag.
 
 ## Cross two dimensions
 
 **+ Cross with…** at the top narrows everything to the meetings that also have one more thing: a person inside a project, a tag in a month.
 
-## Tag several meetings at once
+## Several meetings at once
 
-⌘-click or Shift-click selects several meetings. The preview then lets you add a tag to all of them, or remove one from all of them.
+⌘-click or Shift-click selects several meetings. The preview then lets you choose the project for all of them, add a tag to all of them, or remove one from all of them.
 
 ## Items across meetings
 

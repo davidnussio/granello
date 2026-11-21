@@ -111,6 +111,52 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     data.meetings = [...data.meetings];
     return null;
   },
+  // anche i progetti si scrivono davvero, in memoria: serve a provare la finestra e gli spostamenti
+  save_project: (a) => {
+    const all = data.projects as { id: string; name: string; archived: boolean }[];
+    const name = String(a.name).trim();
+    if (all.some((p) => p.id !== a.id && p.name.toLowerCase() === name.toLowerCase()))
+      throw new Error(`Esiste già un progetto con il nome «${name}». Scegline un altro.`);
+    const saved = {
+      id: (a.id as string) || `anteprima-${Date.now()}`,
+      name,
+      icon: a.icon,
+      description: a.description,
+      archived: all.find((p) => p.id === a.id)?.archived ?? false,
+    };
+    data.projects = [...all.filter((p) => p.id !== saved.id), saved].toSorted((x, y) =>
+      x.name.localeCompare(y.name),
+    );
+    return saved;
+  },
+  archive_project: (a) => {
+    data.projects = (data.projects as { id: string }[]).map((p) =>
+      p.id === a.id ? { ...p, archived: a.archived } : p,
+    );
+    return data.projects;
+  },
+  delete_project: (a) => {
+    data.projects = (data.projects as { id: string }[]).filter((p) => p.id !== a.id);
+    const clear = (m: { projectId: string | null }) => {
+      if (m.projectId === a.id) m.projectId = null;
+    };
+    (data.meetings as { projectId: string | null }[]).forEach(clear);
+    for (const d of Object.values(data.details) as { meeting: { projectId: string | null } }[])
+      clear(d.meeting);
+    data.meetings = [...data.meetings];
+    return data.projects;
+  },
+  set_meetings_project: (a) => {
+    const ids = a.ids as string[];
+    const move = (m: { id: string; projectId: string | null }) => {
+      if (ids.includes(m.id)) m.projectId = (a.projectId as string | null) ?? null;
+    };
+    (data.meetings as { id: string; projectId: string | null }[]).forEach(move);
+    for (const d of Object.values(data.details) as { meeting: { id: string; projectId: string | null } }[])
+      move(d.meeting);
+    data.meetings = [...data.meetings];
+    return null;
+  },
   list_templates: () => data.templates,
   // i template si possono salvare davvero, in memoria: serve a provare le note di partenza
   save_template: (a) => {

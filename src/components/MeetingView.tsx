@@ -8,6 +8,7 @@ import type {
   Template,
   TranscriptPart,
   TranscriptSegment,
+  Project,
 } from "../types";
 import ChipInput, { type ChipSuggestion } from "./ChipInput";
 import NoteEditor from "../editor/NoteEditor";
@@ -16,6 +17,7 @@ import TranscriptPanel from "./TranscriptPanel";
 import Recordings from "./Recordings";
 import PrivacyIcon, { privacyHint, privacyLabel } from "./PrivacyIcon";
 import ChatPanel from "./ChatPanel";
+import ProjectDialog, { projectLabel } from "./ProjectDialog";
 import { dayLabel, mmss, time } from "../format";
 import { t } from "../i18n";
 import { thisDevice } from "../platformText";
@@ -39,7 +41,12 @@ interface Props {
   onChanged: () => void;
   onRecChanged: () => void;
   onDeleted: () => void;
+  projects: Project[];
+  onProjectsChanged: (projects: Project[]) => void;
 }
+
+/** Voce del selettore del progetto che apre la finestra per crearne uno. */
+const NEW_PROJECT = "+new";
 
 type Tab = "notes" | "enhanced";
 type Side = "none" | "transcript" | "chat";
@@ -124,7 +131,16 @@ function ActionIcon({ name }: { name: keyof typeof ICONS }) {
   );
 }
 
-export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, onDeleted }: Props) {
+export default function MeetingView({
+  id,
+  rec,
+  toast,
+  onChanged,
+  onRecChanged,
+  onDeleted,
+  projects,
+  onProjectsChanged,
+}: Props) {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -135,6 +151,7 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
   const [elapsed, setElapsed] = useState(0);
   const [busyRec, setBusyRec] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [creatingProject, setCreatingProject] = useState(false);
   /** Stampa o copia in attesa di conferma: il meeting è riservato e il testo sta per uscire dall'app. */
   const [confirmOut, setConfirmOut] = useState<"print" | "copy" | null>(null);
   const [confirmRegen, setConfirmRegen] = useState(false);
@@ -584,6 +601,19 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
       .then(setSegments)
       .catch((e) => toast(errorText(e)));
 
+  /** Mette il meeting in un progetto, o lo toglie dal suo (null). */
+  const changeProject = async (projectId: string | null) => {
+    const previous = meeting?.projectId ?? null;
+    setMeeting((m) => (m ? { ...m, projectId } : m));
+    try {
+      await api.setMeetingsProject([id], projectId);
+      onChanged();
+    } catch (e) {
+      setMeeting((m) => (m ? { ...m, projectId: previous } : m));
+      toast(errorText(e));
+    }
+  };
+
   const changeTemplate = async (templateId: string) => {
     setMeeting((m) => (m ? { ...m, templateId } : m));
     // su una nota ancora vuota il template porta le sue note di partenza; se c'è già
@@ -710,6 +740,30 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
             >
               <Sparkles />
             </button>
+            {/* il progetto sta in alto a destra, sopra le azioni sul meeting */}
+            <select
+              className={"chip select project-select" + (meeting.projectId ? " set" : "")}
+              value={meeting.projectId ?? ""}
+              aria-label={t("Progetto di questo meeting")}
+              title={
+                projects.find((p) => p.id === meeting.projectId)?.description ||
+                t("Il progetto in cui sta questo meeting")
+              }
+              onChange={(e) => {
+                if (e.target.value === NEW_PROJECT) setCreatingProject(true);
+                else void changeProject(e.target.value || null);
+              }}
+            >
+              <option value="">{t("Nessun progetto")}</option>
+              {projects
+                .filter((p) => !p.archived || p.id === meeting.projectId)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {projectLabel(p)}
+                  </option>
+                ))}
+              <option value={NEW_PROJECT}>{t("+ Nuovo progetto")}…</option>
+            </select>
           </div>
           <div className="meta-row">
             <span className="chip">
@@ -1058,6 +1112,17 @@ export default function MeetingView({ id, rec, toast, onChanged, onRecChanged, o
           )}
           <footer className="recbar side-foot">{sideButtons}</footer>
         </aside>
+      )}
+      {creatingProject && (
+        <ProjectDialog
+          onClose={() => setCreatingProject(false)}
+          onSaved={(saved, all) => {
+            setCreatingProject(false);
+            onProjectsChanged(all);
+            // il progetto appena creato da qui è per questo meeting
+            void changeProject(saved.id);
+          }}
+        />
       )}
     </div>
   );

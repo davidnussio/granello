@@ -279,16 +279,44 @@ pub fn list_projects(state: State<AppState>) -> CmdResult<Vec<Project>> {
     state.db.lock().list_projects().map_err(err)
 }
 
-/// Promuove un tag a progetto (`archived` false), lo archivia (true) o lo riporta a tag (assente).
+/// Crea un progetto (`id` assente) o ne cambia nome, icona e descrizione.
 #[tauri::command]
-pub fn set_project(state: State<AppState>, tag: String, archived: Option<bool>) -> CmdResult<Vec<Project>> {
-    let tag = tag.trim().trim_start_matches('#').to_lowercase();
-    if tag.is_empty() {
-        return Err(tr("Il tag è vuoto", "The tag is empty").into());
+pub fn save_project(
+    state: State<AppState>,
+    id: Option<String>,
+    name: String,
+    icon: String,
+    description: String,
+) -> CmdResult<Project> {
+    let name: String = name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
+    if name.is_empty() {
+        return Err(tr("Dai un nome al progetto", "Give the project a name").into());
     }
+    let icon: String = icon.trim().chars().take(8).collect();
+    let description: String = description.trim().chars().take(600).collect();
+    state.db.lock().save_project(id.as_deref().unwrap_or(""), &name, &icon, &description).map_err(err)
+}
+
+/// Archivia un progetto chiuso, o lo riporta tra quelli attivi.
+#[tauri::command]
+pub fn archive_project(state: State<AppState>, id: String, archived: bool) -> CmdResult<Vec<Project>> {
     let db = state.db.lock();
-    db.set_project(&tag, archived).map_err(err)?;
+    db.archive_project(&id, archived).map_err(err)?;
     db.list_projects().map_err(err)
+}
+
+/// Elimina un progetto: i suoi meeting restano, senza progetto.
+#[tauri::command]
+pub fn delete_project(state: State<AppState>, id: String) -> CmdResult<Vec<Project>> {
+    let db = state.db.lock();
+    db.delete_project(&id).map_err(err)?;
+    db.list_projects().map_err(err)
+}
+
+/// Mette uno o più meeting in un progetto, o li toglie dal loro (`project_id` assente).
+#[tauri::command]
+pub fn set_meetings_project(state: State<AppState>, ids: Vec<String>, project_id: Option<String>) -> CmdResult<()> {
+    state.db.lock().set_meetings_project(&ids, project_id.as_deref()).map_err(err)
 }
 
 /// Apre la stampa di sistema sulla finestra: da lì si stampa o si salva in PDF. Dal
