@@ -60,7 +60,7 @@ tar xf "$TARBALL"
 cd "ffmpeg-$VERSION"
 
 ./configure "${FLAGS[@]}"
-make -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)" ffmpeg
+make -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)" "ffmpeg$EXE"
 cp "ffmpeg$EXE" "$OUT/ffmpeg-$TRIPLE$EXE"
 
 {
