@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sparkle } from "./sparkles";
 import { api, errorText, on } from "./api";
-import type { CalendarEvent, CalendarInfo, MeetingSummary, Project, RecordingStatus, View } from "./types";
+import type {
+  CalendarEvent,
+  CalendarInfo,
+  MeetingSummary,
+  Project,
+  RecordingStatus,
+  Vault,
+  View,
+} from "./types";
 import Sidebar from "./components/Sidebar";
 import MeetingView from "./components/MeetingView";
 import ChatPanel from "./components/ChatPanel";
 import SettingsView from "./components/SettingsView";
-import TemplatesView from "./components/TemplatesView";
+import SettingsNav, { DEFAULT_SECTION } from "./components/SettingsNav";
 import Home from "./components/Home";
 import LibraryView from "./components/LibraryView";
 import type { Demo } from "./components/DemoData";
@@ -28,6 +36,9 @@ export interface Toast {
 
 export default function App() {
   const [view, setView] = useState<View>({ kind: "home" });
+  /** L'ultima vista prima delle impostazioni: ci si torna uscendo. */
+  const beforeSettings = useRef<View>({ kind: "home" });
+  if (view.kind !== "settings") beforeSettings.current = view;
   const [query, setQuery] = useState("");
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -46,6 +57,14 @@ export default function App() {
       .then(setProjects)
       .catch(() => {});
   }, []);
+  const [vaults, setVaults] = useState<Vault[]>([]);
+  useEffect(() => {
+    api
+      .listVaults()
+      .then(setVaults)
+      .catch(() => {});
+  }, []);
+  const vault = vaults.find((v) => v.active);
   const [setup, setSetup] = useState<SetupStatus | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   // cambiare lingua ridisegna tutta l'interfaccia: t() legge la lingua corrente
@@ -242,6 +261,22 @@ export default function App() {
     },
   };
 
+  /**
+   * Passa a un altro vault. Prima si esce dal meeting aperto, così le modifiche in sospeso
+   * vengono salvate nel vault a cui appartengono; poi l'interfaccia riparte da capo, perché
+   * tutto quello che mostra (meeting, progetti, persone, chat) è di un vault solo.
+   */
+  const openVault = async (id: string) => {
+    setView({ kind: "home" });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    try {
+      await api.openVault(id);
+      window.location.reload();
+    } catch (e) {
+      toast(errorText(e));
+    }
+  };
+
   const newMeetingRef = useRef<() => void>(() => {});
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -290,18 +325,28 @@ export default function App() {
   return (
     <div className="app">
       {isMac && <div className="titlebar" data-tauri-drag-region />}
-      <Sidebar
-        view={view}
-        setView={setView}
-        query={query}
-        setQuery={setQuery}
-        meetings={meetings}
-        events={events}
-        rec={rec}
-        onNew={newMeeting}
-        onOpenEvent={openEvent}
-        searchRef={searchRef}
-      />
+      {view.kind === "settings" ? (
+        <SettingsNav
+          section={view.section ?? DEFAULT_SECTION}
+          onSection={(section) => setView({ kind: "settings", section })}
+          onBack={() => setView(beforeSettings.current)}
+        />
+      ) : (
+        <Sidebar
+          view={view}
+          setView={setView}
+          query={query}
+          setQuery={setQuery}
+          meetings={meetings}
+          events={events}
+          rec={rec}
+          onNew={newMeeting}
+          onOpenEvent={openEvent}
+          vaults={vaults}
+          onOpenVault={openVault}
+          searchRef={searchRef}
+        />
+      )}
       <main className="main">
         {view.kind === "home" && (
           <Home
@@ -326,6 +371,7 @@ export default function App() {
             onRecChanged={refreshRec}
             projects={projects}
             onProjectsChanged={setProjects}
+            minPrivacy={vault?.minPrivacy ?? "open"}
             onDeleted={() => {
               setView({ kind: "home" });
               refreshMeetings();
@@ -359,8 +405,12 @@ export default function App() {
         )}
         {view.kind === "settings" && (
           <SettingsView
+            section={view.section ?? DEFAULT_SECTION}
             toast={toast}
             demo={demo}
+            vaults={vaults}
+            onVaultsChanged={setVaults}
+            onOpenVault={openVault}
             onCalendarChanged={() => refreshEvents(true)}
             onTimeFormatChanged={applyTimeFormat}
             onLangChanged={(l) => {
@@ -369,7 +419,6 @@ export default function App() {
             }}
           />
         )}
-        {view.kind === "templates" && <TemplatesView toast={toast} />}
       </main>
       <div className="toasts">
         {toasts.map((item) => (

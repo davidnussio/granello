@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import { sparkle } from "../sparkles";
-import type { CalendarEvent, MeetingSummary, RecordingStatus, View } from "../types";
+import type { CalendarEvent, MeetingSummary, RecordingStatus, Vault, View } from "../types";
 import { groupByDay, time } from "../format";
 import { t } from "../i18n";
 
@@ -15,6 +15,8 @@ interface Props {
   onNew: () => void;
   onOpenEvent: (e: CalendarEvent) => void;
   searchRef: RefObject<HTMLInputElement>;
+  vaults: Vault[];
+  onOpenVault: (id: string) => void;
 }
 
 export default function Sidebar(p: Props) {
@@ -25,6 +27,23 @@ export default function Sidebar(p: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-top">
+        {/* con un vault solo non c'è niente da scegliere */}
+        {p.vaults.length > 1 && (
+          <select
+            className="chip select vault-select"
+            value={p.vaults.find((v) => v.active)?.id ?? ""}
+            aria-label={t("Vault aperto")}
+            title={t("Il vault aperto: l'app mostra i suoi meeting. Scegline un altro per aprirlo.")}
+            onChange={(e) => p.onOpenVault(e.target.value)}
+          >
+            {p.vaults.map((v) => (
+              <option key={v.id} value={v.id} disabled={!v.available}>
+                ◫ {v.name}
+                {v.available ? "" : ` · ${t("non disponibile")}`}
+              </option>
+            ))}
+          </select>
+        )}
         <button className="btn primary wide" onClick={p.onNew} title={t("Nuove note (⌘N)")}>
           {t("+ Nuove note")}
         </button>
@@ -134,16 +153,7 @@ export default function Sidebar(p: Props) {
       )}
 
       <div className="sidebar-bottom">
-        <button
-          className={navCls(p.view.kind === "templates")}
-          onClick={() => p.setView({ kind: "templates" })}
-        >
-          {t("☰ Template")}
-        </button>
-        <button
-          className={navCls(p.view.kind === "settings")}
-          onClick={() => p.setView({ kind: "settings" })}
-        >
+        <button className="nav-item" onClick={() => p.setView({ kind: "settings" })}>
           {t("⚙ Impostazioni")}
         </button>
       </div>

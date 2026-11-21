@@ -19,7 +19,7 @@ Arrow keys move through the columns and Enter opens the meeting.
 
 ## Projects
 
-A project collects the meetings that belong together: a client, a product, a piece of work. **+ New project** at the top of the Projects column creates one, with a name, an icon and a description.
+A project collects the meetings that belong together: a client, a product, a piece of work. **+ New project** at the top of the Projects column creates one, with a name, a color and a description.
 
 A meeting belongs to one project at most. To put a meeting in a project, open it and choose the project at the top right of the header, above the copy, print and delete buttons; from there you can also create a new project. To move several meetings at once, select them in the Library and choose the project in the preview.
 

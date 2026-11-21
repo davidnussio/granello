@@ -19,7 +19,7 @@ Le frecce muovono tra le colonne e Invio apre il meeting.
 
 ## Progetti
 
-Un progetto raccoglie i meeting che vanno insieme: un cliente, un prodotto, un lavoro. **+ Nuovo progetto** in cima alla colonna Progetti ne crea uno, con nome, icona e descrizione.
+Un progetto raccoglie i meeting che vanno insieme: un cliente, un prodotto, un lavoro. **+ Nuovo progetto** in cima alla colonna Progetti ne crea uno, con nome, colore e descrizione.
 
 Un meeting sta in un progetto al massimo. Per mettere un meeting in un progetto aprilo e scegli il progetto in alto a destra nell'intestazione, sopra i pulsanti copia, stampa ed elimina; da lì puoi anche creare un progetto nuovo. Per spostare più meeting insieme selezionali nella Libreria e scegli il progetto nell'anteprima.
 

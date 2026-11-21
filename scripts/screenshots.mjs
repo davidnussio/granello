@@ -152,7 +152,7 @@ const shots = (lang) => {
     { name: "library", steps: [l.library] },
     { name: "items", steps: [l.library, l.items] },
     { name: "recordings", steps: [l.library, l.recordings] },
-    { name: "templates", steps: [l.templates, { js: openTemplate(l.interview) }] },
+    { name: "templates", steps: [l.settings, l.templates, { js: openTemplate(l.interview) }] },
     { name: "settings", steps: [l.settings] },
   ];
 };

@@ -22,6 +22,7 @@ import type {
   TemplateDraft,
   TranscriptPart,
   TranscriptSegment,
+  Vault,
   WhisperModelInfo,
 } from "./types";
 
@@ -63,6 +64,19 @@ export const api = {
   recordingWaveform: (id: number) => invoke<number[]>("recording_waveform", { id }),
   /** Fa scegliere la cartella delle registrazioni. null se la scelta viene annullata. */
   pickRecordingsDir: () => invoke<string | null>("pick_recordings_dir"),
+  listVaults: () => invoke<Vault[]>("list_vaults"),
+  /** Fa scegliere la cartella di un vault. null se la scelta viene annullata. */
+  pickVaultDir: () => invoke<string | null>("pick_vault_dir"),
+  /** Aggiunge un vault in una cartella (nuovo, o già esistente lì). Non lo apre. */
+  createVault: (name: string, path: string, minPrivacy: Privacy) =>
+    invoke<Vault[]>("create_vault", { name, path, minPrivacy }),
+  /** Cambia nome e privacy minima di un vault (del principale solo la privacy minima). */
+  updateVault: (id: string, name: string, minPrivacy: Privacy) =>
+    invoke<Vault[]>("update_vault", { id, name, minPrivacy }),
+  /** Toglie un vault dall'elenco: la cartella e i suoi dati restano. */
+  removeVault: (id: string) => invoke<Vault[]>("remove_vault", { id }),
+  /** Apre un vault: da qui in poi i comandi leggono e scrivono i suoi meeting. */
+  openVault: (id: string) => invoke<Vault[]>("open_vault", { id }),
   /** C'è dell'audio conservato per l'affinamento online di questo meeting? */
   keptAudio: (meetingId: string) => invoke<boolean>("kept_audio", { meetingId }),
   discardAudio: (meetingId: string) => invoke<void>("discard_audio", { meetingId }),
@@ -87,8 +101,8 @@ export const api = {
   /** Toglie i meeting di esempio; ritorna quanti ne ha tolti. */
   removeDemo: () => invoke<number>("remove_demo"),
   listProjects: () => invoke<Project[]>("list_projects"),
-  /** Crea un progetto (senza `id`) o ne cambia nome, icona e descrizione. */
-  saveProject: (project: { id?: string; name: string; icon: string; description: string }) =>
+  /** Crea un progetto (senza `id`) o ne cambia nome, colore e descrizione. */
+  saveProject: (project: { id?: string; name: string; color: string; description: string }) =>
     invoke<Project>("save_project", project),
   /** Archivia un progetto chiuso (true) o lo riporta tra quelli attivi (false). */
   archiveProject: (id: string, archived: boolean) => invoke<Project[]>("archive_project", { id, archived }),

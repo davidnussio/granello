@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, errorText, newStreamId, on, SYSTEM_AUDIO } from "../api";
 import type {
   CalendarEvent,
@@ -17,7 +17,7 @@ import TranscriptPanel from "./TranscriptPanel";
 import Recordings from "./Recordings";
 import PrivacyIcon, { privacyHint, privacyLabel } from "./PrivacyIcon";
 import ChatPanel from "./ChatPanel";
-import ProjectDialog, { projectLabel } from "./ProjectDialog";
+import ProjectDialog, { projectColor } from "./ProjectDialog";
 import { dayLabel, mmss, time } from "../format";
 import { t } from "../i18n";
 import { thisDevice } from "../platformText";
@@ -43,6 +43,8 @@ interface Props {
   onDeleted: () => void;
   projects: Project[];
   onProjectsChanged: (projects: Project[]) => void;
+  /** La privacy minima del vault aperto: i livelli più bassi non si possono scegliere. */
+  minPrivacy: Privacy;
 }
 
 /** Voce del selettore del progetto che apre la finestra per crearne uno. */
@@ -140,6 +142,7 @@ export default function MeetingView({
   onDeleted,
   projects,
   onProjectsChanged,
+  minPrivacy,
 }: Props) {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
@@ -744,6 +747,12 @@ export default function MeetingView({
             <select
               className={"chip select project-select" + (meeting.projectId ? " set" : "")}
               value={meeting.projectId ?? ""}
+              // il selettore prende il colore del progetto scelto
+              style={
+                {
+                  "--project": projectColor(projects.find((p) => p.id === meeting.projectId)),
+                } as CSSProperties
+              }
               aria-label={t("Progetto di questo meeting")}
               title={
                 projects.find((p) => p.id === meeting.projectId)?.description ||
@@ -759,7 +768,7 @@ export default function MeetingView({
                 .filter((p) => !p.archived || p.id === meeting.projectId)
                 .map((p) => (
                   <option key={p.id} value={p.id}>
-                    {projectLabel(p)}
+                    {p.name}
                   </option>
                 ))}
               <option value={NEW_PROJECT}>{t("+ Nuovo progetto")}…</option>
@@ -800,8 +809,12 @@ export default function MeetingView({
                     : t("Standard: valgono le impostazioni generali.")
               }
             >
-              <option value="open">{t("Privacy: standard")}</option>
-              <option value="audio">{t("Privacy: audio locale")}</option>
+              <option value="open" disabled={minPrivacy !== "open"}>
+                {t("Privacy: standard")}
+              </option>
+              <option value="audio" disabled={minPrivacy === "hardened"}>
+                {t("Privacy: audio locale")}
+              </option>
               <option value="hardened">{t("Privacy: blindata")}</option>
             </select>
             {/* lontano dalle azioni di tutti i giorni (registra, trascrizione, chiedi) */}

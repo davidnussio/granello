@@ -31,5 +31,6 @@ Copiare una nota come Markdown e stamparla portano il testo fuori da Granello. P
 
 ## Da sapere
 
+- Un [vault](/it/reference/data/#vault) può imporre un livello minimo: i suoi meeting partono da lì e i livelli più bassi non si possono scegliere.
 - Puoi cambiare livello in qualsiasi momento. Vale da lì in poi: quello che è già stato inviato non torna indietro.
 - La chat su tutti i meeting lascia fuori quelli che non possono andare al modello in uso.

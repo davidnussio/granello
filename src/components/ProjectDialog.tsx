@@ -3,13 +3,27 @@ import { api, errorText } from "../api";
 import { t } from "../i18n";
 import type { Project } from "../types";
 
-/** L'icona di un progetto che non ne ha scelta una. */
-export const PROJECT_ICON = "▣";
+/** I colori tra cui scegliere, con il nome che li descrive a chi non li vede. */
+const COLORS: { id: string; css: string; label: () => string }[] = [
+  { id: "", css: "var(--accent)", label: () => t("Verde") },
+  { id: "teal", css: "#2f9e9e", label: () => t("Turchese") },
+  { id: "blue", css: "#4a86d9", label: () => t("Blu") },
+  { id: "purple", css: "#8a63d2", label: () => t("Viola") },
+  { id: "pink", css: "#d2639f", label: () => t("Rosa") },
+  { id: "red", css: "#d9534f", label: () => t("Rosso") },
+  { id: "orange", css: "#d98a1f", label: () => t("Arancione") },
+  { id: "yellow", css: "#c9a227", label: () => t("Giallo") },
+  { id: "gray", css: "#8a8a82", label: () => t("Grigio") },
+];
 
-/** Icona e nome di un progetto, come si mostrano negli elenchi. */
-export const projectLabel = (p: Pick<Project, "icon" | "name">) => `${p.icon || PROJECT_ICON} ${p.name}`;
+/** Il colore CSS di un progetto; senza progetto, o con un colore sconosciuto, quello predefinito. */
+export const projectColor = (p?: Pick<Project, "color">) =>
+  COLORS.find((c) => c.id === p?.color)?.css ?? COLORS[0].css;
 
-const ICONS = "📁 📌 🎯 🚀 💡 🧭 🤝 💼 🛠️ 📈 🧪 🎨 📣 🔒 🏠 🌱 📚 💬 🧾 ⭐".split(" ");
+/** Il pallino colorato che accompagna il nome di un progetto negli elenchi. */
+export function ProjectDot({ project }: { project: Pick<Project, "color"> }) {
+  return <span className="project-dot" aria-hidden="true" style={{ background: projectColor(project) }} />;
+}
 
 interface Props {
   /** Il progetto da modificare; assente = se ne crea uno nuovo. */
@@ -19,12 +33,11 @@ interface Props {
   onSaved: (project: Project, all: Project[]) => void;
 }
 
-/** Finestra per creare un progetto o cambiarne nome, icona e descrizione. */
+/** Finestra per creare un progetto o cambiarne nome, colore e descrizione. */
 export default function ProjectDialog({ project, onClose, onSaved }: Props) {
   const [name, setName] = useState(project?.name ?? "");
-  const [icon, setIcon] = useState(project?.icon ?? "");
+  const [color, setColor] = useState(project?.color ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
-  const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const nameInput = useRef<HTMLInputElement>(null);
@@ -36,7 +49,7 @@ export default function ProjectDialog({ project, onClose, onSaved }: Props) {
     setBusy(true);
     setError("");
     try {
-      const saved = await api.saveProject({ id: project?.id, name, icon, description });
+      const saved = await api.saveProject({ id: project?.id, name, color, description });
       onSaved(saved, await api.listProjects());
     } catch (e) {
       setError(errorText(e));
@@ -66,45 +79,33 @@ export default function ProjectDialog({ project, onClose, onSaved }: Props) {
       >
         <h3>{project ? t("Modifica il progetto") : t("Nuovo progetto")}</h3>
         <label className="field">
-          <span>{t("Nome e icona")}</span>
-          <span className="project-name">
-            <button
-              type="button"
-              className="project-icon"
-              aria-label={t("Scegli l'icona")}
-              title={t("Scegli l'icona")}
-              aria-expanded={picking}
-              onClick={() => setPicking((v) => !v)}
-            >
-              {icon || PROJECT_ICON}
-            </button>
-            <input
-              ref={nameInput}
-              value={name}
-              maxLength={80}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t("Nome del progetto")}
-            />
-          </span>
+          <span>{t("Nome")}</span>
+          <input
+            ref={nameInput}
+            value={name}
+            maxLength={80}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("Nome del progetto")}
+          />
         </label>
-        {picking && (
-          <div className="project-icons" role="group" aria-label={t("Scegli l'icona")}>
-            {["", ...ICONS].map((i) => (
+        <div className="field">
+          <span id="project-color-label">{t("Colore")}</span>
+          <div className="project-colors" role="radiogroup" aria-labelledby="project-color-label">
+            {COLORS.map((c) => (
               <button
-                key={i}
+                key={c.id}
                 type="button"
-                className={i === icon ? "on" : ""}
-                aria-pressed={i === icon}
-                onClick={() => {
-                  setIcon(i);
-                  setPicking(false);
-                }}
-              >
-                {i || PROJECT_ICON}
-              </button>
+                role="radio"
+                aria-checked={c.id === color}
+                aria-label={c.label()}
+                title={c.label()}
+                className={c.id === color ? "on" : ""}
+                style={{ background: c.css }}
+                onClick={() => setColor(c.id)}
+              />
             ))}
           </div>
-        )}
+        </div>
         <label className="field">
           <span>{t("Descrizione")}</span>
           <textarea

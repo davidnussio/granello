@@ -20,6 +20,7 @@ mod prompts;
 mod secrets;
 mod transcribe;
 mod updater;
+mod vaults;
 
 use commands::AppState;
 use parking_lot::Mutex;
@@ -79,8 +80,12 @@ pub fn run() {
             i18n::set(i18n::resolve(&ui_language));
             db.seed_templates()?;
             log::info!("Granello {} avviato (lingua {:?})", env!("CARGO_PKG_VERSION"), i18n::lang());
+            // il vault che era aperto l'ultima volta, o il principale
+            let (vault_db, vault) = vaults::startup(&db, &data_dir)?;
             app.manage(AppState {
-                db: Arc::new(Mutex::new(db)),
+                db: Arc::new(Mutex::new(vault_db)),
+                main: Arc::new(Mutex::new(db)),
+                vault: parking_lot::RwLock::new(vault),
                 data_dir,
                 models_dir,
                 transcribers: Arc::new(Default::default()),
@@ -94,8 +99,8 @@ pub fn run() {
             });
 {
                 let state = app.state::<AppState>();
-                let chosen = state.db.lock().get_settings().ok().and_then(|s| s.recordings_dir);
-                commands::allow_recordings_dir(app.handle(), &state.data_dir, chosen.as_deref());
+                let settings = state.main.lock().get_settings().unwrap_or_default();
+                commands::allow_recordings_dir(app.handle(), &state.vault_dir(), state.chosen_recordings(&settings));
             }
             spawn_calendar_watcher(app.handle().clone());
             updater::spawn_check(app.handle().clone());
@@ -132,6 +137,12 @@ pub fn run() {
             commands::load_demo,
             commands::remove_demo,
             commands::list_projects,
+            vaults::list_vaults,
+            vaults::pick_vault_dir,
+            vaults::create_vault,
+            vaults::update_vault,
+            vaults::remove_vault,
+            vaults::open_vault,
             commands::save_project,
             commands::archive_project,
             commands::delete_project,
@@ -215,7 +226,7 @@ fn spawn_calendar_watcher(app: tauri::AppHandle) {
                 let _ = app.emit("calendar-updated", ());
             }
             let before_min = state
-                .db
+                .main
                 .lock()
                 .get_settings()
                 .map(|s| s.notify_before_min)

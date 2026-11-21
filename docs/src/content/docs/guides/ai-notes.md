@@ -14,7 +14,7 @@ description: Turn your notes and the transcript into complete notes, shape them 
 
 ## Templates
 
-A template tells the AI how to structure the notes. Granello comes with General, 1:1, Standup, Interview and Client meeting, and you can add your own in **Templates**.
+A template tells the AI how to structure the notes. Granello comes with General, 1:1, Standup, Interview and Client meeting, and you can add your own in **Settings → Templates**.
 
 A template has two parts:
 

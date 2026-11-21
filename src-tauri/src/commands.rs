@@ -16,7 +16,7 @@ use tauri::{AppHandle, Emitter, State};
 
 pub type CmdResult<T> = Result<T, String>;
 
-fn err<E: std::fmt::Display>(e: E) -> String {
+pub(crate) fn err<E: std::fmt::Display>(e: E) -> String {
     e.to_string()
 }
 
@@ -79,7 +79,14 @@ impl CalendarCache {
 }
 
 pub struct AppState {
+    /// Il database del vault aperto: meeting, trascrizioni, progetti, persone, chat.
     pub db: Arc<Mutex<Db>>,
+    /// Il database nella cartella dell'app: impostazioni, template ed elenco dei vault valgono
+    /// per tutti i vault. Con il vault principale aperto è lo stesso file di `db`.
+    pub main: Arc<Mutex<Db>>,
+    /// Il vault aperto: dove stanno allegati, audio e registrazioni dei suoi meeting.
+    pub vault: parking_lot::RwLock<crate::vaults::Open>,
+    /// La cartella dell'app: modelli, chiavi e il vault principale.
     pub data_dir: PathBuf,
     pub models_dir: PathBuf,
     pub transcribers: Arc<TranscriberCache>,
@@ -95,6 +102,29 @@ pub struct AppState {
     pub llm_http: reqwest::Client,
     /// Generazioni AI in corso, per poterle annullare: stream_id -> flag di annullamento.
     pub streams: Mutex<HashMap<String, Arc<AtomicBool>>>,
+}
+
+impl AppState {
+    /// La cartella del vault aperto.
+    pub fn vault_dir(&self) -> PathBuf {
+        self.vault.read().dir.clone()
+    }
+
+    /// La cartella scelta nelle Impostazioni per le registrazioni vale per il vault principale:
+    /// gli altri vault tengono tutto nella propria cartella.
+    pub fn chosen_recordings<'a>(&self, settings: &'a Settings) -> Option<&'a str> {
+        if self.vault.read().id == crate::vaults::MAIN_ID {
+            settings.recordings_dir.as_deref()
+        } else {
+            None
+        }
+    }
+
+    /// C'è qualcosa in corso che scrive nel vault aperto: registrazione, dettatura o una
+    /// generazione dell'AI. Finché dura non si può passare a un altro vault.
+    pub fn busy(&self) -> bool {
+        self.session.lock().is_some() || self.dictation.lock().is_some() || !self.streams.lock().is_empty()
+    }
 }
 
 /// `idle`: tempo massimo senza ricevere dati prima di considerare morta la connessione.
@@ -171,11 +201,18 @@ pub fn create_meeting(
             return db.get_meeting(&existing).map_err(err)?.ok_or_else(|| "meeting".into());
         }
     }
-    db.create_meeting(
+    // i template stanno nel database principale: le note di partenza arrivano da lì
+    let notes = match template_id.as_deref() {
+        Some(t) => state.main.lock().get_template(t).map_err(err)?.map(|t| t.notes_md).unwrap_or_default(),
+        None => String::new(),
+    };
+    db.create_meeting_with(
         &title,
         calendar_event_id.as_deref(),
         &attendees.unwrap_or_default(),
         template_id.as_deref(),
+        &notes,
+        state.vault.read().min_privacy,
     )
     .map_err(err)
 }
@@ -259,7 +296,10 @@ pub fn demo_status(state: State<AppState>) -> CmdResult<usize> {
 #[tauri::command]
 pub fn load_demo(state: State<AppState>) -> CmdResult<usize> {
     let data = crate::demo::load(crate::i18n::lang()).map_err(err)?;
-    state.db.lock().insert_demo(&data).map_err(err)?;
+    let db = state.db.lock();
+    db.insert_demo(&data).map_err(err)?;
+    // anche i meeting di esempio rispettano la privacy minima del vault
+    db.raise_privacy(state.vault.read().min_privacy).map_err(err)?;
     Ok(data.meetings.len())
 }
 
@@ -279,22 +319,23 @@ pub fn list_projects(state: State<AppState>) -> CmdResult<Vec<Project>> {
     state.db.lock().list_projects().map_err(err)
 }
 
-/// Crea un progetto (`id` assente) o ne cambia nome, icona e descrizione.
+/// Crea un progetto (`id` assente) o ne cambia nome, colore e descrizione.
 #[tauri::command]
 pub fn save_project(
     state: State<AppState>,
     id: Option<String>,
     name: String,
-    icon: String,
+    color: String,
     description: String,
 ) -> CmdResult<Project> {
     let name: String = name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
     if name.is_empty() {
         return Err(tr("Dai un nome al progetto", "Give the project a name").into());
     }
-    let icon: String = icon.trim().chars().take(8).collect();
+    // un colore che non si conosce vale come nessuno: il progetto prende quello predefinito
+    let color = if PROJECT_COLORS.contains(&color.as_str()) { color.as_str() } else { "" };
     let description: String = description.trim().chars().take(600).collect();
-    state.db.lock().save_project(id.as_deref().unwrap_or(""), &name, &icon, &description).map_err(err)
+    state.db.lock().save_project(id.as_deref().unwrap_or(""), &name, color, &description).map_err(err)
 }
 
 /// Archivia un progetto chiuso, o lo riporta tra quelli attivi.
@@ -415,16 +456,16 @@ pub fn delete_meeting(state: State<AppState>, id: String) -> CmdResult<()> {
     // le registrazioni salvate se ne vanno con il meeting: prima i file, le righe seguono
     for r in db.recordings(Some(&id)).unwrap_or_default() {
         let _ = std::fs::remove_file(&r.path);
-        recordings::forget_waveform(&state.data_dir, r.id);
+        recordings::forget_waveform(&state.vault_dir(), r.id);
     }
     db.delete_meeting(&id).map_err(err)?;
-    keep::remove(&state.data_dir, &id);
+    keep::remove(&state.vault_dir(), &id);
     // gli allegati citati solo da questo meeting se ne vanno con lui
     if let Some(m) = meeting {
         let text = format!("{}\n{}", m.notes_md, m.enhanced_md.unwrap_or_default());
         for path in attachments::referenced(&text) {
             if !db.attachment_in_use(&path).unwrap_or(true) {
-                attachments::remove(&state.data_dir, &path);
+                attachments::remove(&state.vault_dir(), &path);
             }
         }
     }
@@ -464,10 +505,18 @@ mod privacy_tests {
 /// Quanto di questo meeting può uscire dal Mac, a prescindere dalle impostazioni generali.
 #[tauri::command]
 pub fn set_meeting_privacy(state: State<AppState>, id: String, privacy: Privacy) -> CmdResult<()> {
+    let min = state.vault.read().min_privacy;
+    if privacy < min {
+        return Err(tr(
+            "Questo vault non permette un livello di privacy più basso. Cambialo in Impostazioni → Vault.",
+            "This vault does not allow a lower privacy level. Change it in Settings → Vaults.",
+        )
+        .into());
+    }
     state.db.lock().set_privacy(&id, privacy).map_err(err)?;
     // con un livello di privacy l'audio non deve più poter uscire: quello conservato si cancella
     if privacy != Privacy::Open {
-        keep::remove(&state.data_dir, &id);
+        keep::remove(&state.vault_dir(), &id);
     }
     Ok(())
 }
@@ -488,11 +537,11 @@ pub fn redact_transcript(state: State<AppState>, meeting_id: String, parts: Vec<
     let db = state.db.lock();
     db.redact(&meeting_id, &parts).map_err(err)?;
     // l'audio conservato contiene ancora ciò che è stato oscurato: non deve più poter uscire
-    keep::remove(&state.data_dir, &meeting_id);
+    keep::remove(&state.vault_dir(), &meeting_id);
     // lo stesso vale per le registrazioni salvate: le parole oscurate lì si sentirebbero ancora
     for r in db.recordings(Some(&meeting_id)).unwrap_or_default() {
         let _ = std::fs::remove_file(&r.path);
-        recordings::forget_waveform(&state.data_dir, r.id);
+        recordings::forget_waveform(&state.vault_dir(), r.id);
         let _ = db.delete_recording(r.id);
     }
     db.segments(&meeting_id).map_err(err)
@@ -530,10 +579,10 @@ pub struct RecordingsInfo {
 
 #[tauri::command]
 pub fn recordings_info(state: State<AppState>) -> CmdResult<RecordingsInfo> {
-    let settings = state.db.lock().get_settings().map_err(err)?;
+    let settings = state.main.lock().get_settings().map_err(err)?;
     Ok(RecordingsInfo {
-        dir: recordings::dir(&state.data_dir, settings.recordings_dir.as_deref()).to_string_lossy().into(),
-        default_dir: recordings::default_dir(&state.data_dir).to_string_lossy().into(),
+        dir: recordings::dir(&state.vault_dir(), state.chosen_recordings(&settings)).to_string_lossy().into(),
+        default_dir: recordings::default_dir(&state.vault_dir()).to_string_lossy().into(),
         ffmpeg: recordings::ffmpeg().is_some(),
     })
 }
@@ -566,7 +615,7 @@ pub fn delete_recording(state: State<AppState>, id: i64) -> CmdResult<()> {
         return Err(tr("Ferma la registrazione prima di eliminarla", "Stop the recording before deleting it").into());
     }
     let _ = std::fs::remove_file(&recording.path);
-    recordings::forget_waveform(&state.data_dir, id);
+    recordings::forget_waveform(&state.vault_dir(), id);
     state.db.lock().delete_recording(id).map_err(err)
 }
 
@@ -609,7 +658,7 @@ pub async fn merge_recordings(state: State<'_, AppState>, meeting_id: String) ->
     let db = state.db.lock();
     db.update_recording(parts[0].id, &output.to_string_lossy(), duration_ms, bytes as i64, parts.iter().any(|r| r.trimmed)).map_err(err)?;
     for r in &parts {
-        recordings::forget_waveform(&state.data_dir, r.id);
+        recordings::forget_waveform(&state.vault_dir(), r.id);
     }
     for r in &parts[1..] {
         db.delete_recording(r.id).map_err(err)?;
@@ -625,7 +674,7 @@ pub async fn recording_waveform(state: State<'_, AppState>, id: i64) -> CmdResul
     if recording.duration_ms == 0 {
         return Ok(Vec::new());
     }
-    let cache = recordings::waveform_cache(&state.data_dir, id, recording.bytes);
+    let cache = recordings::waveform_cache(&state.vault_dir(), id, recording.bytes);
     if let Ok(saved) = std::fs::read(&cache) {
         if saved.len() == recordings::WAVE_BARS {
             return Ok(saved);
@@ -651,16 +700,15 @@ pub async fn trim_recording(state: State<'_, AppState>, id: i64) -> CmdResult<Ve
     let done = tokio::task::spawn_blocking(move || recordings::trim(&path)).await.map_err(err)?.map_err(err)?;
     let db = state.db.lock();
     db.update_recording(id, &done.path.to_string_lossy(), done.duration_ms, done.bytes as i64, true).map_err(err)?;
-    recordings::forget_waveform(&state.data_dir, id);
+    recordings::forget_waveform(&state.vault_dir(), id);
     db.recordings(None).map_err(err)
 }
 
-/// Fa scegliere la cartella delle registrazioni. `None` se la scelta viene annullata.
-#[tauri::command]
-pub async fn pick_recordings_dir(app: AppHandle) -> CmdResult<Option<String>> {
+/// Apre la finestra di sistema per scegliere una cartella. `None` se la scelta viene annullata.
+pub(crate) async fn pick_folder(app: &AppHandle, title: &str) -> CmdResult<Option<String>> {
     use tauri::Manager;
     use tauri_plugin_dialog::DialogExt;
-    let mut dialog = app.dialog().file().set_title(tr("Cartella delle registrazioni", "Recordings folder"));
+    let mut dialog = app.dialog().file().set_title(title);
     if let Some(window) = app.get_webview_window("main") {
         dialog = dialog.set_parent(&window);
     }
@@ -672,6 +720,12 @@ pub async fn pick_recordings_dir(app: AppHandle) -> CmdResult<Option<String>> {
     Ok(Some(picked.into_path().map_err(err)?.to_string_lossy().into()))
 }
 
+/// Fa scegliere la cartella delle registrazioni. `None` se la scelta viene annullata.
+#[tauri::command]
+pub async fn pick_recordings_dir(app: AppHandle) -> CmdResult<Option<String>> {
+    pick_folder(&app, tr("Cartella delle registrazioni", "Recordings folder")).await
+}
+
 // ---------------- affinamento online ----------------
 
 fn gladia_key(state: &AppState) -> Option<String> {
@@ -681,7 +735,7 @@ fn gladia_key(state: &AppState) -> Option<String> {
 /// C'è dell'audio conservato per questo meeting, in attesa dell'affinamento online?
 #[tauri::command]
 pub fn kept_audio(state: State<AppState>, meeting_id: String) -> bool {
-    keep::exists(&state.data_dir, &meeting_id)
+    keep::exists(&state.vault_dir(), &meeting_id)
 }
 
 /// Cancella l'audio conservato senza caricarlo: la trascrizione locale resta com'è.
@@ -690,7 +744,7 @@ pub fn discard_audio(state: State<AppState>, meeting_id: String) -> CmdResult<()
     if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == meeting_id) {
         return Err(tr("Ferma la registrazione prima di eliminare l'audio", "Stop the recording before deleting the audio").into());
     }
-    keep::remove(&state.data_dir, &meeting_id);
+    keep::remove(&state.vault_dir(), &meeting_id);
     Ok(())
 }
 
@@ -703,7 +757,7 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
             return Err(tr("Attendi la fine della trascrizione locale", "Wait for the local transcription to finish").into());
         }
         let db = state.db.lock();
-        let settings = db.get_settings().map_err(err)?;
+        let settings = state.main.lock().get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
         if !settings.online_transcription {
             return Err(tr("L'affinamento online è spento nelle Impostazioni", "Online refinement is off in Settings").into());
@@ -717,7 +771,7 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
         settings.language
     };
     let key = gladia_key(&state).ok_or(tr("Imposta la chiave di Gladia nelle Impostazioni", "Set the Gladia key in Settings"))?;
-    let path = keep::path(&state.data_dir, &meeting_id)
+    let path = keep::path(&state.vault_dir(), &meeting_id)
         .filter(|p| p.is_file())
         .ok_or(tr("Non c'è audio conservato per questo meeting", "There is no kept audio for this meeting"))?;
     let utterances = gladia::transcribe(&state.http, gladia::BASE_URL, &key, &path, &language).await.map_err(err)?;
@@ -726,7 +780,7 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
     }
     // l'audio parte dal punto del meeting in cui è cominciata la registrazione conservata:
     // dopo una ripresa non è l'inizio, e ciò che viene prima non va toccato
-    let origin = keep::origin(&state.data_dir, &meeting_id);
+    let origin = keep::origin(&state.vault_dir(), &meeting_id);
     let db = state.db.lock();
     // i parlanti di questa registrazione non sono quelli delle precedenti: i numeri proseguono
     let taken = db
@@ -748,7 +802,7 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
         })
         .collect();
     db.replace_segments(&meeting_id, origin, &rows).map_err(err)?;
-    keep::remove(&state.data_dir, &meeting_id);
+    keep::remove(&state.vault_dir(), &meeting_id);
     db.segments(&meeting_id).map_err(err)
 }
 
@@ -803,7 +857,7 @@ pub fn save_attachment(state: State<AppState>, name: String, data: String) -> Cm
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(data.as_bytes())
         .map_err(|_| tr("Contenuto del file non valido", "Invalid file content"))?;
-    attachments::store(&state.data_dir, &name, &bytes).map_err(err)
+    attachments::store(&state.vault_dir(), &name, &bytes).map_err(err)
 }
 
 /// Fa scegliere un file e lo copia tra gli allegati. Ritorna None se la scelta viene annullata.
@@ -833,7 +887,7 @@ pub async fn pick_attachment(
     });
     let Some(picked) = rx.await.map_err(err)? else { return Ok(None) };
     let source = picked.into_path().map_err(err)?;
-    let data_dir = state.data_dir.clone();
+    let data_dir = state.vault_dir();
     tokio::task::spawn_blocking(move || attachments::import(&data_dir, &source))
         .await
         .map_err(err)?
@@ -844,7 +898,7 @@ pub async fn pick_attachment(
 /// Un'immagine allegata come data URL, da mostrare nell'editor.
 #[tauri::command]
 pub async fn read_attachment(state: State<'_, AppState>, path: String) -> CmdResult<String> {
-    let data_dir = state.data_dir.clone();
+    let data_dir = state.vault_dir();
     tokio::task::spawn_blocking(move || attachments::image_data_url(&data_dir, &path))
         .await
         .map_err(err)?
@@ -855,7 +909,7 @@ pub async fn read_attachment(state: State<'_, AppState>, path: String) -> CmdRes
 #[tauri::command]
 pub fn open_attachment(app: AppHandle, state: State<AppState>, path: String) -> CmdResult<()> {
     use tauri_plugin_opener::OpenerExt;
-    let file = attachments::resolve(&state.data_dir, &path).map_err(err)?;
+    let file = attachments::resolve(&state.vault_dir(), &path).map_err(err)?;
     app.opener().open_path(file.to_string_lossy(), None::<&str>).map_err(err)
 }
 
@@ -912,7 +966,7 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
     }
     let (settings, meeting, base_ms) = {
         let db = state.db.lock();
-        let settings = db.get_settings().map_err(err)?;
+        let settings = state.main.lock().get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
         let base_ms = db.transcript_end_ms(&meeting_id).map_err(err)?;
         (settings, meeting, base_ms)
@@ -948,7 +1002,7 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
             .save_recordings
             .then(|| -> Option<audio::SaveRecording> {
                 let started_at = chrono::Utc::now().timestamp_millis();
-                let dir = recordings::dir(&state.data_dir, settings.recordings_dir.as_deref());
+                let dir = recordings::dir(&state.vault_dir(), state.chosen_recordings(&settings));
                 let path = dir.join(recordings::file_name(started_at, &meeting_id));
                 // se la cartella non si può usare (disco scollegato) si registra lo stesso, senza salvare
                 std::fs::create_dir_all(&dir).map_err(|e| log::error!("cartella delle registrazioni {}: {e}", dir.display())).ok()?;
@@ -957,7 +1011,7 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
             })
             .flatten(),
         keep_audio: (file.is_none() && settings.online_transcription && meeting.privacy == Privacy::Open && gladia_key(state).is_some())
-            .then(|| keep::begin(&state.data_dir, &meeting_id, base_ms))
+            .then(|| keep::begin(&state.vault_dir(), &meeting_id, base_ms))
             .flatten(),
     };
     let (db, cache) = (state.db.clone(), state.transcribers.clone());
@@ -1022,10 +1076,9 @@ pub async fn import_audio(app: AppHandle, state: State<'_, AppState>, meeting_id
 pub fn set_system_device(state: State<AppState>, device: Option<String>) -> CmdResult<()> {
     let device = device.filter(|d| !d.is_empty());
     {
-        let db = state.db.lock();
-        let mut settings = db.get_settings().map_err(err)?;
+        let mut settings = state.main.lock().get_settings().map_err(err)?;
         settings.system_device = device.clone();
-        db.save_settings(&settings).map_err(err)?;
+        state.main.lock().save_settings(&settings).map_err(err)?;
     }
     if let Some(s) = state.session.lock().as_ref() {
         s.set_system_device(device);
@@ -1067,7 +1120,7 @@ pub fn recording_position(state: State<AppState>, meeting_id: String) -> Option<
 /// viene scartata.
 #[tauri::command]
 pub fn dictation_start(state: State<AppState>) -> CmdResult<()> {
-    let settings = state.db.lock().get_settings().map_err(err)?;
+    let settings = state.main.lock().get_settings().map_err(err)?;
     if !transcribe::model_path(&state.models_dir, &settings.whisper_model).exists() {
         return Err(tr(
             "Per dettare serve il modello di trascrizione: scaricalo dalle Impostazioni",
@@ -1088,7 +1141,7 @@ pub fn dictation_start(state: State<AppState>) -> CmdResult<()> {
 #[tauri::command]
 pub async fn dictation_stop(state: State<'_, AppState>, discard: Option<bool>) -> CmdResult<String> {
     let Some(dictation) = state.dictation.lock().take() else { return Ok(String::new()) };
-    let (settings, cache) = (state.db.lock().get_settings().map_err(err)?, state.transcribers.clone());
+    let (settings, cache) = (state.main.lock().get_settings().map_err(err)?, state.transcribers.clone());
     let model = transcribe::model_path(&state.models_dir, &settings.whisper_model);
     let discard = discard.unwrap_or(false);
     tokio::task::spawn_blocking(move || -> CmdResult<String> {
@@ -1223,7 +1276,7 @@ pub async fn enhance_notes(
 ) -> CmdResult<String> {
     let (model, system, user) = {
         let db = state.db.lock();
-        let settings = db.get_settings().map_err(err)?;
+        let settings = state.main.lock().get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
         let segments = db.segments(&meeting_id).map_err(err)?;
         if meeting.notes_md.trim().is_empty() && segments.is_empty() {
@@ -1232,8 +1285,8 @@ pub async fn enhance_notes(
         let template = meeting
             .template_id
             .as_deref()
-            .and_then(|t| db.get_template(t).ok().flatten())
-            .or_else(|| db.get_template("generale").ok().flatten());
+            .and_then(|t| state.main.lock().get_template(t).ok().flatten())
+            .or_else(|| state.main.lock().get_template("generale").ok().flatten());
         let system = prompts::enhance_system(&settings.language);
         let user = prompts::enhance_user(&meeting, template.as_ref(), &segments, &settings.user_name);
         (resolve_model_for(&state, &settings, &settings.notes_model, local_only(&db, &meeting)?)?, system, user)
@@ -1287,7 +1340,7 @@ const MAX_MOMENTS: usize = 40;
 pub async fn fill_moments(state: State<'_, AppState>, meeting_id: String, moments: Vec<i64>) -> CmdResult<Vec<MomentFill>> {
     let (model, system, user, asked) = {
         let db = state.db.lock();
-        let settings = db.get_settings().map_err(err)?;
+        let settings = state.main.lock().get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
         let segments = db.segments(&meeting_id).map_err(err)?;
         let mut asked: Vec<(i64, String)> = Vec::new();
@@ -1355,7 +1408,7 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
     };
     let (model, system, user) = {
         let db = state.db.lock();
-        let settings = db.get_settings().map_err(err)?;
+        let settings = state.main.lock().get_settings().map_err(err)?;
         // lo schizzo si legge da solo, senza note né trascrizione; ma anche lui è contenuto
         // del meeting, quindi il vincolo del modello locale vale per ogni richiesta
         let mut reason = None;
@@ -1420,8 +1473,7 @@ pub async fn draft_template(state: State<'_, AppState>, request: String, templat
         .into());
     }
     let model = {
-        let db = state.db.lock();
-        let settings = db.get_settings().map_err(err)?;
+        let settings = state.main.lock().get_settings().map_err(err)?;
         resolve_model(&state, &settings, &settings.notes_model)?
     };
     let system = prompts::template_draft_system();
@@ -1499,7 +1551,7 @@ pub async fn chat(
     }
     let (model, system, mut history, user_msg_id) = {
         let db = state.db.lock();
-        let settings = db.get_settings().map_err(err)?;
+        let settings = state.main.lock().get_settings().map_err(err)?;
         let (model, system) = if scope == "global" {
             let model = resolve_model(&state, &settings, &settings.chat_model)?;
             let online = !provider_is_local(&model.provider);
@@ -1583,7 +1635,7 @@ pub async fn chat(
 
 #[tauri::command]
 pub fn list_templates(state: State<AppState>) -> CmdResult<Vec<Template>> {
-    state.db.lock().list_templates().map_err(err)
+    state.main.lock().list_templates().map_err(err)
 }
 
 #[tauri::command]
@@ -1591,19 +1643,19 @@ pub fn save_template(state: State<AppState>, template: Template) -> CmdResult<Te
     if template.name.trim().is_empty() || template.instructions.trim().is_empty() {
         return Err(tr("Nome e istruzioni sono obbligatori", "Name and instructions are required").into());
     }
-    state.db.lock().save_template(&template).map_err(err)
+    state.main.lock().save_template(&template).map_err(err)
 }
 
 #[tauri::command]
 pub fn delete_template(state: State<AppState>, id: String) -> CmdResult<()> {
-    state.db.lock().delete_template(&id).map_err(err)
+    state.main.lock().delete_template(&id).map_err(err)
 }
 
 // ---------------- impostazioni ----------------
 
 #[tauri::command]
 pub fn get_settings(state: State<AppState>) -> CmdResult<Settings> {
-    state.db.lock().get_settings().map_err(err)
+    state.main.lock().get_settings().map_err(err)
 }
 
 #[tauri::command]
@@ -1612,16 +1664,14 @@ pub fn save_settings(app: AppHandle, state: State<AppState>, settings: Settings)
     if !transcribe::is_known_model(&s.whisper_model) {
         return Err(tr("Modello Whisper sconosciuto", "Unknown Whisper model").into());
     }
-    let db = state.db.lock();
-    let old = db.get_settings().map_err(err)?;
-    db.save_settings(&s).map_err(err)?;
+    let old = state.main.lock().get_settings().map_err(err)?;
+    state.main.lock().save_settings(&s).map_err(err)?;
     if old.ui_language != s.ui_language {
         // errori, notifiche e template di sistema seguono subito la nuova lingua
         crate::i18n::set(crate::i18n::resolve(&s.ui_language));
-        db.seed_templates().map_err(err)?;
+        state.main.lock().seed_templates().map_err(err)?;
     }
-    drop(db);
-    allow_recordings_dir(&app, &state.data_dir, s.recordings_dir.as_deref());
+    allow_recordings_dir(&app, &state.vault_dir(), state.chosen_recordings(&s));
     // un provider eliminato non lascia la sua chiave nel Portachiavi
     for gone in old.providers.iter().filter(|o| !s.providers.iter().any(|p| p.id == o.id)) {
         let _ = secrets::set_api_key(&state.data_dir, &gone.id, "");
@@ -1682,7 +1732,7 @@ pub fn system_time_format() -> SystemTime {
 /// Le note AI sono utilizzabili? (provider esistente e, se serve, chiave presente)
 #[tauri::command]
 pub fn ai_ready(state: State<AppState>) -> bool {
-    let Ok(settings) = state.db.lock().get_settings() else { return false };
+    let Ok(settings) = state.main.lock().get_settings() else { return false };
     resolve_model(&state, &settings, &settings.notes_model).is_ok()
 }
 
@@ -1767,7 +1817,7 @@ pub fn has_api_key(state: State<AppState>, provider_id: String) -> bool {
 #[tauri::command]
 pub fn set_api_key(state: State<AppState>, provider_id: String, key: String) -> CmdResult<()> {
     let known = provider_id == gladia::KEY_ID
-        || state.db.lock().get_settings().map_err(err)?.providers.iter().any(|p| p.id == provider_id);
+        || state.main.lock().get_settings().map_err(err)?.providers.iter().any(|p| p.id == provider_id);
     if !known {
         return Err(tr("Salva il provider prima di impostare la chiave", "Save the provider before setting its key").into());
     }
@@ -1892,7 +1942,7 @@ const CAL_TTL: Duration = Duration::from_secs(10 * 60);
 /// ne ha scaricato almeno uno. Un calendario che non risponde non blocca gli altri: tiene i
 /// dati vecchi, ricorda l'errore e viene ritentato dopo un minuto.
 pub async fn refresh_calendar(state: &AppState, force: bool) -> CmdResult<bool> {
-    let calendars = state.db.lock().get_settings().map_err(err)?.calendars;
+    let calendars = state.main.lock().get_settings().map_err(err)?.calendars;
     let mut cache = state.calendar.lock().await;
     cache.sync(&calendars);
     let stale: Vec<(usize, String)> = cache
@@ -1962,15 +2012,14 @@ pub async fn upcoming_events(state: State<'_, AppState>, force: Option<bool>) ->
 /// Attiva o disattiva un calendario senza toccare le altre impostazioni.
 #[tauri::command]
 pub fn set_calendar_enabled(state: State<AppState>, id: String, enabled: bool) -> CmdResult<()> {
-    let db = state.db.lock();
-    let mut settings = db.get_settings().map_err(err)?;
+    let mut settings = state.main.lock().get_settings().map_err(err)?;
     let calendar = settings
         .calendars
         .iter_mut()
         .find(|c| c.id == id)
         .ok_or(tr("Calendario non trovato", "Calendar not found"))?;
     calendar.enabled = enabled;
-    db.save_settings(&settings).map_err(err)
+    state.main.lock().save_settings(&settings).map_err(err)
 }
 
 #[cfg(test)]

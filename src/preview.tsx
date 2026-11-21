@@ -89,6 +89,19 @@ const fakeWave = (id: number) =>
     return Math.round(Math.abs(speech) ** 0.6 * 255 * (Math.sin(i / 23 + id) > -0.6 ? 1 : 0.05));
   });
 
+// nell'anteprima c'è solo il vault principale; quelli aggiunti si perdono ricaricando
+let vaults = [
+  {
+    id: "main",
+    name: lang === "it" ? "Principale" : "Main",
+    path: "/Users/anteprima/Library/Application Support/ch.dambox.granello",
+    minPrivacy: "open",
+    main: true,
+    active: true,
+    available: true,
+  },
+];
+
 const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   list_meetings: () => data.meetings,
   get_meeting: (a) => data.details[a.id as string],
@@ -120,7 +133,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     const saved = {
       id: (a.id as string) || `anteprima-${Date.now()}`,
       name,
-      icon: a.icon,
+      color: a.color,
       description: a.description,
       archived: all.find((p) => p.id === a.id)?.archived ?? false,
     };
@@ -156,6 +169,43 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
       move(d.meeting);
     data.meetings = [...data.meetings];
     return null;
+  },
+  // i vault vivono in memoria: serve a provare la sezione delle impostazioni e il selettore
+  list_vaults: () => vaults,
+  pick_vault_dir: () => "/Volumes/Cifrato/Granello",
+  create_vault: (a) => {
+    const name = String(a.name).trim();
+    if (vaults.some((v) => v.path === a.path))
+      throw new Error("Quella cartella è già un vault. Scegline un'altra.");
+    vaults = [
+      ...vaults,
+      {
+        id: `anteprima-${Date.now()}`,
+        name,
+        path: a.path as string,
+        minPrivacy: a.minPrivacy as string,
+        main: false,
+        active: false,
+        available: true,
+      },
+    ];
+    return vaults;
+  },
+  update_vault: (a) => {
+    vaults = vaults.map((v) =>
+      v.id === a.id
+        ? { ...v, name: v.main ? v.name : String(a.name), minPrivacy: a.minPrivacy as string }
+        : v,
+    );
+    return vaults;
+  },
+  remove_vault: (a) => {
+    vaults = vaults.filter((v) => v.id !== a.id);
+    return vaults;
+  },
+  open_vault: (a) => {
+    vaults = vaults.map((v) => ({ ...v, active: v.id === a.id }));
+    return vaults;
   },
   list_templates: () => data.templates,
   // i template si possono salvare davvero, in memoria: serve a provare le note di partenza

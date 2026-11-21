@@ -24,7 +24,8 @@ pub struct Meeting {
 }
 
 /// Quanto di un meeting può uscire da questo Mac.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+/// In ordine dal più aperto al più chiuso: un vault può imporre un livello minimo.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Privacy {
     /// Valgono le impostazioni generali.
@@ -101,11 +102,14 @@ pub struct TagCount {
 pub struct Project {
     pub id: String,
     pub name: String,
-    /// Un'emoji scelta dall'utente; vuota = l'icona predefinita.
-    pub icon: String,
+    /// Uno dei colori di `PROJECT_COLORS`; vuoto = il colore predefinito.
+    pub color: String,
     pub description: String,
     pub archived: bool,
 }
+
+/// I colori tra cui scegliere per un progetto (i nomi che il frontend sa disegnare).
+pub const PROJECT_COLORS: &[&str] = &["red", "orange", "yellow", "teal", "blue", "purple", "pink", "gray"];
 
 pub const MAX_TAGS: usize = 12;
 pub const MAX_ATTENDEES: usize = 100;

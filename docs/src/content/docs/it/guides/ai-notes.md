@@ -14,7 +14,7 @@ description: Trasforma i tuoi appunti e la trascrizione in note complete, dai lo
 
 ## Template
 
-Un template dice all'AI come strutturare le note. Granello ha Generale, 1:1, Standup, Colloquio e Meeting cliente, e puoi aggiungere i tuoi in **Template**.
+Un template dice all'AI come strutturare le note. Granello ha Generale, 1:1, Standup, Colloquio e Meeting cliente, e puoi aggiungere i tuoi in **Impostazioni → Template**.
 
 Un template ha due parti:
 

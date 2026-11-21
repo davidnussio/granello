@@ -1,3 +1,4 @@
+import type { SettingsSection } from "./components/SettingsNav";
 export interface Meeting {
   id: string;
   title: string;
@@ -20,6 +21,24 @@ export interface Meeting {
  * l'audio in locale, "hardened" non fa uscire niente (solo modelli locali).
  */
 export type Privacy = "open" | "audio" | "hardened";
+
+/**
+ * Un vault: una cartella con il suo database, i suoi allegati e le sue registrazioni. Se ne
+ * apre uno alla volta, e l'app mostra i meeting di quello aperto.
+ */
+export interface Vault {
+  id: string;
+  name: string;
+  path: string;
+  /** I meeting del vault non scendono sotto questo livello di privacy. */
+  minPrivacy: Privacy;
+  /** Il vault principale: c'è sempre, non si rinomina e non si toglie. */
+  main: boolean;
+  /** È quello aperto. */
+  active: boolean;
+  /** La sua cartella è raggiungibile (un disco esterno può non essere collegato). */
+  available: boolean;
+}
 
 /** Una parte di trascrizione: un segmento intero, oppure i suoi caratteri da `start` a `end`. */
 export interface TranscriptPart {
@@ -212,8 +231,8 @@ export interface RecordingStatus {
 export interface Project {
   id: string;
   name: string;
-  /** Un'emoji scelta dall'utente; vuota = l'icona predefinita. */
-  icon: string;
+  /** Uno dei colori di `PROJECT_COLORS`; vuoto = il colore predefinito. */
+  color: string;
   description: string;
   archived: boolean;
 }
@@ -237,6 +256,5 @@ export type View =
   | { kind: "meeting"; id: string }
   | { kind: "chat" }
   | { kind: "library" }
-  | { kind: "settings" }
-  | { kind: "templates" }
+  | { kind: "settings"; section?: SettingsSection }
   | { kind: "home" };

@@ -14,7 +14,14 @@ fn now_ms() -> i64 {
 
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
-const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7];
+const MIGRATIONS: &[&str] = &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8];
+
+/// Un progetto si distingue per colore, non più per un'emoji: la colonna cambia nome e le
+/// emoji scelte finora si perdono (il progetto torna al colore predefinito).
+const SCHEMA_V8: &str = r#"
+ALTER TABLE projects RENAME COLUMN icon TO color;
+UPDATE projects SET color = '';
+"#;
 
 /// Progetti veri: non più tag promossi, ma voci con un nome, un'icona e una descrizione.
 /// Un meeting sta in un progetto al massimo. I tag che erano progetti lo diventano con lo
@@ -251,6 +258,8 @@ impl Db {
         })
     }
 
+    /// Crea un meeting con le note di partenza del suo template, letto da questo database.
+    #[cfg(test)]
     pub fn create_meeting(
         &self,
         title: &str,
@@ -258,16 +267,29 @@ impl Db {
         attendees: &[String],
         template_id: Option<&str>,
     ) -> Result<Meeting> {
-        let id = uuid::Uuid::new_v4().to_string();
-        let title = if title.trim().is_empty() { tr("Nuovo meeting", "New meeting") } else { title.trim() };
-        // le note partono da quelle del template, se ne ha
         let notes = match template_id {
             Some(t) => self.get_template(t)?.map(|t| t.notes_md).unwrap_or_default(),
             None => String::new(),
         };
+        self.create_meeting_with(title, calendar_event_id, attendees, template_id, &notes, Privacy::Open)
+    }
+
+    /// Crea un meeting. Le note di partenza e il livello di privacy li decide chi chiama: i
+    /// template stanno nel database principale, la privacy minima la dà il vault.
+    pub fn create_meeting_with(
+        &self,
+        title: &str,
+        calendar_event_id: Option<&str>,
+        attendees: &[String],
+        template_id: Option<&str>,
+        notes: &str,
+        privacy: Privacy,
+    ) -> Result<Meeting> {
+        let id = uuid::Uuid::new_v4().to_string();
+        let title = if title.trim().is_empty() { tr("Nuovo meeting", "New meeting") } else { title.trim() };
         self.conn.execute(
-            "INSERT INTO meetings (id, title, created_at, calendar_event_id, attendees, template_id, notes_md)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO meetings (id, title, created_at, calendar_event_id, attendees, template_id, notes_md, privacy)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
                 id,
                 title,
@@ -275,7 +297,8 @@ impl Db {
                 calendar_event_id,
                 serde_json::to_string(attendees)?,
                 template_id,
-                notes
+                notes,
+                privacy.as_str()
             ],
         )?;
         self.upsert_people(&attendees.iter().map(|a| (a.clone(), None)).collect::<Vec<_>>())?;
@@ -488,12 +511,12 @@ impl Db {
     /// I progetti in ordine alfabetico.
     pub fn list_projects(&self) -> Result<Vec<Project>> {
         let mut stmt =
-            self.conn.prepare("SELECT id, name, icon, description, archived FROM projects ORDER BY name")?;
+            self.conn.prepare("SELECT id, name, color, description, archived FROM projects ORDER BY name")?;
         let rows = stmt.query_map([], |r| {
             Ok(Project {
                 id: r.get(0)?,
                 name: r.get(1)?,
-                icon: r.get(2)?,
+                color: r.get(2)?,
                 description: r.get(3)?,
                 archived: r.get(4)?,
             })
@@ -501,9 +524,9 @@ impl Db {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Crea un progetto (`id` vuoto) o ne cambia nome, icona e descrizione. Due progetti non
+    /// Crea un progetto (`id` vuoto) o ne cambia nome, colore e descrizione. Due progetti non
     /// possono avere lo stesso nome, senza distinguere le maiuscole.
-    pub fn save_project(&self, id: &str, name: &str, icon: &str, description: &str) -> Result<Project> {
+    pub fn save_project(&self, id: &str, name: &str, color: &str, description: &str) -> Result<Project> {
         let taken: Option<String> = self
             .conn
             .query_row("SELECT id FROM projects WHERE name = ?1", [name], |r| r.get(0))
@@ -517,10 +540,10 @@ impl Db {
         let id = if id.is_empty() { uuid::Uuid::new_v4().to_string() } else { id.to_string() };
         let tx = self.conn.unchecked_transaction()?;
         self.conn.execute(
-            "INSERT INTO projects (id, name, icon, description, created_at) VALUES (?1, ?2, ?3, ?4, ?5)
-             ON CONFLICT(id) DO UPDATE SET name = excluded.name, icon = excluded.icon,
+            "INSERT INTO projects (id, name, color, description, created_at) VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color,
              description = excluded.description",
-            params![id, name, icon, description, now_ms()],
+            params![id, name, color, description, now_ms()],
         )?;
         // il nome del progetto è nell'indice di ricerca dei suoi meeting
         self.reindex_project(&id)?;
@@ -917,6 +940,24 @@ impl Db {
         Ok(())
     }
 
+    /// Porta al livello `min` i meeting che ne hanno uno più basso. Ritorna i loro id: chi
+    /// chiama cancella l'audio che avevano conservato per la trascrizione online.
+    pub fn raise_privacy(&self, min: Privacy) -> Result<Vec<String>> {
+        let below: &[&str] = match min {
+            Privacy::Open => return Ok(Vec::new()),
+            Privacy::Audio => &["open"],
+            Privacy::Hardened => &["open", "audio"],
+        };
+        let mut ids = Vec::new();
+        for level in below {
+            let mut stmt = self.conn.prepare("SELECT id FROM meetings WHERE privacy = ?1")?;
+            let rows = stmt.query_map([level], |r| r.get(0))?;
+            ids.extend(rows.collect::<rusqlite::Result<Vec<String>>>()?);
+            self.conn.execute("UPDATE meetings SET privacy = ?1 WHERE privacy = ?2", params![min.as_str(), level])?;
+        }
+        Ok(ids)
+    }
+
     /// Quante parti della trascrizione aspettano di essere verificate.
     pub fn pending_reviews(&self, meeting_id: &str) -> Result<usize> {
         Ok(self.conn.query_row(
@@ -1064,6 +1105,20 @@ impl Db {
             .and_then(|r| serde_json::from_str(&r).ok())
             .unwrap_or_default();
         Ok(s.with_defaults())
+    }
+
+    /// Un valore qualsiasi della tabella delle impostazioni (es. l'elenco dei vault).
+    pub fn setting(&self, key: &str) -> Result<Option<String>> {
+        Ok(self.conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| r.get(0)).optional()?)
+    }
+
+    pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
     }
 
     pub fn save_settings(&self, s: &Settings) -> Result<()> {
@@ -1280,11 +1335,39 @@ mod tests {
     }
 
     #[test]
+    fn a_vault_can_raise_the_privacy_of_its_meetings() {
+        let db = Db::open_in_memory().unwrap();
+        let open = db.create_meeting("Aperto", None, &[], None).unwrap();
+        let audio = db.create_meeting("Audio", None, &[], None).unwrap();
+        db.set_privacy(&audio.id, Privacy::Audio).unwrap();
+        let born = db.create_meeting_with("Nato blindato", None, &[], None, "", Privacy::Hardened).unwrap();
+        assert_eq!(born.privacy, Privacy::Hardened);
+        assert!(Privacy::Open < Privacy::Audio && Privacy::Audio < Privacy::Hardened);
+        let level = |id: &str| db.get_meeting(id).unwrap().unwrap().privacy;
+
+        assert!(db.raise_privacy(Privacy::Open).unwrap().is_empty());
+        // solo chi stava sotto il minimo cambia
+        assert_eq!(db.raise_privacy(Privacy::Audio).unwrap(), vec![open.id.clone()]);
+        assert_eq!((level(&open.id), level(&audio.id)), (Privacy::Audio, Privacy::Audio));
+        let mut raised = db.raise_privacy(Privacy::Hardened).unwrap();
+        raised.sort();
+        let mut expected = vec![open.id.clone(), audio.id.clone()];
+        expected.sort();
+        assert_eq!(raised, expected);
+        assert_eq!((level(&open.id), level(&born.id)), (Privacy::Hardened, Privacy::Hardened));
+
+        assert_eq!(db.setting("vaults").unwrap(), None);
+        db.set_setting("vaults", "{}").unwrap();
+        db.set_setting("vaults", "[]").unwrap();
+        assert_eq!(db.setting("vaults").unwrap().as_deref(), Some("[]"));
+    }
+
+    #[test]
     fn projects_hold_meetings_one_each() {
         let db = Db::open_in_memory().unwrap();
-        let nord = db.save_project("", "Cliente Nord", "🧭", "Rinnovo del contratto").unwrap();
+        let nord = db.save_project("", "Cliente Nord", "blue", "Rinnovo del contratto").unwrap();
         let app = db.save_project("", "App mobile", "", "").unwrap();
-        assert_eq!((nord.icon.as_str(), nord.description.as_str(), nord.archived), ("🧭", "Rinnovo del contratto", false));
+        assert_eq!((nord.color.as_str(), nord.description.as_str(), nord.archived), ("blue", "Rinnovo del contratto", false));
         // in ordine alfabetico
         let names: Vec<String> = db.list_projects().unwrap().into_iter().map(|p| p.name).collect();
         assert_eq!(names, vec!["App mobile", "Cliente Nord"]);
@@ -1302,7 +1385,7 @@ mod tests {
         assert_eq!((project(&a.id), project(&b.id)), (Some(nord.id.clone()), Some(app.id.clone())));
         // il nome del progetto si trova con la ricerca, anche dopo averlo cambiato
         assert_eq!(db.list_meetings(Some("nord")).unwrap().len(), 1);
-        let renamed = db.save_project(&nord.id, "Cliente Sud", "🧭", "").unwrap();
+        let renamed = db.save_project(&nord.id, "Cliente Sud", "blue", "").unwrap();
         assert_eq!(renamed.id, nord.id);
         assert_eq!(db.list_meetings(Some("nord")).unwrap().len(), 0);
         assert_eq!(db.list_meetings(Some("sud")).unwrap()[0].id, a.id);
@@ -1316,6 +1399,30 @@ mod tests {
         db.set_meetings_project(std::slice::from_ref(&b.id), None).unwrap();
         assert_eq!(project(&b.id), None);
         assert_eq!(db.list_projects().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn project_icons_give_way_to_colors_on_migration() {
+        let dir = std::env::temp_dir().join(format!("granello-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("db.sqlite");
+        {
+            // un database com'era quando un progetto aveva un'emoji: fino allo schema 7
+            let conn = Connection::open(&path).unwrap();
+            for schema in &MIGRATIONS[..7] {
+                conn.execute_batch(schema).unwrap();
+            }
+            conn.pragma_update(None, "user_version", 7).unwrap();
+            conn.execute_batch(
+                "INSERT INTO projects (id, name, icon, description, created_at) VALUES ('p', 'Lancio', '🚀', 'Primavera', 1);",
+            )
+            .unwrap();
+        }
+        let db = Db::open(&path).unwrap();
+        let project = db.list_projects().unwrap().remove(0);
+        assert_eq!((project.name.as_str(), project.color.as_str(), project.description.as_str()), ("Lancio", "", "Primavera"));
+        assert_eq!(db.save_project("p", "Lancio", "teal", "Primavera").unwrap().color, "teal");
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

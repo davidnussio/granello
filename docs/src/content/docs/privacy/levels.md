@@ -31,5 +31,6 @@ Copying a note as Markdown and printing it take the text out of Granello. For a 
 
 ## Good to know
 
+- A [vault](/reference/data/#vaults) can set a minimum level: its meetings start there and the lower levels cannot be chosen.
 - You can change the level at any time. It applies from then on: what was already sent is not taken back.
 - The chat across all meetings leaves out the meetings that may not go to the model in use.

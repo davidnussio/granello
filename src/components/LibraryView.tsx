@@ -5,7 +5,7 @@ import { dayLabel, mmss, time } from "../format";
 import { locale, t } from "../i18n";
 import { sparkle } from "../sparkles";
 import Recordings from "./Recordings";
-import ProjectDialog, { projectLabel } from "./ProjectDialog";
+import ProjectDialog, { ProjectDot } from "./ProjectDialog";
 
 interface Props {
   projects: Project[];
@@ -112,7 +112,7 @@ function groupsOf(dim: GroupDim, meetings: MeetingSummary[], projects: Project[]
   return projects
     .map((p) => ({
       key: p.id,
-      label: projectLabel(p),
+      label: p.name,
       meetings: meetings.filter((m) => m.projectId === p.id),
       archived: p.archived,
       project: p,
@@ -603,6 +603,7 @@ export default function LibraryView({
                   setCol(1);
                 }}
               >
+                {g.project && <ProjectDot project={g.project} />}
                 <span className="lib-label">
                   {dim !== "recordings" && hash(dim)}
                   {g.label}
@@ -615,7 +616,7 @@ export default function LibraryView({
                     className="lib-act"
                     onClick={() => setEditing(g.project!)}
                     aria-label={t("Modifica il progetto")}
-                    title={t("Cambia nome, icona e descrizione")}
+                    title={t("Cambia nome, colore e descrizione")}
                   >
                     ✎
                   </button>
@@ -797,7 +798,7 @@ export default function LibraryView({
                   .filter((p) => !p.archived || p.id === selectionProject)
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      {projectLabel(p)}
+                      {p.name}
                     </option>
                   ))}
               </select>
@@ -869,7 +870,12 @@ export default function LibraryView({
               <p className="muted small">
                 {dayLabel(current.createdAt)} · {time(current.createdAt)}
               </p>
-              {projectOf(current) && <p className="small lib-project">{projectLabel(projectOf(current)!)}</p>}
+              {projectOf(current) && (
+                <p className="small lib-project">
+                  <ProjectDot project={projectOf(current)!} />
+                  {projectOf(current)!.name}
+                </p>
+              )}
               {current.attendees.length > 0 && <p className="small">{current.attendees.join(", ")}</p>}
               {current.tags.length > 0 && (
                 <p className="lib-tags">
