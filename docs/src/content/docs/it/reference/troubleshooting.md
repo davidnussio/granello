@@ -30,7 +30,7 @@ I modelli vocali possono ripetere un suggerimento sul silenzio o sul rumore. Gra
 
 ## macOS dice che l'app non può essere aperta
 
-Una build fatta su un altro Mac non è firmata con un Developer ID di Apple, quindi Gatekeeper la blocca. Compilala sul Mac dove la usi: vedi [installazione](/it/start/install/).
+Granello non è ancora firmato con un Developer ID di Apple, quindi macOS lo blocca la prima volta. Apri *Impostazioni di Sistema → Privacy e sicurezza* e fai clic su *Apri comunque*. Se macOS dice che l'app è danneggiata, esegui `xattr -dr com.apple.quarantine /Applications/Granello.app` nel Terminale. Vedi [installazione](/it/start/install/).
 
 ## Le note AI si fermano con un errore sulla dimensione
 
