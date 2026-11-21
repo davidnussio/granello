@@ -102,6 +102,9 @@ pub struct AppState {
     pub llm_http: reqwest::Client,
     /// Generazioni AI in corso, per poterle annullare: stream_id -> flag di annullamento.
     pub streams: Mutex<HashMap<String, Arc<AtomicBool>>>,
+    /// Trascrizioni ancora al lavoro: dopo lo stop di una registrazione i blocchi in coda si
+    /// trascrivono in background e scrivono ancora nel vault aperto.
+    pub transcribing: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl AppState {
@@ -120,10 +123,14 @@ impl AppState {
         }
     }
 
-    /// C'è qualcosa in corso che scrive nel vault aperto: registrazione, dettatura o una
-    /// generazione dell'AI. Finché dura non si può passare a un altro vault.
+    /// C'è qualcosa in corso che scrive nel vault aperto: registrazione (anche la coda di
+    /// trascrizione dopo lo stop), dettatura o una generazione dell'AI. Finché dura non si
+    /// può passare a un altro vault.
     pub fn busy(&self) -> bool {
-        self.session.lock().is_some() || self.dictation.lock().is_some() || !self.streams.lock().is_empty()
+        self.session.lock().is_some()
+            || self.transcribing.load(std::sync::atomic::Ordering::SeqCst) > 0
+            || self.dictation.lock().is_some()
+            || !self.streams.lock().is_empty()
     }
 }
 

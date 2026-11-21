@@ -398,6 +398,22 @@ struct ImportInfo {
     total_ms: Option<i64>,
 }
 
+/// Una trascrizione al lavoro, contata in `AppState::transcribing` finché esiste.
+struct Active(Arc<AtomicUsize>);
+
+impl Active {
+    fn start(count: Arc<AtomicUsize>) -> Active {
+        count.fetch_add(1, Ordering::SeqCst);
+        Active(count)
+    }
+}
+
+impl Drop for Active {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 /// Thread che trascrive i blocchi in arrivo e salva i segmenti. Finisce quando la coda viene
 /// chiusa: a quel punto chiude il meeting ed emette `recording-finished`.
 fn spawn_transcriber(
@@ -419,7 +435,10 @@ fn spawn_transcriber(
     // anche un file caricato diventa una registrazione da riascoltare (solo l'audio, se è un video)
     let save_recording = cfg.save_recording.clone();
     let speakers = cfg.speakers.clone();
+    // finché il thread lavora l'app risulta occupata: niente cambio di vault a metà
+    let active = Active::start(app.state::<AppState>().transcribing.clone());
     std::thread::Builder::new().name("granello-transcribe".into()).spawn(move || {
+        let _active = active;
         let mut keeper = keep_audio.and_then(|(path, origin)| {
             let keeper = crate::keep::Keeper::open(&path).map_err(|e| log::error!("audio conservato: {e}")).ok()?;
             Some((keeper, origin))

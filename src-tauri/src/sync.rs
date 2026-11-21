@@ -693,9 +693,9 @@ fn turn(state: &AppState) -> Result<Option<Vec<String>>> {
     };
     let (dir, device) = {
         let main = state.main.lock();
-        (crate::vaults::sync_dir(&main, &vault_id), device_id(&main)?)
+        let Some(dir) = crate::vaults::sync_dir(&main, &vault_id) else { return Ok(None) };
+        (dir, device_id(&main)?)
     };
-    let Some(dir) = dir else { return Ok(None) };
     let same_vault = || state.vault.read().id == vault_id;
     let result = (|| {
         let seen = {
