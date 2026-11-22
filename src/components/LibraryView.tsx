@@ -148,12 +148,23 @@ function digest(meeting: Meeting) {
     .split("\n")
     .map((l) => l.trim())
     // i blocchi dell'editor (::: …, recinti di codice, tabelle) non sono testo da leggere in anteprima
-    .filter((l) => l && !/^(:{3,}|```|\||\[\[|!\[)/.test(l))
+    .filter((l) => l && !/^(:{3,}|```|\||\[\[|!\[|\$\$)/.test(l))
     .map((l) =>
       l
         .replace(/^(#{1,6}|[-*+]|\d+\.|>)\s+/, "")
         .replace(/^\[[ xX]\]\s+/, "")
-        .replace(/[*_`=]{1,2}/g, ""),
+        // il segno di un callout (> [!WARNING]) non è testo
+        .replace(/^\[![A-Z]+\]\s*/, "")
+        .replace(/@\[([^\]]+)\]/g, "$1")
+        .replace(/\[\[(\d{4}-\d{2}-\d{2})\]\]/g, "$1")
+        // stelle, timer e gli altri blocchi in linea non si leggono come testo
+        .replace(/\[\[[^\]]*\]\]/g, "")
+        // una formula semplice si legge com'è, una in LaTeX non si legge in anteprima
+        .replace(/\$([^$\\]+)\$/g, "$1")
+        .replace(/\$[^$]*\$/g, "…")
+        .replace(/==([^=]+)==(\{\.[a-z]+\})?/g, "$1")
+        .replace(/\*\*|__|[*`]/g, "")
+        .trim(),
     )
     .filter(Boolean);
   const all = `${meeting.notesMd}\n${meeting.enhancedMd ?? ""}`;
