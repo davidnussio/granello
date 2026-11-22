@@ -1,4 +1,4 @@
-projects: cliente-nord, app-mobile
+projects: cliente-nord, app-mobile, cliente-lago
 archived: sito-2025
 
 === demo-rinnovo
@@ -691,3 +691,687 @@ Aumento medio: $\frac{21+42+85}{19+39+79} - 1 \approx 8\%$
 
 > [!NOTE]
 > Ai clienti con contratto in corso il prezzo resta quello firmato.
+
+=== demo-lago-primo
+title: Primo incontro con Lago Logistica
+when: 24 10:00
+minutes: 40
+attendees: Francesca Galli, Elena Rossi
+tags: cliente-lago
+--- notes
+## Chi sono
+
+Lago Logistica gestisce ==tre magazzini== nel nord Italia e oggi segue le consegne con fogli di calcolo. @[Francesca Galli] guida le operazioni.
+
+## Cosa cercano
+
+- Vedere in un posto solo lo stato di ogni consegna
+- Avvisare i clienti quando un camion è in ritardo
+- Smettere di copiare i dati a mano tra i magazzini
+
+::: quote 06:40 Francesca Galli
+Ogni mattina perdiamo un'ora a rimettere insieme i fogli dei tre magazzini.
+:::
+
+> [!NOTE]
+> Usano già un gestionale per le fatture: va capito se serve collegarlo.
+
+- [ ] @[Elena Rossi]: fissare un incontro sui requisiti con il loro responsabile IT
+--- enhanced
+### Contesto
+
+- Lago Logistica ha tre magazzini e segue le consegne con fogli di calcolo separati.
+- Francesca Galli, responsabile delle operazioni, perde ogni mattina un'ora a unire i dati.
+
+### Bisogni
+
+- Stato delle consegne in un posto solo.
+- Avvisi ai clienti per i ritardi.
+- Niente più copia dei dati a mano tra magazzini.
+
+### Prossimi passi
+
+- Incontro sui requisiti con il responsabile IT di Lago (Elena).
+--- transcript
+00:15 me Grazie del tempo. Ci raccontate come lavorate oggi?
+00:31 them Abbiamo tre magazzini, ognuno con il suo foglio delle consegne.
+01:10 them Ogni mattina perdiamo un'ora a rimettere insieme i fogli dei tre magazzini.
+01:42 me E i clienti come sanno se una consegna è in ritardo?
+01:55 them Spesso non lo sanno finché non chiamano loro. È la lamentela più frequente.
+02:30 me Quindi la priorità è vedere tutto in un posto e avvisare in automatico.
+02:41 them Esatto. Poi c'è il gestionale delle fatture, ma quello viene dopo.
+
+=== demo-lago-requisiti
+title: Requisiti di Lago Logistica
+when: 19 14:00
+minutes: 55
+attendees: Francesca Galli, Roberto Marino, Luca Ferri
+tags: cliente-lago
+--- notes
+[[toc]]
+
+## Flusso di una consegna
+
+```mermaid
+flowchart LR
+  Ordine --> Magazzino
+  Magazzino -->|carico| Camion
+  Camion -->|posizione| Piattaforma
+  Piattaforma -->|avviso ritardo| Cliente
+```
+
+## Dati da collegare
+
+| Sistema | Dati | Chi lo gestisce |
+| --- | --- | --- |
+| Fogli dei magazzini | Carichi e partenze | Magazzinieri |
+| Localizzatori dei camion | Posizione | Fornitore esterno |
+| Gestionale fatture | Clienti e indirizzi | @[Roberto Marino] |
+
+> [!WARNING]
+> Il fornitore dei localizzatori espone i dati solo ogni 15 minuti: gli avvisi non possono essere più rapidi di così.
+
+## Domande aperte
+
+- Chi riceve gli avvisi: il cliente finale o il loro commerciale?
+- Servono i dati storici degli ultimi due anni?
+
+- [ ] @[Roberto Marino]: credenziali di prova per i localizzatori
+- [ ] @[Luca Ferri]: stima dell'integrazione con i tre sistemi
+
+=== demo-lago-offerta
+title: Offerta per Lago Logistica
+when: 15 11:00
+minutes: 35
+attendees: Elena Rossi, Giulia Moretti
+tags: cliente-lago, prezzi
+--- notes
+| Voce | Giorni | Costo |
+| --- | --- | --- |
+| Integrazione fogli | 8 | 6400 |
+| Localizzatori | 6 | 4800 |
+| Avvisi ai clienti | 5 | 4000 |
+| Gestionale fatture | 10 | 8000 |
+
+[[chart:bar]]
+
+Totale con il gestionale: $6400 + 4800 + 4000 + 8000 = 23200$
+
+::: pros-cons
++ Tutto in una volta: un solo collaudo
++ Il gestionale toglie l'ultimo lavoro a mano
+- Prezzo vicino al loro budget massimo
+- Il gestionale allunga i tempi di sei settimane
+= Proporre due fasi, il gestionale nella seconda
+:::
+
+> [!DECISION]
+> L'offerta è in due fasi: 15200 subito, il gestionale dopo il primo trimestre.
+
+=== demo-lago-trattativa
+title: Trattativa con Lago
+when: 6 16:00
+minutes: 30
+attendees: Francesca Galli, Elena Rossi
+tags: cliente-lago, prezzi
+--- notes
+## Dove siamo
+
+@[Francesca Galli] accetta le due fasi ma chiede di ==anticipare gli avvisi ai clienti== prima del picco di Natale.
+
+::: quote 04:12 Francesca Galli
+Se gli avvisi arrivano dopo Natale, per quest'anno non ci servono più.
+:::
+
+::: moment 09:30
+Elena propone di partire dagli avvisi con i dati dei localizzatori e collegare i fogli subito dopo.
+:::
+
+- [x] @[Elena Rossi]: rivedere l'ordine dei lavori con Luca
+- [ ] @[Elena Rossi]: mandare l'offerta aggiornata entro venerdì
+--- transcript
+00:20 them Le due fasi ci vanno bene. Il problema sono i tempi.
+01:05 them Il picco è a dicembre, ed è lì che i clienti chiamano di più.
+04:12 them Se gli avvisi arrivano dopo Natale, per quest'anno non ci servono più.
+05:30 me Capisco. Gli avvisi dipendono soprattutto dai localizzatori, non dai fogli.
+09:30 me Possiamo partire dagli avvisi con i dati dei camion e collegare i fogli subito dopo.
+10:02 them Così sì. Mandateci l'offerta con questo ordine.
+
+=== demo-lago-firma
+title: Firma del contratto Lago
+when: 1 15:00
+minutes: 20
+attendees: Francesca Galli, Roberto Marino, Elena Rossi
+tags: cliente-lago
+--- notes
+Contratto firmato per la prima fase.
+
+::: timeline
+- {{date:+3}} Accesso ai localizzatori
+- {{date:+14}} Avvisi ai clienti in prova
+- {{date:+21}} Avvisi attivi per tutti i clienti
+- {{date:+45}} Fogli dei magazzini collegati
+:::
+
+[[progress]]
+
+- [x] Contratto firmato
+- [x] Referente tecnico: @[Roberto Marino]
+- [ ] Ambiente di prova
+- [ ] Riunione di avvio con i magazzinieri
+
+=== demo-standup-mercoledi
+title: Standup del mercoledì
+when: 5 09:15
+minutes: 11
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+tags: standup
+--- notes
+[[timer:10:00]]
+
+- @[Luca Ferri]: mappati i campi personalizzati di Nord, restano i duplicati
+- @[Elena Rossi]: offerta per Lago in revisione
+- @[Giulia Moretti]: test delle notifiche su Android
+
+> [!WARNING]
+> L'ambiente di prova di Nord è lento: Luca apre una segnalazione al fornitore.
+
+=== demo-standup-venerdi
+title: Standup del venerdì
+when: 22 09:15
+minutes: 9
+attendees: Giulia Moretti, Luca Ferri, Anna Villa
+tags: standup
+--- notes
+- @[Anna Villa]: chiusi 14 ticket, nessuno urgente
+- @[Luca Ferri]: prima chiamata ai localizzatori di Lago
+- @[Giulia Moretti]: bozza delle schermate per l'uso offline
+
+Nessun blocco.
+
+=== demo-standup-due-settimane
+title: Standup di due settimane fa
+when: 17 09:15
+minutes: 13
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+tags: standup
+--- notes
+::: kanban
+## Fatto
+- Requisiti di Lago
+- Correzione dell'accesso da telefono
+## Oggi
+- Stima per Lago
+- Revisione delle notifiche
+## Bloccati
+- Export dei campi da Nord
+:::
+
+=== demo-retro-ottobre
+title: Retrospettiva di ottobre
+when: 44 14:30
+minutes: 55
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+tags: retrospettiva
+--- notes
+Com'è andato il mese: [[rating:3]]
+
+::: kanban
+## È andato bene
+- Kickoff con Nord
+- Nuovo processo per il supporto
+## È andato male
+- Stime dell'app troppo ottimiste
+- Rilascio di settembre slittato
+## Proviamo
+- Stime a tre punti
+- Una demo interna ogni due settimane
+:::
+
+> [!DECISION]
+> Da novembre le stime si danno con tre valori: ottimista, probabile, pessimista.
+
+=== demo-one-on-one-giulia
+title: 1:1 con Giulia
+when: 8 17:30
+minutes: 30
+attendees: Giulia Moretti
+tags: one-on-one
+--- notes
+## Come va
+
+Contenta della roadmap, preoccupata per il carico: segue sia l'app sia il design del sito.
+
+::: details Idee per alleggerire
+Passare a @[Sara Conti] le schermate di dettaglio dell'app e tenere per sé le scelte di fondo.
+:::
+
+## Crescita
+
+Vuole guidare il prossimo colloquio di design da sola.
+
+## Azioni
+
+- [ ] Affiancare Sara a Giulia sull'app da lunedì
+- [ ] @[Giulia Moretti]: preparare la traccia del colloquio
+
+=== demo-one-on-one-anna
+title: 1:1 con Anna
+when: 12 16:00
+minutes: 25
+attendees: Anna Villa
+tags: one-on-one
+--- notes
+## Come va
+
+Il nuovo canale unico per il supporto funziona: [[rating:4]]
+
+Le pesa rispondere da sola nei fine settimana.
+
+## Azioni
+
+- [ ] Turni del fine settimana a rotazione, da gennaio
+- [ ] @[Anna Villa]: elenco delle risposte pronte più usate
+
+=== demo-one-on-one-elena-ottobre
+title: 1:1 con Elena, ottobre
+when: 33 16:30
+minutes: 30
+attendees: Elena Rossi
+tags: one-on-one
+--- notes
+## Obiettivi del trimestre
+
+[[progress]]
+
+- [x] Rinnovo di Nord avviato
+- [x] Primo contatto con Lago
+- [ ] Listino 2027
+- [ ] Due nuovi clienti entro dicembre
+
+## Note
+
+Chiede più aiuto nel preparare le offerte: i numeri li prepara sempre all'ultimo.
+
+- [ ] Modello di offerta condiviso, con i costi già calcolati
+
+=== demo-colloquio-mobile
+title: Colloquio con Matteo Riva, sviluppatore mobile
+when: 18 10:00
+minutes: 50
+attendees: Matteo Riva, Luca Ferri
+tags: colloqui
+--- notes
+Esperienza con le app native: [[rating:4]]
+
+Lavoro in squadra: [[rating:5]]
+
+Conoscenza dell'uso offline: [[rating:3]]
+
+::: pros-cons
++ Ha pubblicato tre app sugli store
++ Spiega bene le scelte tecniche
+- Poca esperienza con la sincronizzazione offline
+= Secondo colloquio con un esercizio
+:::
+
+- [ ] @[Luca Ferri]: preparare l'esercizio sulla sincronizzazione
+--- transcript
+00:30 me Raccontaci un'app di cui vai fiero.
+00:44 them Un'app per prenotare i campi da tennis. Tre store, quarantamila utenti.
+02:10 me Come gestivate le prenotazioni senza rete?
+02:25 them Non le gestivamo: senza rete l'app mostrava un errore. È la cosa che rifarei.
+04:05 me Qui l'uso offline è il prossimo grande lavoro.
+04:18 them Mi interessa molto, anche perché è dove ho più da imparare.
+
+=== demo-colloquio-supporto
+title: Colloquio con Laura Testa, supporto clienti
+when: 23 11:30
+minutes: 40
+attendees: Laura Testa, Anna Villa
+tags: colloqui
+--- notes
+Calma con i clienti difficili: [[rating:5]]
+
+Conoscenza tecnica: [[rating:3]]
+
+::: pros-cons
++ Cinque anni di supporto in un'azienda di software
++ Scrive risposte chiare e brevi
+- Mai usato un sistema di ticket come il nostro
+= Proposta da fare
+:::
+
+> [!NOTE]
+> Disponibile da metà gennaio: coprirebbe i fine settimana con Anna.
+
+=== demo-scelta-designer
+title: Scelta del product designer
+when: 9 12:00
+minutes: 25
+attendees: Giulia Moretti, Elena Rossi
+tags: colloqui
+--- notes
+::: matrix
+| Criterio | Peso | Sara Conti | Tommaso Gatti |
+| --- | --- | --- | --- |
+| Portfolio | 3 | 5 | 4 |
+| Ricerca con gli utenti | 2 | 4 | 5 |
+| Lavoro in squadra | 2 | 5 | 3 |
+:::
+
+::: poll Chi facciamo entrare?
+- [2] Sara Conti
+- [0] Tommaso Gatti
+:::
+
+> [!DECISION]
+> Proposta a @[Sara Conti], con inizio a dicembre.
+
+=== demo-revisione-design
+title: Revisione del design dell'app
+when: 3 14:30
+minutes: 45
+attendees: Giulia Moretti, Sara Conti
+tags: app-mobile
+--- notes
+## Schermate riviste
+
+- Elenco delle consegne: ==troppe informazioni per riga==, si tolgono gli indirizzi
+- Dettaglio: lo stato va in alto, grande
+- Impostazioni delle notifiche: ok così
+
+:::: columns
+::: column
+### Da cambiare
+- Colori degli stati poco distinguibili
+- Testo dei pulsanti troppo lungo
+:::
+::: column
+### Da tenere
+- Navigazione in basso
+- Ricerca sempre visibile
+:::
+::::
+
+- [ ] @[Sara Conti]: nuova versione dell'elenco
+- [ ] @[Giulia Moretti]: verificare i colori con chi non distingue rosso e verde
+
+=== demo-sprint-12
+title: Pianificazione sprint 12
+when: 1 11:30
+minutes: 40
+attendees: Giulia Moretti, Luca Ferri, Sara Conti
+tags: app-mobile
+--- notes
+Capacità dello sprint: 30 punti.
+
+| Storia | Punti |
+| --- | --- |
+| Notifiche raggruppate | 8 |
+| Elenco consegne rivisto | 5 |
+| Correzione dell'accesso con Face ID | 3 |
+| Prima versione dell'uso offline | 13 |
+
+Totale: $8 + 5 + 3 + 13 = 29$ punti
+
+> [!WARNING]
+> L'uso offline è stimato con molta incertezza: se sfora, esce dallo sprint per primo.
+
+=== demo-bug-notifiche
+title: Bug critico nelle notifiche
+when: 2 17:00
+minutes: 20
+attendees: Luca Ferri, Anna Villa, Giulia Moretti
+tags: app-mobile, supporto
+--- notes
+> [!WARNING]
+> Alcuni beta tester ricevono la stessa notifica ==tre volte==.
+
+## Causa
+
+Il telefono si registra di nuovo a ogni avvio, e il server non toglie le registrazioni vecchie.
+
+## Azioni
+
+- [x] @[Luca Ferri]: togliere le registrazioni doppie sul server
+- [ ] @[Luca Ferri]: correzione nell'app con la prossima beta
+- [ ] @[Anna Villa]: avvisare i beta tester coinvolti
+--- transcript
+00:08 them Da stamattina sette segnalazioni: notifiche ripetute tre volte.
+00:40 me Sono tutti telefoni che hanno riavviato l'app ieri?
+00:52 them Sembra di sì, almeno quelli che ho sentito.
+01:30 me Allora è la registrazione: ad ogni avvio ne fa una nuova e le vecchie restano.
+02:15 me Intanto pulisco le registrazioni doppie sul server, così smette subito.
+02:40 them Avviso io i beta tester.
+
+=== demo-store
+title: Revisione per gli store
+when: 4 14:00
+minutes: 30
+attendees: Chiara Fontana, Giulia Moretti
+tags: app-mobile, marketing
+--- notes
+## Testi
+
+Titolo: *Consegne sotto controllo*. Sottotitolo ancora da decidere.
+
+::: poll Quale sottotitolo?
+- [1] Ogni consegna, in tempo reale
+- [2] Sai dov'è, prima che te lo chiedano
+- [0] Logistica senza fogli di calcolo
+:::
+
+## Immagini
+
+[[progress]]
+
+- [x] Icona
+- [x] Tre schermate
+- [ ] Video di 30 secondi
+- [ ] @[Chiara Fontana]: testi in inglese
+
+=== demo-accessibilita
+title: Accessibilità dell'app
+when: 25 11:00
+minutes: 40
+attendees: Giulia Moretti, Sara Conti, Anna Villa
+tags: app-mobile
+--- notes
+## Cosa abbiamo provato
+
+Con il lettore dello schermo attivo, tre compiti: trovare una consegna, aprire il dettaglio, attivare gli avvisi.
+
+| Compito | Riuscito | Problema |
+| --- | --- | --- |
+| Trovare una consegna | Sì | Nessuno |
+| Aprire il dettaglio | Sì | Lo stato non viene letto |
+| Attivare gli avvisi | No | Interruttore senza etichetta |
+
+> [!DECISION]
+> Prima del rilascio sugli store, ogni comando ha un'etichetta letta dal lettore dello schermo.
+
+- [ ] @[Sara Conti]: etichette per tutti gli interruttori
+
+=== demo-sito-contenuti
+title: Contenuti del nuovo sito
+when: 110 10:00
+minutes: 45
+attendees: Giulia Moretti, Chiara Fontana
+tags: sito-2025
+--- notes
+## Pagine
+
+::: kanban
+## Da scrivere
+- Prezzi
+- Casi dei clienti
+## In revisione
+- Pagina principale
+## Pronte
+- Chi siamo
+- Contatti
+:::
+
+> [!NOTE]
+> I casi dei clienti servono con nome e logo: chiedere il permesso a Nord.
+
+- [ ] @[Chiara Fontana]: bozza della pagina dei prezzi
+
+=== demo-sito-bilancio
+title: Bilancio del nuovo sito
+when: 80 15:00
+minutes: 30
+attendees: Giulia Moretti, Chiara Fontana, Elena Rossi
+tags: sito-2025
+--- notes
+| Mese | Visite | Richieste di demo |
+| --- | --- | --- |
+| Luglio | 2100 | 6 |
+| Agosto | 1800 | 5 |
+| Settembre | 3400 | 14 |
+
+[[chart:line]]
+
+Le richieste sono più che raddoppiate dal lancio. Com'è andato il progetto: [[rating:4]]
+
+> [!DECISION]
+> Il progetto del sito si chiude qui: i prossimi lavori vanno nel piano marketing.
+
+=== demo-sicurezza
+title: Revisione della sicurezza
+when: 27 10:00
+minutes: 50
+attendees: Luca Ferri, Stefano Bruno, Elena Rossi
+tags: sicurezza
+--- notes
+@[Stefano Bruno] ha rivisto accessi, backup e dati dei clienti.
+
+| Area | Esito | Urgenza |
+| --- | --- | --- |
+| Accessi | Due account di ex collaboratori attivi | Alta |
+| Backup | Mai provato un ripristino | Alta |
+| Password | Nessuna verifica in due passaggi | Media |
+| Dati dei clienti | Cifrati | Nessuna |
+
+- [x] @[Luca Ferri]: disattivare i due account
+- [ ] @[Luca Ferri]: provare un ripristino completo
+- [ ] Verifica in due passaggi per tutti entro gennaio
+
+=== demo-backup
+title: Prova di ripristino dei backup
+when: 40 09:00
+minutes: 35
+attendees: Luca Ferri, Stefano Bruno
+tags: sicurezza
+--- notes
+## Com'è andata
+
+Ripristino completo su un server di prova in ==2 ore e 10 minuti==. L'obiettivo era un'ora.
+
+::: details Cosa ha rallentato
+Il backup dei file allegati è un unico archivio: per prenderne uno bisogna scaricare tutto.
+:::
+
+> [!DECISION]
+> I backup degli allegati si dividono per mese, e la prova si ripete ogni tre mesi.
+
+- [ ] @[Luca Ferri]: dividere l'archivio degli allegati
+
+=== demo-budget
+title: Budget del primo trimestre
+when: 30 14:00
+minutes: 50
+attendees: Elena Rossi, Giulia Moretti
+tags: budget
+--- notes
+| Voce | Ottobre-dicembre | Gennaio-marzo |
+| --- | --- | --- |
+| Persone | 96000 | 112000 |
+| Strumenti | 4200 | 4800 |
+| Marketing | 9000 | 15000 |
+| Viaggi | 3000 | 2500 |
+
+[[chart:bar]]
+
+Aumento totale: $\frac{112000+4800+15000+2500}{96000+4200+9000+3000} - 1 \approx 20\%$
+
+> [!NOTE]
+> La voce Persone comprende le due assunzioni di dicembre.
+
+=== demo-offsite
+title: Organizzazione dell'offsite di gennaio
+when: 21 16:00
+minutes: 30
+attendees: Elena Rossi, Giulia Moretti, Anna Villa, Luca Ferri
+tags: team
+--- notes
+::: poll Dove andiamo?
+- [3] Lago di Como
+- [1] Torino
+- [0] Restiamo in ufficio
+:::
+
+## Programma
+
+::: timeline
+- {{date:+60}} Arrivo e cena
+- {{date:+61}} Piano dell'anno e retrospettiva
+- {{date:+62}} Rientro
+:::
+
+- [ ] @[Anna Villa]: preventivi di tre alberghi
+- [ ] @[Elena Rossi]: proposta di programma
+
+=== demo-nord-trimestrale
+title: Revisione trimestrale con Nord
+when: 60 10:00
+minutes: 60
+attendees: Marco Bianchi, Paolo Greco, Elena Rossi
+tags: cliente-nord
+--- notes
+## Numeri del trimestre
+
+| Indicatore | Obiettivo | Risultato |
+| --- | --- | --- |
+| Disponibilità del servizio | 99,5% | 99,8% |
+| Tempo medio di risposta | 4 ore | 3 ore |
+| Ticket aperti | meno di 20 | 17 |
+
+## Cosa chiedono
+
+@[Paolo Greco] vuole collegare il loro CRM entro marzo. È l'inizio del progetto di integrazione.
+
+> [!DECISION]
+> Si parte con l'integrazione del CRM: kickoff entro un mese.
+--- enhanced
+### Risultati
+
+- Tutti gli obiettivi del trimestre raggiunti: disponibilità al 99,8%, risposta media in 3 ore, 17 ticket aperti.
+
+### Richieste di Nord
+
+- Paolo Greco chiede di collegare il CRM di Nord entro marzo.
+
+### Decisioni
+
+- Parte il progetto di integrazione del CRM, con kickoff entro un mese.
+
+=== demo-newsletter
+title: Newsletter di dicembre
+when: 4 09:30
+minutes: 30
+attendees: Chiara Fontana, Elena Rossi
+tags: marketing
+--- notes
+## Argomenti
+
+1. L'app in arrivo, con le date della beta
+2. Il caso di Nord, se danno il permesso
+3. Il nuovo listino, spiegato bene
+
+> [!WARNING]
+> Il listino non va annunciato prima che i clienti con contratto in corso abbiano ricevuto la lettera.
+
+- [ ] @[Chiara Fontana]: bozza entro il 10
+- [ ] @[Elena Rossi]: chiedere a Nord il permesso per il caso

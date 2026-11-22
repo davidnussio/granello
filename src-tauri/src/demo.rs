@@ -245,7 +245,7 @@ mod tests {
     fn shipped_demo_data_is_valid() {
         for lang in [Lang::It, Lang::En] {
             let data = load(lang).unwrap();
-            assert!(data.meetings.len() >= 20, "{lang:?}: {} meeting", data.meetings.len());
+            assert!(data.meetings.len() >= 50, "{lang:?}: {} meeting", data.meetings.len());
             assert!(data.meetings.iter().all(|m| m.tags.last().map(String::as_str) == Some(TAG)), "manca #{TAG} ({lang:?})");
             let mut ids: Vec<&str> = data.meetings.iter().map(|m| m.id.as_str()).collect();
             ids.sort();

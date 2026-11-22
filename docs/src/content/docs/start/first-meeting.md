@@ -11,7 +11,7 @@ The Home screen shows what is still missing after the first launch. There are th
 2. **AI models**: paste the API key of your provider, or add a local provider. The key goes to the macOS Keychain. See [local models](/privacy/local-models/) to keep everything on your Mac.
 3. **Calendar** (optional): add a calendar by pasting its secret iCal address. Upcoming events then appear on the Home screen, with one click to open their notes.
 
-To look around first, **Load sample data** on the Home screen fills the app with 22 made-up meetings. They are removed with one click and never touch your own meetings. If you don't need the card, close it with the ×: the sample data stays in Settings → Data and privacy.
+To look around first, **Load sample data** on the Home screen fills the app with 50 made-up meetings. They are removed with one click and never touch your own meetings. If you don't need the card, close it with the ×: the sample data stays in Settings → Data and privacy.
 
 ![The Home screen with the upcoming calendar events](../../../assets/shots/en/home.webp)
 

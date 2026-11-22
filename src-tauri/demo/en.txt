@@ -1,4 +1,4 @@
-projects: cliente-nord, app-mobile
+projects: cliente-nord, app-mobile, cliente-lago
 archived: sito-2025
 
 === demo-rinnovo
@@ -691,3 +691,687 @@ Average increase: $\frac{21+42+85}{19+39+79} - 1 \approx 8\%$
 
 > [!NOTE]
 > Clients with a contract in force keep the price they signed.
+
+=== demo-lago-primo
+title: First meeting with Lago Logistics
+when: 24 10:00
+minutes: 40
+attendees: Francesca Galli, Elena Rossi
+tags: cliente-lago
+--- notes
+## Who they are
+
+Lago Logistics runs ==three warehouses== in northern Italy and tracks deliveries in spreadsheets today. @[Francesca Galli] leads operations.
+
+## What they are looking for
+
+- See the status of every delivery in one place
+- Warn customers when a truck is late
+- Stop copying data by hand between warehouses
+
+::: quote 06:40 Francesca Galli
+Every morning we lose an hour putting the three warehouses' sheets back together.
+:::
+
+> [!NOTE]
+> They already use a system for invoices: we need to find out whether it has to be connected.
+
+- [ ] @[Elena Rossi]: set up a requirements meeting with their IT lead
+--- enhanced
+### Context
+
+- Lago Logistics has three warehouses and tracks deliveries in separate spreadsheets.
+- Francesca Galli, head of operations, loses an hour every morning merging the data.
+
+### Needs
+
+- Delivery status in one place.
+- Delay alerts for customers.
+- No more copying data by hand between warehouses.
+
+### Next steps
+
+- Requirements meeting with Lago's IT lead (Elena).
+--- transcript
+00:15 me Thanks for your time. Can you tell us how you work today?
+00:31 them We have three warehouses, each with its own delivery sheet.
+01:10 them Every morning we lose an hour putting the three warehouses' sheets back together.
+01:42 me And how do customers find out that a delivery is late?
+01:55 them Often they don't, until they call us. It's the most common complaint.
+02:30 me So the priority is seeing everything in one place and alerting automatically.
+02:41 them Exactly. Then there's the invoicing system, but that comes later.
+
+=== demo-lago-requisiti
+title: Lago Logistics requirements
+when: 19 14:00
+minutes: 55
+attendees: Francesca Galli, Roberto Marino, Luca Ferri
+tags: cliente-lago
+--- notes
+[[toc]]
+
+## How a delivery flows
+
+```mermaid
+flowchart LR
+  Order --> Warehouse
+  Warehouse -->|loading| Truck
+  Truck -->|position| Platform
+  Platform -->|delay alert| Customer
+```
+
+## Data to connect
+
+| System | Data | Who runs it |
+| --- | --- | --- |
+| Warehouse sheets | Loads and departures | Warehouse staff |
+| Truck trackers | Position | External supplier |
+| Invoicing system | Customers and addresses | @[Roberto Marino] |
+
+> [!WARNING]
+> The tracker supplier only publishes data every 15 minutes: alerts cannot be faster than that.
+
+## Open questions
+
+- Who gets the alerts: the end customer or their sales rep?
+- Do they need the last two years of history?
+
+- [ ] @[Roberto Marino]: test credentials for the trackers
+- [ ] @[Luca Ferri]: estimate for connecting the three systems
+
+=== demo-lago-offerta
+title: Offer for Lago Logistics
+when: 15 11:00
+minutes: 35
+attendees: Elena Rossi, Giulia Moretti
+tags: cliente-lago, prezzi
+--- notes
+| Item | Days | Cost |
+| --- | --- | --- |
+| Sheet integration | 8 | 6400 |
+| Trackers | 6 | 4800 |
+| Customer alerts | 5 | 4000 |
+| Invoicing system | 10 | 8000 |
+
+[[chart:bar]]
+
+Total with the invoicing system: $6400 + 4800 + 4000 + 8000 = 23200$
+
+::: pros-cons
++ Everything at once: a single acceptance test
++ The invoicing system removes the last manual work
+- Price close to their maximum budget
+- The invoicing system adds six weeks
+= Offer two phases, invoicing in the second
+:::
+
+> [!DECISION]
+> The offer comes in two phases: 15200 now, the invoicing system after the first quarter.
+
+=== demo-lago-trattativa
+title: Negotiation with Lago
+when: 6 16:00
+minutes: 30
+attendees: Francesca Galli, Elena Rossi
+tags: cliente-lago, prezzi
+--- notes
+## Where we are
+
+@[Francesca Galli] accepts the two phases but asks to ==bring customer alerts forward== before the Christmas peak.
+
+::: quote 04:12 Francesca Galli
+If the alerts arrive after Christmas, we don't need them this year.
+:::
+
+::: moment 09:30
+Elena suggests starting with alerts from the tracker data and connecting the sheets right after.
+:::
+
+- [x] @[Elena Rossi]: review the order of work with Luca
+- [ ] @[Elena Rossi]: send the updated offer by Friday
+--- transcript
+00:20 them The two phases work for us. The problem is timing.
+01:05 them Our peak is in December, and that's when customers call the most.
+04:12 them If the alerts arrive after Christmas, we don't need them this year.
+05:30 me I see. The alerts depend mostly on the trackers, not on the sheets.
+09:30 me We can start with alerts from the truck data and connect the sheets right after.
+10:02 them That works. Send us the offer in that order.
+
+=== demo-lago-firma
+title: Signing the Lago contract
+when: 1 15:00
+minutes: 20
+attendees: Francesca Galli, Roberto Marino, Elena Rossi
+tags: cliente-lago
+--- notes
+Contract signed for the first phase.
+
+::: timeline
+- {{date:+3}} Access to the trackers
+- {{date:+14}} Customer alerts in testing
+- {{date:+21}} Alerts live for every customer
+- {{date:+45}} Warehouse sheets connected
+:::
+
+[[progress]]
+
+- [x] Contract signed
+- [x] Technical contact: @[Roberto Marino]
+- [ ] Test environment
+- [ ] Kickoff with the warehouse staff
+
+=== demo-standup-mercoledi
+title: Wednesday standup
+when: 5 09:15
+minutes: 11
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+tags: standup
+--- notes
+[[timer:10:00]]
+
+- @[Luca Ferri]: Nord's custom fields mapped, duplicates still to do
+- @[Elena Rossi]: Lago offer in review
+- @[Giulia Moretti]: testing notifications on Android
+
+> [!WARNING]
+> Nord's test environment is slow: Luca opens a ticket with the supplier.
+
+=== demo-standup-venerdi
+title: Friday standup
+when: 22 09:15
+minutes: 9
+attendees: Giulia Moretti, Luca Ferri, Anna Villa
+tags: standup
+--- notes
+- @[Anna Villa]: closed 14 tickets, none urgent
+- @[Luca Ferri]: first call to Lago's trackers
+- @[Giulia Moretti]: draft screens for offline use
+
+Nothing blocked.
+
+=== demo-standup-due-settimane
+title: Standup two weeks ago
+when: 17 09:15
+minutes: 13
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+tags: standup
+--- notes
+::: kanban
+## Done
+- Lago requirements
+- Phone login fix
+## Today
+- Estimate for Lago
+- Notifications review
+## Blocked
+- Field export from Nord
+:::
+
+=== demo-retro-ottobre
+title: October retrospective
+when: 44 14:30
+minutes: 55
+attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+tags: retrospettiva
+--- notes
+How the month went: [[rating:3]]
+
+::: kanban
+## Went well
+- Kickoff with Nord
+- New support process
+## Went badly
+- App estimates too optimistic
+- September release slipped
+## Let's try
+- Three-point estimates
+- An internal demo every two weeks
+:::
+
+> [!DECISION]
+> From November, estimates come with three values: optimistic, likely, pessimistic.
+
+=== demo-one-on-one-giulia
+title: 1:1 with Giulia
+when: 8 17:30
+minutes: 30
+attendees: Giulia Moretti
+tags: one-on-one
+--- notes
+## How it's going
+
+Happy with the roadmap, worried about the load: she covers both the app and the website design.
+
+::: details Ideas to lighten it
+Hand the app's detail screens to @[Sara Conti] and keep the big decisions for herself.
+:::
+
+## Growth
+
+She wants to lead the next design interview on her own.
+
+## Actions
+
+- [ ] Pair Sara with Giulia on the app from Monday
+- [ ] @[Giulia Moretti]: prepare the interview outline
+
+=== demo-one-on-one-anna
+title: 1:1 with Anna
+when: 12 16:00
+minutes: 25
+attendees: Anna Villa
+tags: one-on-one
+--- notes
+## How it's going
+
+The new single support channel works: [[rating:4]]
+
+Answering alone at weekends is wearing her down.
+
+## Actions
+
+- [ ] Rotating weekend shifts, from January
+- [ ] @[Anna Villa]: list of the most used canned answers
+
+=== demo-one-on-one-elena-ottobre
+title: 1:1 with Elena, October
+when: 33 16:30
+minutes: 30
+attendees: Elena Rossi
+tags: one-on-one
+--- notes
+## Quarter goals
+
+[[progress]]
+
+- [x] Nord renewal started
+- [x] First contact with Lago
+- [ ] 2027 price list
+- [ ] Two new customers by December
+
+## Notes
+
+She asks for more help preparing offers: the numbers always get done at the last minute.
+
+- [ ] Shared offer template, with costs already calculated
+
+=== demo-colloquio-mobile
+title: Interview with Matteo Riva, mobile developer
+when: 18 10:00
+minutes: 50
+attendees: Matteo Riva, Luca Ferri
+tags: colloqui
+--- notes
+Native app experience: [[rating:4]]
+
+Teamwork: [[rating:5]]
+
+Offline use knowledge: [[rating:3]]
+
+::: pros-cons
++ Has published three apps on the stores
++ Explains technical choices clearly
+- Little experience with offline sync
+= Second interview with an exercise
+:::
+
+- [ ] @[Luca Ferri]: prepare the sync exercise
+--- transcript
+00:30 me Tell us about an app you're proud of.
+00:44 them An app to book tennis courts. Three stores, forty thousand users.
+02:10 me How did you handle bookings without a connection?
+02:25 them We didn't: without a connection the app showed an error. That's what I'd redo.
+04:05 me Here offline use is the next big piece of work.
+04:18 them That interests me a lot, also because it's where I have the most to learn.
+
+=== demo-colloquio-supporto
+title: Interview with Laura Testa, customer support
+when: 23 11:30
+minutes: 40
+attendees: Laura Testa, Anna Villa
+tags: colloqui
+--- notes
+Calm with difficult customers: [[rating:5]]
+
+Technical knowledge: [[rating:3]]
+
+::: pros-cons
++ Five years of support at a software company
++ Writes clear, short answers
+- Never used a ticket system like ours
+= Make an offer
+:::
+
+> [!NOTE]
+> Available from mid-January: she would cover weekends with Anna.
+
+=== demo-scelta-designer
+title: Choosing the product designer
+when: 9 12:00
+minutes: 25
+attendees: Giulia Moretti, Elena Rossi
+tags: colloqui
+--- notes
+::: matrix
+| Criterion | Weight | Sara Conti | Tommaso Gatti |
+| --- | --- | --- | --- |
+| Portfolio | 3 | 5 | 4 |
+| User research | 2 | 4 | 5 |
+| Teamwork | 2 | 5 | 3 |
+:::
+
+::: poll Who do we hire?
+- [2] Sara Conti
+- [0] Tommaso Gatti
+:::
+
+> [!DECISION]
+> Offer to @[Sara Conti], starting in December.
+
+=== demo-revisione-design
+title: App design review
+when: 3 14:30
+minutes: 45
+attendees: Giulia Moretti, Sara Conti
+tags: app-mobile
+--- notes
+## Screens reviewed
+
+- Delivery list: ==too much information per row==, addresses go
+- Detail: the status goes at the top, large
+- Notification settings: fine as they are
+
+:::: columns
+::: column
+### To change
+- Status colors hard to tell apart
+- Button labels too long
+:::
+::: column
+### To keep
+- Bottom navigation
+- Search always visible
+:::
+::::
+
+- [ ] @[Sara Conti]: new version of the list
+- [ ] @[Giulia Moretti]: check the colors with someone who can't tell red from green
+
+=== demo-sprint-12
+title: Sprint 12 planning
+when: 1 11:30
+minutes: 40
+attendees: Giulia Moretti, Luca Ferri, Sara Conti
+tags: app-mobile
+--- notes
+Sprint capacity: 30 points.
+
+| Story | Points |
+| --- | --- |
+| Grouped notifications | 8 |
+| Reworked delivery list | 5 |
+| Face ID login fix | 3 |
+| First version of offline use | 13 |
+
+Total: $8 + 5 + 3 + 13 = 29$ points
+
+> [!WARNING]
+> Offline use is estimated with a lot of uncertainty: if it overruns, it leaves the sprint first.
+
+=== demo-bug-notifiche
+title: Critical notifications bug
+when: 2 17:00
+minutes: 20
+attendees: Luca Ferri, Anna Villa, Giulia Moretti
+tags: app-mobile, supporto
+--- notes
+> [!WARNING]
+> Some beta testers get the same notification ==three times==.
+
+## Cause
+
+The phone registers again at every launch, and the server doesn't remove the old registrations.
+
+## Actions
+
+- [x] @[Luca Ferri]: remove duplicate registrations on the server
+- [ ] @[Luca Ferri]: fix in the app with the next beta
+- [ ] @[Anna Villa]: let the affected beta testers know
+--- transcript
+00:08 them Seven reports since this morning: notifications repeated three times.
+00:40 me Are they all phones that restarted the app yesterday?
+00:52 them Looks like it, at least the ones I talked to.
+01:30 me Then it's the registration: every launch makes a new one and the old ones stay.
+02:15 me Meanwhile I'll clean the duplicate registrations on the server, so it stops right away.
+02:40 them I'll let the beta testers know.
+
+=== demo-store
+title: Store listing review
+when: 4 14:00
+minutes: 30
+attendees: Chiara Fontana, Giulia Moretti
+tags: app-mobile, marketing
+--- notes
+## Texts
+
+Title: *Deliveries under control*. Subtitle still to decide.
+
+::: poll Which subtitle?
+- [1] Every delivery, in real time
+- [2] Know where it is before they ask
+- [0] Logistics without spreadsheets
+:::
+
+## Images
+
+[[progress]]
+
+- [x] Icon
+- [x] Three screenshots
+- [ ] 30-second video
+- [ ] @[Chiara Fontana]: Italian texts
+
+=== demo-accessibilita
+title: App accessibility
+when: 25 11:00
+minutes: 40
+attendees: Giulia Moretti, Sara Conti, Anna Villa
+tags: app-mobile
+--- notes
+## What we tried
+
+With the screen reader on, three tasks: find a delivery, open its detail, turn on alerts.
+
+| Task | Succeeded | Problem |
+| --- | --- | --- |
+| Find a delivery | Yes | None |
+| Open the detail | Yes | The status is not read out |
+| Turn on alerts | No | Switch without a label |
+
+> [!DECISION]
+> Before the store release, every control has a label the screen reader reads out.
+
+- [ ] @[Sara Conti]: labels for every switch
+
+=== demo-sito-contenuti
+title: New website content
+when: 110 10:00
+minutes: 45
+attendees: Giulia Moretti, Chiara Fontana
+tags: sito-2025
+--- notes
+## Pages
+
+::: kanban
+## To write
+- Pricing
+- Customer stories
+## In review
+- Home page
+## Ready
+- About us
+- Contact
+:::
+
+> [!NOTE]
+> Customer stories need a name and a logo: ask Nord for permission.
+
+- [ ] @[Chiara Fontana]: draft of the pricing page
+
+=== demo-sito-bilancio
+title: New website review
+when: 80 15:00
+minutes: 30
+attendees: Giulia Moretti, Chiara Fontana, Elena Rossi
+tags: sito-2025
+--- notes
+| Month | Visits | Demo requests |
+| --- | --- | --- |
+| July | 2100 | 6 |
+| August | 1800 | 5 |
+| September | 3400 | 14 |
+
+[[chart:line]]
+
+Requests more than doubled since the launch. How the project went: [[rating:4]]
+
+> [!DECISION]
+> The website project closes here: further work goes into the marketing plan.
+
+=== demo-sicurezza
+title: Security review
+when: 27 10:00
+minutes: 50
+attendees: Luca Ferri, Stefano Bruno, Elena Rossi
+tags: sicurezza
+--- notes
+@[Stefano Bruno] reviewed access, backups and customer data.
+
+| Area | Finding | Urgency |
+| --- | --- | --- |
+| Access | Two former contractors' accounts still active | High |
+| Backups | A restore has never been tested | High |
+| Passwords | No two-step verification | Medium |
+| Customer data | Encrypted | None |
+
+- [x] @[Luca Ferri]: disable the two accounts
+- [ ] @[Luca Ferri]: test a full restore
+- [ ] Two-step verification for everyone by January
+
+=== demo-backup
+title: Backup restore test
+when: 40 09:00
+minutes: 35
+attendees: Luca Ferri, Stefano Bruno
+tags: sicurezza
+--- notes
+## How it went
+
+Full restore on a test server in ==2 hours 10 minutes==. The target was one hour.
+
+::: details What slowed it down
+The attachments backup is a single archive: getting one file means downloading everything.
+:::
+
+> [!DECISION]
+> Attachment backups are split by month, and the test is repeated every three months.
+
+- [ ] @[Luca Ferri]: split the attachments archive
+
+=== demo-budget
+title: First-quarter budget
+when: 30 14:00
+minutes: 50
+attendees: Elena Rossi, Giulia Moretti
+tags: budget
+--- notes
+| Item | October-December | January-March |
+| --- | --- | --- |
+| People | 96000 | 112000 |
+| Tools | 4200 | 4800 |
+| Marketing | 9000 | 15000 |
+| Travel | 3000 | 2500 |
+
+[[chart:bar]]
+
+Total increase: $\frac{112000+4800+15000+2500}{96000+4200+9000+3000} - 1 \approx 20\%$
+
+> [!NOTE]
+> The People line includes the two December hires.
+
+=== demo-offsite
+title: Planning the January offsite
+when: 21 16:00
+minutes: 30
+attendees: Elena Rossi, Giulia Moretti, Anna Villa, Luca Ferri
+tags: team
+--- notes
+::: poll Where do we go?
+- [3] Lake Como
+- [1] Turin
+- [0] We stay at the office
+:::
+
+## Schedule
+
+::: timeline
+- {{date:+60}} Arrival and dinner
+- {{date:+61}} Year plan and retrospective
+- {{date:+62}} Back home
+:::
+
+- [ ] @[Anna Villa]: quotes from three hotels
+- [ ] @[Elena Rossi]: draft schedule
+
+=== demo-nord-trimestrale
+title: Quarterly review with Nord
+when: 60 10:00
+minutes: 60
+attendees: Marco Bianchi, Paolo Greco, Elena Rossi
+tags: cliente-nord
+--- notes
+## Quarter numbers
+
+| Indicator | Target | Result |
+| --- | --- | --- |
+| Service availability | 99.5% | 99.8% |
+| Average response time | 4 hours | 3 hours |
+| Open tickets | under 20 | 17 |
+
+## What they ask
+
+@[Paolo Greco] wants their CRM connected by March. It is the start of the integration project.
+
+> [!DECISION]
+> The CRM integration starts: kickoff within a month.
+--- enhanced
+### Results
+
+- Every quarter target met: 99.8% availability, average response in 3 hours, 17 open tickets.
+
+### Nord's requests
+
+- Paolo Greco asks to connect Nord's CRM by March.
+
+### Decisions
+
+- The CRM integration project starts, with a kickoff within a month.
+
+=== demo-newsletter
+title: December newsletter
+when: 4 09:30
+minutes: 30
+attendees: Chiara Fontana, Elena Rossi
+tags: marketing
+--- notes
+## Topics
+
+1. The upcoming app, with the beta dates
+2. Nord's story, if they give permission
+3. The new price list, explained clearly
+
+> [!WARNING]
+> The price list must not be announced before customers with a running contract have received the letter.
+
+- [ ] @[Chiara Fontana]: draft by the 10th
+- [ ] @[Elena Rossi]: ask Nord for permission for the story
