@@ -4,6 +4,8 @@ mod i18n;
 mod items;
 
 mod attachments;
+#[cfg(test)]
+mod certification;
 mod audio;
 mod calendar;
 mod commands;

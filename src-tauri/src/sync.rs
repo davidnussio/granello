@@ -607,7 +607,7 @@ struct Marker {
 
 /// Attiva il sync di un vault in una cartella: vuota, oppure quella in cui un altro Mac
 /// sincronizza già lo stesso vault. Tutto quello che il vault contiene parte nel primo giro.
-fn enable(db: &Db, dir: &Path) -> Result<()> {
+pub(crate) fn enable(db: &Db, dir: &Path) -> Result<()> {
     let conn = db.conn();
     if !dir.is_absolute() || !dir.is_dir() {
         return Err(crate::tra!(
@@ -685,7 +685,7 @@ static TURN: parking_lot::Mutex<()> = parking_lot::Mutex::new(());
 /// Scrive le modifiche di questo Mac e applica quelle degli altri. I file si leggono senza
 /// tenere il database: con iCloud la lettura può aspettare lo scaricamento. `None` se il
 /// vault aperto non si sincronizza.
-fn turn(state: &AppState) -> Result<Option<Vec<String>>> {
+pub(crate) fn turn(state: &AppState) -> Result<Option<Vec<String>>> {
     let _turn = TURN.lock();
     let (vault_id, min, vault_dir) = {
         let v = state.vault.read();

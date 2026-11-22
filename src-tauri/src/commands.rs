@@ -1220,8 +1220,8 @@ pub async fn dictation_stop(state: State<'_, AppState>, discard: Option<bool>) -
 // ---------------- AI ----------------
 
 /// Un modello pronto all'uso: provider, indirizzo, chiave e nome del modello.
-struct ResolvedModel {
-    provider: Provider,
+pub(crate) struct ResolvedModel {
+    pub(crate) provider: Provider,
     api_key: Option<String>,
     model: String,
 }
@@ -1239,7 +1239,7 @@ fn provider_is_local(provider: &Provider) -> bool {
 
 /// Perché un meeting può essere elaborato solo da un modello locale, se è così:
 /// è in modalità blindata, oppure ha parti della trascrizione ancora da verificare.
-fn local_only(db: &Db, meeting: &Meeting) -> CmdResult<Option<String>> {
+pub(crate) fn local_only(db: &Db, meeting: &Meeting) -> CmdResult<Option<String>> {
     if meeting.privacy == Privacy::Hardened {
         return Ok(Some(tr("Questo meeting è in modalità blindata", "This meeting is in hardened mode").into()));
     }
@@ -1255,7 +1255,7 @@ fn local_only(db: &Db, meeting: &Meeting) -> CmdResult<Option<String>> {
 /// Il modello da usare per un meeting. Se il meeting chiede un modello locale (`reason`) e
 /// quello scelto non lo è, si ripiega sull'altro modello configurato se è locale; altrimenti
 /// la funzione non è disponibile e l'errore dice perché.
-fn resolve_model_for(state: &AppState, settings: &Settings, which: &ModelRef, reason: Option<String>) -> CmdResult<ResolvedModel> {
+pub(crate) fn resolve_model_for(state: &AppState, settings: &Settings, which: &ModelRef, reason: Option<String>) -> CmdResult<ResolvedModel> {
     let Some(reason) = reason else { return resolve_model(state, settings, which) };
     let local = [which, &settings.notes_model, &settings.chat_model]
         .into_iter()

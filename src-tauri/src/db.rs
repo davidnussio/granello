@@ -14,7 +14,7 @@ fn now_ms() -> i64 {
 
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
-const MIGRATIONS: &[&str] =
+pub(crate) const MIGRATIONS: &[&str] =
     &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9];
 
 /// Sync tra dispositivi (fase 0, vedi `sync.rs`). Un segmento della trascrizione riceve un id

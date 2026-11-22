@@ -22,6 +22,8 @@ and knowledge live in `~/Developer/repos/dev-commons`.
   readable Markdown (table in the README).
 - Demo data: `src-tauri/demo/it.txt` and `en.txt`, every meeting tagged
   `#faker`. Screenshots and anything public use only demo data.
+- Release requirements are in `CERTIFICATION.md` (`pnpm certify`). A new promise to
+  users gets a requirement there, with its check.
 - `pnpm check` must pass: tsc, `oxlint --deny-warnings`, `oxfmt --check`,
   translations, clippy with warnings as errors, cargo test. Format with
   `pnpm fmt`.
