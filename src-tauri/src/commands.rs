@@ -3,7 +3,7 @@ use crate::i18n::tr;
 use crate::db::Db;
 use crate::models::*;
 use crate::transcribe::{self, TranscriberCache};
-use crate::{attachments, calendar, gladia, keep, llm, prompts, recordings, secrets};
+use crate::{attachments, calendar, contacts, gladia, keep, llm, prompts, recordings, secrets};
 use futures_util::StreamExt;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -304,12 +304,19 @@ pub fn update_meeting_meta(
         Some(_) => calendar_people(&state),
         None => Vec::new(),
     };
+    let from_contacts = attendees.is_some() && contacts_enabled(&state);
     let db = state.db.lock();
     if let Some(names) = attendees {
         let people: Vec<(String, Option<String>)> = normalize_names(names, 80, MAX_ATTENDEES)
             .into_iter()
             .map(|name| {
                 let email = known_emails.iter().find(|(n, _)| n.eq_ignore_ascii_case(&name)).and_then(|(_, e)| e.clone());
+                // con la rubrica del Mac attiva, l'email di chi in Granello non ne ha ancora una
+                let email = email.or_else(|| {
+                    (from_contacts && db.person_email(&name).ok().flatten().is_none())
+                        .then(|| contacts::email_for(&name))
+                        .flatten()
+                });
                 (name, email)
             })
             .collect();
@@ -458,6 +465,131 @@ pub fn delete_person(state: State<AppState>, id: i64) -> CmdResult<()> {
     state.db.lock().delete_person(id).map_err(err)
 }
 
+/// Cambia nome ed email di una persona; il nome nuovo arriva nei meeting e nelle note.
+#[tauri::command]
+pub fn update_person(state: State<AppState>, id: i64, name: String, email: Option<String>) -> CmdResult<Vec<Person>> {
+    let db = state.db.lock();
+    db.update_person(id, &name, email.as_deref()).map_err(err)?;
+    db.list_people().map_err(err)
+}
+
+/// Unisce `from` in `into`: resta `into`, con i meeting di tutte e due.
+#[tauri::command]
+pub fn merge_people(state: State<AppState>, from: i64, into: i64) -> CmdResult<Vec<Person>> {
+    let db = state.db.lock();
+    db.merge_people(from, into).map_err(err)?;
+    db.list_people().map_err(err)
+}
+
+/// Quanto si può leggere della rubrica del Mac.
+#[tauri::command]
+pub fn contacts_access() -> contacts::Access {
+    contacts::access()
+}
+
+/// Chiede a macOS il permesso di leggere la rubrica; aspetta la risposta dell'utente.
+#[tauri::command]
+pub async fn request_contacts_access() -> CmdResult<contacts::Access> {
+    tokio::task::spawn_blocking(contacts::request_access).await.map_err(err)
+}
+
+/// Fa scegliere un file vCard e ne legge le persone, senza aggiungerle: le sceglie l'utente.
+#[tauri::command]
+pub async fn pick_vcard(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Option<Vec<ImportedPerson>>> {
+    use tauri::Manager;
+    use tauri_plugin_dialog::DialogExt;
+    const MAX_BYTES: u64 = 20 * 1024 * 1024;
+
+    let mut dialog = app
+        .dialog()
+        .file()
+        .set_title(tr("Scegli un file vCard", "Choose a vCard file"))
+        .add_filter(tr("Contatti (vCard)", "Contacts (vCard)"), &["vcf", "vcard"]);
+    if let Some(window) = app.get_webview_window("main") {
+        dialog = dialog.set_parent(&window);
+    }
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    dialog.pick_file(move |picked| {
+        let _ = tx.send(picked);
+    });
+    let Some(picked) = rx.await.map_err(err)? else { return Ok(None) };
+    let path = picked.into_path().map_err(err)?;
+    let size = std::fs::metadata(&path).map_err(err)?.len();
+    if size > MAX_BYTES {
+        return Err(tr(
+            "Il file è troppo grande per una rubrica (più di 20 MB): esporta solo i contatti che ti servono.",
+            "The file is too big for an address book (over 20 MB): export only the contacts you need.",
+        )
+        .into());
+    }
+    let bytes = std::fs::read(&path).map_err(err)?;
+    let found = contacts::parse_vcard(&String::from_utf8_lossy(&bytes));
+    if found.is_empty() {
+        return Err(tr(
+            "Nel file non ci sono contatti con un nome: scegli un file .vcf esportato da Contatti, Google o Outlook.",
+            "The file has no contacts with a name: choose a .vcf file exported from Contacts, Google or Outlook.",
+        )
+        .into());
+    }
+    let known = state.db.lock().list_people().map_err(err)?;
+    Ok(Some(
+        found
+            .into_iter()
+            .map(|(name, email)| ImportedPerson {
+                known: known.iter().any(|p| p.name.eq_ignore_ascii_case(&name)),
+                name,
+                email,
+            })
+            .collect(),
+    ))
+}
+
+/// Aggiunge alla rubrica le persone scelte (da un file vCard). Chi c'è già riceve l'email,
+/// se non ne aveva una.
+#[tauri::command]
+pub fn add_people(state: State<AppState>, people: Vec<ImportedPerson>) -> CmdResult<Vec<Person>> {
+    let people: Vec<(String, Option<String>)> = people
+        .into_iter()
+        .map(|p| (p.name.trim().chars().take(80).collect::<String>(), p.email.filter(|e| e.contains('@'))))
+        .filter(|(n, _)| !n.is_empty())
+        .collect();
+    let db = state.db.lock();
+    db.upsert_people(&people).map_err(err)?;
+    db.list_people().map_err(err)
+}
+
+/// Completa con la rubrica del Mac le email delle persone che non ne hanno. Restituisce
+/// quante ne ha trovate.
+#[tauri::command]
+pub async fn fill_emails_from_contacts(state: State<'_, AppState>) -> CmdResult<usize> {
+    if !contacts::access().readable() {
+        return Err(tr(
+            "Granello non può leggere la rubrica: consentilo in Impostazioni di Sistema → Privacy e sicurezza → Contatti.",
+            "Granello can't read your contacts: allow it in System Settings → Privacy & Security → Contacts.",
+        )
+        .into());
+    }
+    let missing = state.db.lock().people_without_email().map_err(err)?;
+    let found: Vec<(i64, String)> = tokio::task::spawn_blocking(move || {
+        missing.into_iter().filter_map(|(id, name)| contacts::email_for(&name).map(|e| (id, e))).collect()
+    })
+    .await
+    .map_err(err)?;
+    let db = state.db.lock();
+    let mut filled = 0;
+    for (id, email) in found {
+        if db.fill_person_email(id, &email).map_err(err)? {
+            filled += 1;
+        }
+    }
+    Ok(filled)
+}
+
+/// Legge la rubrica del Mac solo se l'utente l'ha attivata e macOS lo permette.
+fn contacts_enabled(state: &AppState) -> bool {
+    state.db.lock().get_settings().map(|s| s.contacts_suggestions).unwrap_or(false) && contacts::access().readable()
+}
+
 /// Completamento automatico dei partecipanti: prima la rubrica (usati di recente),
 /// poi i nomi letti dal calendario che in rubrica non ci sono ancora.
 #[tauri::command]
@@ -480,6 +612,17 @@ pub fn suggest_people(state: State<AppState>, query: String) -> CmdResult<Vec<Pe
             || email.as_deref().map(|e| e.to_lowercase().contains(&q)).unwrap_or(false);
         if matches && !out.iter().any(|o| o.name.eq_ignore_ascii_case(&name)) {
             out.push(PersonSuggestion { name, email, source: "calendar".into() });
+        }
+    }
+    // per ultima la rubrica del Mac: solo se attivata, e solo chi non è già proposto
+    if out.len() < LIMIT && contacts_enabled(&state) {
+        for (name, email) in contacts::search(&q, LIMIT) {
+            if out.len() >= LIMIT {
+                break;
+            }
+            if !out.iter().any(|o| o.name.eq_ignore_ascii_case(&name)) {
+                out.push(PersonSuggestion { name, email, source: "contacts".into() });
+            }
         }
     }
     Ok(out)

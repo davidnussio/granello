@@ -691,15 +691,24 @@ impl Db {
         Ok(())
     }
 
-    /// Rubrica completa, con il numero di meeting di ogni persona.
+    /// Rubrica completa, con il numero di meeting di ogni persona e la data dell'ultimo.
     pub fn list_people(&self) -> Result<Vec<Person>> {
         let mut stmt = self.conn.prepare(
-            "SELECT p.id, p.name, p.email,
-                    (SELECT COUNT(*) FROM meetings m, json_each(m.attendees) j WHERE j.value = p.name COLLATE NOCASE)
-             FROM people p ORDER BY p.name",
+            "SELECT p.id, p.name, p.email, COUNT(m.id), MAX(m.created_at)
+             FROM people p
+             LEFT JOIN meetings m ON EXISTS (
+                 SELECT 1 FROM json_each(m.attendees) j WHERE j.value = p.name COLLATE NOCASE
+             )
+             GROUP BY p.id ORDER BY p.name",
         )?;
         let rows = stmt.query_map([], |r| {
-            Ok(Person { id: r.get(0)?, name: r.get(1)?, email: r.get(2)?, meetings: r.get(3)? })
+            Ok(Person {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                email: r.get(2)?,
+                meetings: r.get(3)?,
+                last_meeting_at: r.get(4)?,
+            })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
@@ -713,9 +722,147 @@ impl Db {
              ORDER BY last_used_at DESC, name LIMIT ?2",
         )?;
         let rows = stmt.query_map(params![like, limit as i64], |r| {
-            Ok(Person { id: r.get(0)?, name: r.get(1)?, email: r.get(2)?, meetings: r.get(3)? })
+            Ok(Person { id: r.get(0)?, name: r.get(1)?, email: r.get(2)?, meetings: r.get(3)?, last_meeting_at: None })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// L'email di una persona in rubrica, se c'è.
+    pub fn person_email(&self, name: &str) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row("SELECT email FROM people WHERE name = ?1", [name.trim()], |r| r.get::<_, Option<String>>(0))
+            .optional()?
+            .flatten())
+    }
+
+    /// Le persone senza email: la rubrica del Mac può completarle.
+    pub fn people_without_email(&self) -> Result<Vec<(i64, String)>> {
+        let mut stmt = self.conn.prepare("SELECT id, name FROM people WHERE email IS NULL OR email = '' ORDER BY name")?;
+        let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Dà l'email a una persona che non ne ha ancora una.
+    pub fn fill_person_email(&self, id: i64, email: &str) -> Result<bool> {
+        let n = self.conn.execute(
+            "UPDATE people SET email = ?1 WHERE id = ?2 AND (email IS NULL OR email = '')",
+            params![email.trim(), id],
+        )?;
+        Ok(n > 0)
+    }
+
+    /// Cambia nome ed email di una persona. Il nome nuovo arriva ovunque compaia quello vecchio:
+    /// partecipanti dei meeting, menzioni `@[Nome]` e citazioni nelle note.
+    pub fn update_person(&self, id: i64, name: &str, email: Option<&str>) -> Result<()> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(crate::tra!(
+                "Il nome non può essere vuoto: scrivi come si chiama la persona.",
+                "The name can't be empty: type the person's name."
+            ));
+        }
+        let email = email.map(str::trim).filter(|e| !e.is_empty());
+        let tx = self.conn.unchecked_transaction()?;
+        let (old, created, used): (String, i64, i64) = self
+            .conn
+            .query_row("SELECT name, created_at, last_used_at FROM people WHERE id = ?1", [id], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+            })
+            .optional()?
+            .ok_or_else(|| crate::tra!("Persona non trovata: ricarica l'elenco.", "Person not found: reload the list."))?;
+        if old == name {
+            self.conn.execute("UPDATE people SET email = ?1 WHERE id = ?2", params![email, id])?;
+        } else {
+            let taken: bool = self.conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM people WHERE name = ?1 COLLATE NOCASE AND id != ?2)",
+                params![name, id],
+                |r| r.get(0),
+            )?;
+            if taken {
+                return Err(crate::tra!(
+                    "In rubrica c'è già «{name}»: per tenerne una sola usa Unisci.",
+                    "“{name}” is already in your people: use Merge to keep just one."
+                ));
+            }
+            // il sync riconosce una persona dal nome: cambiarlo è togliere la vecchia e aggiungere la nuova
+            self.conn.execute("DELETE FROM people WHERE id = ?1", [id])?;
+            self.conn.execute(
+                "INSERT INTO people (id, name, email, created_at, last_used_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![id, name, email, created, used],
+            )?;
+            self.rename_in_meetings(&old, name)?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Unisce due persone che sono la stessa: `from` sparisce e i suoi meeting passano a `into`,
+    /// che prende anche l'email di `from` se non ne aveva una.
+    pub fn merge_people(&self, from: i64, into: i64) -> Result<()> {
+        if from == into {
+            return Err(crate::tra!(
+                "Scegli una persona diversa con cui unire.",
+                "Choose a different person to merge with."
+            ));
+        }
+        let tx = self.conn.unchecked_transaction()?;
+        let get = |id: i64| -> Result<(String, Option<String>, i64, i64)> {
+            self.conn
+                .query_row("SELECT name, email, created_at, last_used_at FROM people WHERE id = ?1", [id], |r| {
+                    Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+                })
+                .optional()?
+                .ok_or_else(|| crate::tra!("Persona non trovata: ricarica l'elenco.", "Person not found: reload the list."))
+        };
+        let (from_name, from_email, from_created, from_used) = get(from)?;
+        let (into_name, ..) = get(into)?;
+        self.conn.execute("DELETE FROM people WHERE id = ?1", [from])?;
+        self.conn.execute(
+            "UPDATE people SET email = COALESCE(NULLIF(email, ''), ?1), created_at = MIN(created_at, ?2),
+                    last_used_at = MAX(last_used_at, ?3)
+             WHERE id = ?4",
+            params![from_email, from_created, from_used, into],
+        )?;
+        self.rename_in_meetings(&from_name, &into_name)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Porta il nome nuovo nei meeting: partecipanti (senza doppioni), menzioni e citazioni.
+    /// Senza transazione propria: la apre chi chiama.
+    fn rename_in_meetings(&self, old: &str, new: &str) -> Result<()> {
+        let changed: Vec<(String, String, String, Option<String>)> = {
+            let mut stmt = self.conn.prepare("SELECT id, attendees, notes_md, enhanced_md FROM meetings")?;
+            let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
+            let mut out = Vec::new();
+            for row in rows {
+                let (id, attendees, notes, enhanced): (String, String, String, Option<String>) = row?;
+                let list: Vec<String> = serde_json::from_str(&attendees).unwrap_or_default();
+                let mut renamed: Vec<String> = Vec::new();
+                for a in list {
+                    let a = if a.trim().eq_ignore_ascii_case(old) { new.to_string() } else { a };
+                    if !renamed.iter().any(|x| x.eq_ignore_ascii_case(&a)) {
+                        renamed.push(a);
+                    }
+                }
+                let attendees_new = serde_json::to_string(&renamed)?;
+                let notes_new = rename_in_notes(&notes, old, new);
+                let enhanced_new = enhanced.as_deref().map(|e| rename_in_notes(e, old, new));
+                if attendees_new != attendees || notes_new != notes || enhanced_new != enhanced {
+                    out.push((id, attendees_new, notes_new, enhanced_new));
+                }
+            }
+            out
+        };
+        for (id, attendees, notes, enhanced) in changed {
+            self.conn.execute(
+                "UPDATE meetings SET attendees = ?1, notes_md = ?2, enhanced_md = ?3 WHERE id = ?4",
+                params![attendees, notes, enhanced, id],
+            )?;
+            self.reindex(&id)?;
+        }
+        Ok(())
     }
 
     /// Toglie una persona dalla rubrica. I meeting a cui ha partecipato non cambiano.
@@ -1275,6 +1422,38 @@ fn fts_query(q: &str) -> String {
         .join(" ")
 }
 
+/// Il nome nuovo nelle note: nelle menzioni `@[Nome]` e in chi parla nelle citazioni
+/// (`::: quote 12:34 Nome` o `::: quote Nome`, anche dentro un riquadro `>`).
+fn rename_in_notes(md: &str, old: &str, new: &str) -> String {
+    if !md.contains(old) {
+        return md.to_string();
+    }
+    let md = md.replace(&format!("@[{old}]"), &format!("@[{new}]"));
+    let mut out: Vec<String> = Vec::new();
+    for line in md.split('\n') {
+        out.push(rename_quote(line, old, new).unwrap_or_else(|| line.to_string()));
+    }
+    out.join("\n")
+}
+
+fn rename_quote(line: &str, old: &str, new: &str) -> Option<String> {
+    let trimmed = line.trim_end();
+    let head = trimmed.strip_suffix(old)?;
+    if !head.ends_with(' ') {
+        return None;
+    }
+    let h = head.trim_start_matches([' ', '\t', '>']);
+    let after = h.trim_start_matches(':');
+    if h.len() - after.len() < 3 {
+        return None;
+    }
+    let minute = after.trim_start().strip_prefix("quote")?.trim();
+    if !minute.chars().all(|c| c.is_ascii_digit() || c == ':') {
+        return None;
+    }
+    Some(format!("{head}{new}{}", &line[trimmed.len()..]))
+}
+
 /// Query FTS5 per la chat: basta un termine significativo (OR).
 fn fts_query_any(q: &str) -> String {
     const STOP: &[&str] = &[
@@ -1662,6 +1841,74 @@ mod tests {
         db.delete_person(anna.id).unwrap();
         assert_eq!(db.list_people().unwrap().len(), 1);
         assert_eq!(db.get_meeting(&m.id).unwrap().unwrap().attendees.len(), 2);
+    }
+
+    #[test]
+    fn renaming_a_person_reaches_meetings_notes_and_quotes() {
+        let db = Db::open_in_memory().unwrap();
+        let m = db.create_meeting("Kickoff", None, &["Marco".into(), "Elena Rossi".into()], None).unwrap();
+        db.update_meeting(
+            &m.id,
+            None,
+            Some("- [ ] @[Marco]: preventivo\n> ::: quote 11:48 Marco\n> Il prezzo conta.\n> :::\n::: quote Marco\nSì.\n:::\nMarcolino resta, e anche @[Marco Polo]"),
+            Some("Decide @[Marco]."),
+            None,
+        )
+        .unwrap();
+        let marco = db.list_people().unwrap().into_iter().find(|p| p.name == "Marco").unwrap();
+        assert_eq!(marco.meetings, 1);
+        assert!(marco.last_meeting_at.is_some());
+
+        db.update_person(marco.id, " Marco Bianchi ", Some("marco@example.ch")).unwrap();
+        let got = db.get_meeting(&m.id).unwrap().unwrap();
+        assert_eq!(got.attendees, vec!["Marco Bianchi", "Elena Rossi"]);
+        assert!(got.notes_md.contains("- [ ] @[Marco Bianchi]: preventivo"));
+        assert!(got.notes_md.contains("> ::: quote 11:48 Marco Bianchi\n"));
+        assert!(got.notes_md.contains("::: quote Marco Bianchi\n"));
+        assert!(got.notes_md.contains("Marcolino resta, e anche @[Marco Polo]"), "solo il nome intero");
+        assert_eq!(got.enhanced_md.as_deref(), Some("Decide @[Marco Bianchi]."));
+        let people = db.list_people().unwrap();
+        let renamed = people.iter().find(|p| p.id == marco.id).unwrap();
+        assert_eq!((renamed.name.as_str(), renamed.email.as_deref()), ("Marco Bianchi", Some("marco@example.ch")));
+        assert_eq!(db.list_meetings(Some("bianchi")).unwrap().len(), 1, "reindicizzato");
+
+        // un nome già in rubrica non si prende: si unisce
+        assert!(db.update_person(marco.id, "elena rossi", None).is_err());
+        assert!(db.update_person(marco.id, "  ", None).is_err());
+        // cambiare solo l'email non tocca i meeting
+        db.update_person(marco.id, "Marco Bianchi", None).unwrap();
+        assert_eq!(db.list_people().unwrap().iter().find(|p| p.id == marco.id).unwrap().email, None);
+    }
+
+    #[test]
+    fn merging_two_people_keeps_one_without_duplicates() {
+        let db = Db::open_in_memory().unwrap();
+        let a = db.create_meeting("Uno", None, &["Marco".into(), "Marco Bianchi".into()], None).unwrap();
+        let b = db.create_meeting("Due", None, &["Marco".into()], None).unwrap();
+        db.update_meeting(&b.id, None, Some("@[Marco] chiama"), None, None).unwrap();
+        db.upsert_people(&[("Marco".into(), Some("m@example.ch".into()))]).unwrap();
+        let people = db.list_people().unwrap();
+        let id = |n: &str| people.iter().find(|p| p.name == n).unwrap().id;
+        assert!(db.merge_people(id("Marco"), id("Marco")).is_err());
+        db.merge_people(id("Marco"), id("Marco Bianchi")).unwrap();
+
+        assert_eq!(db.get_meeting(&a.id).unwrap().unwrap().attendees, vec!["Marco Bianchi"]);
+        let b = db.get_meeting(&b.id).unwrap().unwrap();
+        assert_eq!((b.attendees, b.notes_md), (vec!["Marco Bianchi".to_string()], "@[Marco Bianchi] chiama".to_string()));
+        let people = db.list_people().unwrap();
+        assert_eq!(people.len(), 1);
+        assert_eq!((people[0].meetings, people[0].email.as_deref()), (2, Some("m@example.ch")));
+    }
+
+    #[test]
+    fn missing_emails_are_filled_but_never_overwritten() {
+        let db = Db::open_in_memory().unwrap();
+        db.upsert_people(&[("Anna".into(), None), ("Luca".into(), Some("luca@example.ch".into()))]).unwrap();
+        let missing = db.people_without_email().unwrap();
+        assert_eq!(missing.iter().map(|(_, n)| n.as_str()).collect::<Vec<_>>(), vec!["Anna"]);
+        assert!(db.fill_person_email(missing[0].0, "anna@example.ch").unwrap());
+        assert!(!db.fill_person_email(missing[0].0, "altra@example.ch").unwrap());
+        assert_eq!(db.person_email("Anna").unwrap().as_deref(), Some("anna@example.ch"));
     }
 
     #[test]

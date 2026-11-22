@@ -15,6 +15,8 @@ interface Props {
   /** Tag o progetto di qualche meeting sono cambiati: chi tiene un elenco di meeting lo ricarica. */
   onMeetingsChanged: () => void;
   toast: (text: string) => void;
+  /** Apre la Libreria sui meeting di questa persona. */
+  person?: string;
 }
 
 type Dim = "pinned" | "projects" | "people" | "tags" | "period" | "recordings";
@@ -189,17 +191,18 @@ export default function LibraryView({
   onOpen,
   onMeetingsChanged,
   toast,
+  person,
 }: Props) {
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
-  const [dim, setDim] = useState<Dim>("projects");
-  const [groupKey, setGroupKey] = useState<string | null>(null);
+  const [dim, setDim] = useState<Dim>(person ? "people" : "projects");
+  const [groupKey, setGroupKey] = useState<string | null>(person?.toLowerCase() ?? null);
   const [meetingId, setMeetingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [oldestFirst, setOldestFirst] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [detail, setDetail] = useState<Meeting | null>(null);
   /** Colonna che riceve le frecce: 0 dimensione, 1 valori, 2 meeting. */
-  const [col, setCol] = useState(1);
+  const [col, setCol] = useState(person ? 2 : 1);
   /** Seconda dimensione: restringe le colonne ai meeting che hanno anche questo valore. */
   const [cross, setCross] = useState<Cross | null>(null);
   /** Cosa elenca la terza colonna: i meeting, oppure i loro elementi. */

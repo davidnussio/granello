@@ -27,6 +27,8 @@ Granello è fatto perché quello che si dice in riunione resti tuo. Questa pagin
 
 Le immagini da Internet non vengono mai caricate in una nota.
 
+La rubrica del Mac si legge solo se attivi **Proponi i contatti della rubrica** in *Impostazioni → Persone* (spento di default), solo per proporre i nomi che scrivi e le loro email, e non lascia mai il Mac. Vedi [Persone](/it/guides/people/).
+
 ## Le due opzioni che conservano l'audio
 
 Tutte e due sono **spente di default**.

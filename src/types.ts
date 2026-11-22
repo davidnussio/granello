@@ -89,12 +89,30 @@ export interface Person {
   name: string;
   email: string | null;
   meetings: number;
+  /** Quando è stato creato l'ultimo meeting a cui ha partecipato. */
+  lastMeetingAt: number | null;
 }
+
+/** Una persona letta da un file vCard; `known` se è già in rubrica. */
+export interface ImportedPerson {
+  name: string;
+  email: string | null;
+  known: boolean;
+}
+
+/** Quanto si può leggere della rubrica del Mac. */
+export type ContactsAccess =
+  | "unsupported"
+  | "notDetermined"
+  | "denied"
+  | "restricted"
+  | "authorized"
+  | "limited";
 
 export interface PersonSuggestion {
   name: string;
   email: string | null;
-  source: "people" | "calendar";
+  source: "people" | "calendar" | "contacts";
 }
 
 export interface TagCount {
@@ -186,6 +204,8 @@ export interface Settings {
   trimSilence: boolean;
   /** La scheda dei dati di esempio nella Home è stata chiusa: restano in Impostazioni. */
   hideDemoCard: boolean;
+  /** Propone i nomi della rubrica del Mac tra i partecipanti. Spento di default. */
+  contactsSuggestions: boolean;
 }
 
 /** Una registrazione salvata: l'audio di una sessione di registrazione di un meeting. */
@@ -286,6 +306,6 @@ export interface LibraryItem {
 export type View =
   | { kind: "meeting"; id: string }
   | { kind: "chat" }
-  | { kind: "library" }
+  | { kind: "library"; person?: string }
   | { kind: "settings"; section?: SettingsSection }
   | { kind: "home" };

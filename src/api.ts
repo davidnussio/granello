@@ -4,6 +4,8 @@ import type {
   CalendarEvent,
   CalendarOverview,
   ChatMessage,
+  ContactsAccess,
+  ImportedPerson,
   LibraryItem,
   Meeting,
   MeetingDetail,
@@ -133,6 +135,19 @@ export const api = {
   listTags: () => invoke<TagCount[]>("list_tags"),
   listPeople: () => invoke<Person[]>("list_people"),
   deletePerson: (id: number) => invoke<void>("delete_person", { id }),
+  /** Cambia nome ed email; il nome nuovo arriva in tutti i meeting. Restituisce la rubrica. */
+  updatePerson: (id: number, name: string, email: string | null) =>
+    invoke<Person[]>("update_person", { id, name, email }),
+  /** `from` sparisce e i suoi meeting passano a `into`. Restituisce la rubrica. */
+  mergePeople: (from: number, into: number) => invoke<Person[]>("merge_people", { from, into }),
+  contactsAccess: () => invoke<ContactsAccess>("contacts_access"),
+  /** Chiede a macOS il permesso di leggere la rubrica e aspetta la risposta. */
+  requestContactsAccess: () => invoke<ContactsAccess>("request_contacts_access"),
+  /** Fa scegliere un file vCard e ne legge le persone; null se la scelta viene annullata. */
+  pickVcard: () => invoke<ImportedPerson[] | null>("pick_vcard"),
+  addPeople: (people: ImportedPerson[]) => invoke<Person[]>("add_people", { people }),
+  /** Completa con la rubrica del Mac le email mancanti; restituisce quante ne ha aggiunte. */
+  fillEmailsFromContacts: () => invoke<number>("fill_emails_from_contacts"),
   suggestPeople: (query: string) => invoke<PersonSuggestion[]>("suggest_people", { query }),
   calendarMatch: (meetingId: string) => invoke<CalendarEvent | null>("calendar_match", { meetingId }),
 

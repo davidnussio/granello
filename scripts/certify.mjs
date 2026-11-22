@@ -119,9 +119,9 @@ req("C-REL-05", "Nessun segreto nei file del repository", () => {
 
 // ---------------- macOS e sandbox ----------------
 
-req("C-MAC-01", "Il Mac spiega perché chiede microfono e audio della call", () => {
+req("C-MAC-01", "Il Mac spiega perché chiede microfono, audio della call e rubrica", () => {
   const info = plist("src-tauri/Info.plist");
-  return ["NSMicrophoneUsageDescription", "NSAudioCaptureUsageDescription"]
+  return ["NSMicrophoneUsageDescription", "NSAudioCaptureUsageDescription", "NSContactsUsageDescription"]
     .filter((k) => typeof info[k] !== "string" || info[k].length < 20)
     .map((k) => `${k} manca o è troppo corta`);
 });
@@ -141,7 +141,11 @@ req("C-MAC-02", "La versione minima di macOS è quella promessa nella documentaz
 });
 
 req("C-SEC-01", "L'app chiede solo i permessi che usa (entitlement)", () => {
-  const expected = ["com.apple.security.device.audio-input", "com.apple.security.network.client"];
+  const expected = [
+    "com.apple.security.device.audio-input",
+    "com.apple.security.network.client",
+    "com.apple.security.personal-information.addressbook",
+  ];
   const actual = Object.entries(plist("src-tauri/entitlements.plist"))
     .filter(([, v]) => v === true)
     .map(([k]) => k);
@@ -209,6 +213,26 @@ req("C-PRIV-03", "Nessun log formatta note, trascrizioni, titoli, chiavi o indir
       if (hit !== undefined) {
         const line = src.slice(0, m.index).split("\n").length;
         problems.push(`${relative(".", f)}:${line}: ${(m[0] + call).replace(/\s+/g, " ").slice(0, 120)})`);
+      }
+    }
+  }
+  return problems;
+});
+
+req("C-PRIV-09", "La rubrica del Mac si legge solo se l'utente l'ha attivata", () => {
+  const problems = [];
+  const sources = files("src-tauri/src", (p) => p.endsWith(".rs") && !p.endsWith("contacts.rs"));
+  for (const f of sources) {
+    const src = read(f);
+    const line = (i) => src.slice(0, i).split("\n").length;
+    for (const m of src.matchAll(/contacts::(search|email_for)\(/g)) {
+      // si legge solo nei comandi, dopo il controllo dell'impostazione (contacts_enabled) o nel
+      // pulsante "Completa le email", che controlla il permesso di macOS
+      const before = src.slice(0, m.index);
+      const fn = before.slice(before.lastIndexOf("\npub ") + 1);
+      const guarded = /contacts_enabled\(/.test(fn) || /^pub async fn fill_emails_from_contacts\b/.test(fn);
+      if (!f.endsWith("commands.rs") || !guarded) {
+        problems.push(`${f}:${line(m.index)}: rubrica letta senza il controllo dell'impostazione`);
       }
     }
   }

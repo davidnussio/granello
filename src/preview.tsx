@@ -114,6 +114,26 @@ let sync = {
   error: null,
 };
 
+interface PreviewPerson {
+  id: number;
+  name: string;
+  email: string | null;
+  meetings: number;
+  lastMeetingAt: number | null;
+}
+const people = () => data.people as PreviewPerson[];
+let contactsAccess = "notDetermined";
+
+/** Un nome cambiato nella rubrica arriva tra i partecipanti dei meeting. */
+function renameAttendee(from: string, to: string) {
+  const fix = (m: { attendees: string[] }) => {
+    m.attendees = [...new Set(m.attendees.map((x) => (x.toLowerCase() === from.toLowerCase() ? to : x)))];
+  };
+  (data.meetings as { attendees: string[] }[]).forEach(fix);
+  for (const d of Object.values(data.details) as { meeting: { attendees: string[] } }[]) fix(d.meeting);
+  data.meetings = [...data.meetings];
+}
+
 const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   list_meetings: () => data.meetings,
   get_meeting: (a) => data.details[a.id as string],
@@ -195,6 +215,70 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
       pin(d.meeting);
     data.meetings = [...data.meetings];
     return null;
+  },
+  save_settings: (a) => {
+    data.settings = a.settings as Record<string, unknown>;
+    return data.settings;
+  },
+  // rubrica: nomi e unioni cambiano davvero, così la pagina Persone si prova tutta
+  delete_person: (a) => {
+    data.people = people().filter((p) => p.id !== a.id);
+    return null;
+  },
+  update_person: (a) => {
+    const p = people().find((x) => x.id === a.id)!;
+    const name = String(a.name).trim();
+    if (people().some((x) => x.id !== p.id && x.name.toLowerCase() === name.toLowerCase()))
+      throw new Error(`In rubrica c'è già «${name}»: per tenerne una sola usa Unisci.`);
+    renameAttendee(p.name, name);
+    p.name = name;
+    p.email = (a.email as string | null) || null;
+    return people();
+  },
+  merge_people: (a) => {
+    const from = people().find((x) => x.id === a.from)!;
+    const into = people().find((x) => x.id === a.into)!;
+    renameAttendee(from.name, into.name);
+    into.meetings += from.meetings;
+    into.email ??= from.email;
+    into.lastMeetingAt = Math.max(into.lastMeetingAt ?? 0, from.lastMeetingAt ?? 0) || null;
+    data.people = people().filter((x) => x.id !== from.id);
+    return people();
+  },
+  contacts_access: () => contactsAccess,
+  request_contacts_access: () => (contactsAccess = "authorized"),
+  pick_vcard: () =>
+    [
+      ["Francesca Neri", "francesca.neri@example.ch"],
+      ["Giorgio Testa", "giorgio@example.ch"],
+      ["Elena Rossi", "elena.rossi@example.ch"],
+      ["Studio Fontana", null],
+    ].map(([name, email]) => ({
+      name,
+      email,
+      known: people().some((p) => p.name.toLowerCase() === String(name).toLowerCase()),
+    })),
+  add_people: (a) => {
+    for (const p of a.people as { name: string; email: string | null }[]) {
+      const known = people().find((x) => x.name.toLowerCase() === p.name.toLowerCase());
+      if (known) known.email ??= p.email;
+      else
+        people().push({
+          id: Date.now() + people().length,
+          name: p.name,
+          email: p.email,
+          meetings: 0,
+          lastMeetingAt: null,
+        });
+    }
+    data.people = people().toSorted((x, y) => x.name.localeCompare(y.name));
+    return people();
+  },
+  fill_emails_from_contacts: () => {
+    const missing = people().filter((p) => !p.email);
+    for (const p of missing) p.email = `${p.name.toLowerCase().replace(/\s+/g, ".")}@example.ch`;
+    data.people = [...people()];
+    return missing.length;
   },
   // i vault vivono in memoria: serve a provare la sezione delle impostazioni e il selettore
   list_vaults: () => vaults,

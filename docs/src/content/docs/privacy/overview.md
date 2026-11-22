@@ -27,6 +27,8 @@ Granello is built so that what is said in a meeting stays yours. This page says 
 
 Images from the Internet are never loaded in a note.
 
+Your Mac's contacts are read only if you turn on **Suggest people from your contacts** in *Settings → People* (off by default), only to suggest the names you type and their emails, and they never leave your Mac. See [People](/guides/people/).
+
 ## The two options that keep audio
 
 Both are **off by default**.

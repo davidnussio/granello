@@ -180,10 +180,6 @@ const en: Record<string, string> = {
   "{n} meeting": "{n} meetings",
   "Importa {n} da «{title}»": "Import {n} from “{title}”",
   Persone: "People",
-  "Chi ha partecipato ai tuoi meeting: Granello le propone quando aggiungi i partecipanti. Toglierne una non modifica i meeting.":
-    "Who took part in your meetings: Granello suggests them when you add participants. Removing someone doesn't change your meetings.",
-  "Ancora nessuna persona: si aggiungono da sole con i partecipanti dei meeting.":
-    "No people yet: they are added automatically from your meetings' participants.",
 
   // settings
   "Modello {name} eliminato": "Model {name} deleted",
@@ -863,6 +859,58 @@ const en: Record<string, string> = {
   "Nessun meeting fissato ha anche {name}.": "No pinned meeting also has {name}.",
   "Nessun meeting fissato: aprine uno e premi la puntina accanto a copia, stampa ed elimina.":
     "No pinned meetings: open one and press the pin next to copy, print and delete.",
+  "dalla rubrica": "from contacts",
+  "1 meeting": "1 meeting",
+  "{from} unito a {into}": "{from} merged into {into}",
+  "macOS non permette a Granello di leggere la rubrica: consentilo in Impostazioni di Sistema → Privacy e sicurezza → Contatti.":
+    "macOS doesn't let Granello read your contacts: allow it in System Settings → Privacy & Security → Contacts.",
+  "Nessuna email da aggiungere: la rubrica non ne ha per queste persone.":
+    "No emails to add: your contacts don't have any for these people.",
+  "Aggiunta 1 email dalla rubrica": "Added 1 email from your contacts",
+  "Aggiunte {n} email dalla rubrica": "Added {n} emails from your contacts",
+  "Chi ha partecipato ai tuoi meeting: Granello le propone quando aggiungi i partecipanti. Correggi un nome e cambia in tutti i meeting; unisci due voci che sono la stessa persona. Toglierne una non modifica i meeting.":
+    "Who took part in your meetings: Granello suggests them when you add participants. Fix a name and it changes in every meeting; merge two entries that are the same person. Removing someone doesn't change your meetings.",
+  "Cerca per nome o email": "Search by name or email",
+  "Ordina le persone": "Sort people",
+  "Per nome": "By name",
+  "Più meeting": "Most meetings",
+  "Viste di recente": "Seen recently",
+  "Aggiungi persone da un file .vcf": "Add people from a .vcf file",
+  "Importa vCard…": "Import vCard…",
+  "Ancora nessuna persona: si aggiungono da sole con i partecipanti dei meeting, o importale da un file vCard.":
+    "No people yet: they are added automatically from your meetings' participants, or import them from a vCard file.",
+  Email: "Email",
+  "Ultimo meeting": "Last meeting",
+  "Apri i meeting di {name} nella Libreria": "Open {name}'s meetings in the Library",
+  "Modifica {name}": "Edit {name}",
+  "Cambia nome o email: il nome nuovo arriva in tutti i meeting":
+    "Change name or email: the new name reaches every meeting",
+  "Unisci {name} a un'altra persona": "Merge {name} into another person",
+  "Unisci a un'altra persona: è la stessa, scritta in due modi":
+    "Merge into another person: the same one, written two ways",
+  "Rubrica di {device}": "Contacts on {device}",
+  "Mentre scrivi un partecipante, Granello propone anche i nomi della rubrica e ne prende l'email. Legge solo chi cerchi: la rubrica non viene copiata e resta su {device}.":
+    "While you type a participant, Granello also suggests names from your contacts and takes their email. It reads only who you search for: your contacts are not copied and stay on {device}.",
+  "Proponi i contatti della rubrica": "Suggest people from your contacts",
+  "Completa 1 email mancante": "Fill 1 missing email",
+  "Completa {n} email mancanti": "Fill {n} missing emails",
+  "1 persona aggiunta": "1 person added",
+  "{n} persone aggiunte": "{n} people added",
+  "{name} è la stessa persona di": "{name} is the same person as",
+  "Persona con cui unire {name}": "Person to merge {name} into",
+  "1 meeting passa a {into}; {from} sparisce dalla rubrica.":
+    "1 meeting moves to {into}; {from} leaves your people.",
+  "{n} meeting passano a {into}; {from} sparisce dalla rubrica.":
+    "{n} meetings move to {into}; {from} leaves your people.",
+  "Importa da vCard": "Import from vCard",
+  "Scegli chi aggiungere alla rubrica di Granello: le proporrà tra i partecipanti. Chi c'è già riceve l'email, se non ne aveva una.":
+    "Choose who to add to Granello's people: it will suggest them as participants. Anyone already there gets the email, if they had none.",
+  "Seleziona tutti": "Select all",
+  Nessuno: "None",
+  "già in rubrica": "already in people",
+  "{n} di {total} scelti": "{n} of {total} chosen",
+  "Aggiungi 1 persona": "Add 1 person",
+  "Aggiungi {n} persone": "Add {n} people",
 };
 
 export default en;

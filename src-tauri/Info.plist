@@ -6,5 +6,7 @@
   <string>Granello registra l'audio del meeting per trascriverlo localmente sul tuo Mac.</string>
   <key>NSAudioCaptureUsageDescription</key>
   <string>Granello ascolta l'audio della call per trascrivere localmente anche gli altri partecipanti.</string>
+  <key>NSContactsUsageDescription</key>
+  <string>Granello propone i nomi della tua rubrica quando aggiungi i partecipanti e ne completa le email. I contatti restano sul tuo Mac.</string>
 </dict>
 </plist>

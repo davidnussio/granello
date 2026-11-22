@@ -2623,24 +2623,161 @@ h4.sub {
   flex: none;
 }
 
-.people-list {
-  max-height: 260px;
-  overflow-y: auto;
+/* Impostazioni → Persone: a tutta pagina, l'elenco scorre con la pagina */
+.page.settings.wide {
+  max-width: 1180px;
+}
+.people-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+.people-tools .search {
+  flex: 0 1 320px;
+}
+.people-table {
   border: 1px solid var(--line);
   border-radius: 8px;
 }
-.people-item {
-  display: flex;
+.people-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.3fr) minmax(140px, 1.4fr) 110px 170px 92px;
   align-items: center;
-  gap: 10px;
-  padding: 6px 12px;
+  gap: 12px;
+  padding: 7px 12px;
+  min-height: 24px;
 }
-.people-item + .people-item {
+.people-row.head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  border-radius: 8px 8px 0 0;
+  z-index: 1;
+}
+.people-group {
   border-top: 1px solid var(--line);
+}
+.people-row .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.people-row > span {
+  min-width: 0;
 }
 .people-name {
   font-weight: 500;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.people-name .link-button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.people-name .link-button:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.people-acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  opacity: 0;
+}
+.people-acts .lib-act {
+  display: inline-block;
+  font-size: 13px;
+}
+.people-acts .lib-act:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--panel);
+}
+.people-acts .lib-act:disabled {
+  opacity: 0.3;
+}
+.vcard-dialog .project-buttons {
+  align-items: center;
+}
+.people-row:hover .people-acts,
+.people-acts:focus-within {
+  opacity: 1;
+}
+.people-group.editing .people-row {
+  grid-template-columns: minmax(160px, 1.3fr) minmax(140px, 1.4fr) auto;
+}
+.people-group.editing input {
+  min-width: 0;
+}
+.people-edit-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.people-merge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  background: var(--panel);
+}
+.people-merge select {
+  min-width: 200px;
+}
+.people-fill {
+  margin-top: 10px;
+}
+.people-note {
+  margin: 0 12px 8px;
+  flex-basis: 100%;
+}
+.people-empty {
+  padding: 10px 12px;
+  margin: 0;
+}
+.vcard-dialog {
+  width: min(640px, 92vw);
+  display: flex;
+  flex-direction: column;
+  max-height: 82vh;
+}
+.vcard-dialog h3 {
+  margin: 0 0 6px;
+}
+.vcard-list {
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.vcard-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+}
+.vcard-item + .vcard-item {
+  border-top: 1px solid var(--line);
+}
+.small-chip {
+  font-size: 11px;
+  padding: 1px 7px;
 }
 
 /* ---------- blocchi con dati propri (sondaggio, lavagna a colonne, timer…) ---------- */

@@ -409,6 +409,9 @@ export default function App() {
         )}
         {view.kind === "library" && (
           <LibraryView
+            // aperta su una persona (da Impostazioni → Persone) riparte da lì
+            key={view.person ?? ""}
+            person={view.person}
             projects={projects}
             onProjectsChanged={setProjects}
             onOpen={(id) => setView({ kind: "meeting", id })}
@@ -442,6 +445,7 @@ export default function App() {
             onOpenVault={openVault}
             onCalendarChanged={() => refreshEvents(true)}
             onTimeFormatChanged={applyTimeFormat}
+            onOpenPerson={(person) => setView({ kind: "library", person })}
             onLangChanged={(l) => {
               applyLang(l);
               refreshMeetings();

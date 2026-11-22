@@ -82,6 +82,17 @@ pub struct Person {
     pub email: Option<String>,
     /// In quanti meeting compare.
     pub meetings: i64,
+    /// Quando è stato creato l'ultimo meeting a cui ha partecipato.
+    pub last_meeting_at: Option<i64>,
+}
+
+/// Una persona letta da un file vCard, con un segno se è già in rubrica.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportedPerson {
+    pub name: String,
+    pub email: Option<String>,
+    pub known: bool,
 }
 
 /// Proposta per il completamento automatico dei partecipanti.
@@ -90,7 +101,8 @@ pub struct Person {
 pub struct PersonSuggestion {
     pub name: String,
     pub email: Option<String>,
-    /// "people" = già in rubrica, "calendar" = letta dagli eventi del calendario
+    /// "people" = già in rubrica, "calendar" = letta dagli eventi del calendario,
+    /// "contacts" = dalla rubrica del Mac
     pub source: String,
 }
 
@@ -308,6 +320,9 @@ pub struct Settings {
     pub trim_silence: bool,
     /// La scheda dei dati di esempio nella Home è stata chiusa: restano in Impostazioni.
     pub hide_demo_card: bool,
+    /// Propone i nomi della rubrica del Mac tra i partecipanti e ne prende le email che
+    /// mancano. Spento di default: si accende in Impostazioni → Persone, con il permesso di macOS.
+    pub contacts_suggestions: bool,
 }
 
 /// Una registrazione salvata: l'audio di una sessione di registrazione di un meeting.

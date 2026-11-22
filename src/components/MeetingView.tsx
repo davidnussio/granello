@@ -110,7 +110,12 @@ const suggestPeople = async (query: string): Promise<ChipSuggestion[]> =>
   (await api.suggestPeople(query)).map((p) => ({
     value: p.name,
     hint: p.email ?? undefined,
-    badge: p.source === "calendar" ? t("dal calendario") : undefined,
+    badge:
+      p.source === "calendar"
+        ? t("dal calendario")
+        : p.source === "contacts"
+          ? t("dalla rubrica")
+          : undefined,
   }));
 
 const suggestTags = async (query: string): Promise<ChipSuggestion[]> => {

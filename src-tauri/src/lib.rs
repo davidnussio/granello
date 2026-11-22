@@ -9,6 +9,7 @@ mod certification;
 mod audio;
 mod calendar;
 mod commands;
+mod contacts;
 mod db;
 mod decode;
 mod demo;
@@ -160,6 +161,13 @@ pub fn run() {
             commands::delete_project,
             commands::set_meetings_project,
             commands::set_meetings_pinned,
+            commands::update_person,
+            commands::merge_people,
+            commands::contacts_access,
+            commands::request_contacts_access,
+            commands::pick_vcard,
+            commands::add_people,
+            commands::fill_emails_from_contacts,
             commands::list_people,
             commands::delete_person,
             commands::suggest_people,

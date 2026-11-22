@@ -930,6 +930,32 @@ mod tests {
     }
 
     #[test]
+    fn renamed_and_merged_people_reach_the_other_mac() {
+        let dir = folder();
+        let a = Mac::new("aaa", &dir);
+        let m = a.db.create_meeting("Kickoff", None, &["Marco".into(), "Elena".into(), "E. Rossi".into()], None).unwrap();
+        a.db.update_meeting(&m.id, None, Some("@[Marco] chiama"), None, None).unwrap();
+        a.sync(&dir);
+        let b = Mac::new("bbb", &dir);
+        b.sync(&dir);
+
+        let people = a.db.list_people().unwrap();
+        let id = |n: &str| people.iter().find(|p| p.name == n).unwrap().id;
+        a.db.update_person(id("Marco"), "Marco Bianchi", Some("marco@example.ch")).unwrap();
+        a.db.merge_people(id("E. Rossi"), id("Elena")).unwrap();
+        a.sync(&dir);
+        b.sync(&dir);
+
+        let names: Vec<String> = b.db.list_people().unwrap().into_iter().map(|p| p.name).collect();
+        assert_eq!(names, vec!["Elena", "Marco Bianchi"]);
+        assert_eq!(b.db.person_email("Marco Bianchi").unwrap().as_deref(), Some("marco@example.ch"));
+        let got = b.meeting(&m.id).unwrap();
+        assert_eq!(got.attendees, vec!["Marco Bianchi", "Elena"]);
+        assert_eq!(got.notes_md, "@[Marco Bianchi] chiama");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn the_last_edit_wins_per_field_and_lost_notes_are_kept() {
         let dir = folder();
         let a = Mac::new("aaa", &dir);
