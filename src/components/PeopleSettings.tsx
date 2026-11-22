@@ -152,13 +152,13 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
 
   return (
     <>
-      <section className="card people-card">
+      <section className="card roster-card">
         <p className="muted small">
           {t(
             "Chi ha partecipato ai tuoi meeting: Granello le propone quando aggiungi i partecipanti. Correggi un nome e cambia in tutti i meeting; unisci due voci che sono la stessa persona. Toglierne una non modifica i meeting.",
           )}
         </p>
-        <div className="people-tools">
+        <div className="roster-tools">
           <input
             className="search"
             type="search"
@@ -194,8 +194,8 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
             )}
           </p>
         ) : (
-          <div className="people-table" role="table" aria-label={t("Persone")}>
-            <div className="people-row head" role="row">
+          <div className="roster-table" role="table" aria-label={t("Persone")}>
+            <div className="roster-row head" role="row">
               <span role="columnheader">{t("Nome")}</span>
               <span role="columnheader">{t("Email")}</span>
               <span role="columnheader" className="num">
@@ -219,9 +219,9 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
                   }}
                 />
               ) : (
-                <div key={p.id} className="people-group">
-                  <div className="people-row" role="row">
-                    <span role="cell" className="people-name">
+                <div key={p.id} className="roster-group">
+                  <div className="roster-row" role="row">
+                    <span role="cell" className="roster-name">
                       {p.meetings > 0 ? (
                         <button
                           className="link-button"
@@ -243,7 +243,7 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
                     <span role="cell" className="muted">
                       {p.lastMeetingAt ? dayLabel(p.lastMeetingAt) : "—"}
                     </span>
-                    <span role="cell" className="people-acts">
+                    <span role="cell" className="roster-acts">
                       <button
                         className="lib-act"
                         onClick={() => {
@@ -297,7 +297,7 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
                 </div>
               ),
             )}
-            {shown.length === 0 && <p className="muted small people-empty">{t("Nessun risultato")}</p>}
+            {shown.length === 0 && <p className="muted small roster-empty">{t("Nessun risultato")}</p>}
           </div>
         )}
       </section>
@@ -327,7 +327,7 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
             </p>
           )}
           {contacts && readable && missingEmails > 0 && (
-            <button className="btn small people-fill" onClick={fillEmails} disabled={busy}>
+            <button className="btn small roster-fill" onClick={fillEmails} disabled={busy}>
               {missingEmails === 1
                 ? t("Completa 1 email mancante")
                 : t("Completa {n} email mancanti", { n: missingEmails })}
@@ -370,14 +370,14 @@ function PersonEditor({
   useEffect(() => nameInput.current?.select(), []);
   return (
     <form
-      className="people-group editing"
+      className="roster-group editing"
       onSubmit={(e) => {
         e.preventDefault();
         onSave();
       }}
       onKeyDown={(e) => e.key === "Escape" && onCancel()}
     >
-      <div className="people-row">
+      <div className="roster-row">
         <input
           ref={nameInput}
           value={value.name}
@@ -393,7 +393,7 @@ function PersonEditor({
           aria-label={t("Email")}
           onChange={(e) => onChange({ ...value, email: e.target.value })}
         />
-        <span className="people-edit-buttons">
+        <span className="roster-edit-buttons">
           <button type="button" className="btn small ghost" onClick={onCancel}>
             {t("Annulla")}
           </button>
@@ -402,7 +402,7 @@ function PersonEditor({
           </button>
         </span>
       </div>
-      {error && <p className="warn small people-note">{error}</p>}
+      {error && <p className="warn small roster-note">{error}</p>}
     </form>
   );
 }
@@ -429,7 +429,7 @@ function MergeRow({
   const others = people.filter((p) => p.id !== from.id).toSorted((a, b) => a.name.localeCompare(b.name));
   const target = others.find((p) => p.id === into) ?? null;
   return (
-    <div className="people-merge">
+    <div className="roster-merge">
       <span>{t("{name} è la stessa persona di", { name: from.name })}</span>
       <select
         className="chip select"
@@ -467,7 +467,7 @@ function MergeRow({
       <button className="btn small" disabled={!target || busy} onClick={() => target && onMerge(target)}>
         {t("Unisci")}
       </button>
-      {error && <p className="warn small people-note">{error}</p>}
+      {error && <p className="warn small roster-note">{error}</p>}
     </div>
   );
 }
@@ -530,7 +530,7 @@ function VcardImport({
             "Scegli chi aggiungere alla rubrica di Granello: le proporrà tra i partecipanti. Chi c'è già riceve l'email, se non ne aveva una.",
           )}
         </p>
-        <div className="people-tools">
+        <div className="roster-tools">
           <input
             className="search"
             type="search"
@@ -563,12 +563,12 @@ function VcardImport({
           {listed.map((p) => (
             <label key={p.name} className="vcard-item">
               <input type="checkbox" checked={picked.has(p.name)} onChange={() => toggle(p.name)} />
-              <span className="people-name">{p.name}</span>
+              <span className="roster-name">{p.name}</span>
               <span className="muted small ellipsis">{p.email ?? ""}</span>
               {p.known && <span className="chip small-chip">{t("già in rubrica")}</span>}
             </label>
           ))}
-          {listed.length === 0 && <p className="muted small people-empty">{t("Nessun risultato")}</p>}
+          {listed.length === 0 && <p className="muted small roster-empty">{t("Nessun risultato")}</p>}
         </div>
         {error && <p className="warn small">{error}</p>}
         <div className="project-buttons">

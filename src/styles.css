@@ -2627,20 +2627,20 @@ h4.sub {
 .page.settings.wide {
   max-width: 1180px;
 }
-.people-tools {
+.roster-tools {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 12px 0;
 }
-.people-tools .search {
+.roster-tools .search {
   flex: 0 1 320px;
 }
-.people-table {
+.roster-table {
   border: 1px solid var(--line);
   border-radius: 8px;
 }
-.people-row {
+.roster-row {
   display: grid;
   grid-template-columns: minmax(160px, 1.3fr) minmax(140px, 1.4fr) 110px 170px 92px;
   align-items: center;
@@ -2648,7 +2648,7 @@ h4.sub {
   padding: 7px 12px;
   min-height: 24px;
 }
-.people-row.head {
+.roster-row.head {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -2660,23 +2660,23 @@ h4.sub {
   border-radius: 8px 8px 0 0;
   z-index: 1;
 }
-.people-group {
+.roster-group {
   border-top: 1px solid var(--line);
 }
-.people-row .num {
+.roster-row .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.people-row > span {
+.roster-row > span {
   min-width: 0;
 }
-.people-name {
+.roster-name {
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.people-name .link-button {
+.roster-name .link-button {
   font: inherit;
   color: inherit;
   background: none;
@@ -2687,46 +2687,46 @@ h4.sub {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.people-name .link-button:hover {
+.roster-name .link-button:hover {
   color: var(--accent);
   text-decoration: underline;
 }
-.people-acts {
+.roster-acts {
   display: flex;
   justify-content: flex-end;
   gap: 2px;
   opacity: 0;
 }
-.people-acts .lib-act {
+.roster-acts .lib-act {
   display: inline-block;
   font-size: 13px;
 }
-.people-acts .lib-act:hover:not(:disabled) {
+.roster-acts .lib-act:hover:not(:disabled) {
   color: var(--text);
   background: var(--panel);
 }
-.people-acts .lib-act:disabled {
+.roster-acts .lib-act:disabled {
   opacity: 0.3;
 }
 .vcard-dialog .project-buttons {
   align-items: center;
 }
-.people-row:hover .people-acts,
-.people-acts:focus-within {
+.roster-row:hover .roster-acts,
+.roster-acts:focus-within {
   opacity: 1;
 }
-.people-group.editing .people-row {
+.roster-group.editing .roster-row {
   grid-template-columns: minmax(160px, 1.3fr) minmax(140px, 1.4fr) auto;
 }
-.people-group.editing input {
+.roster-group.editing input {
   min-width: 0;
 }
-.people-edit-buttons {
+.roster-edit-buttons {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
 }
-.people-merge {
+.roster-merge {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -2734,17 +2734,17 @@ h4.sub {
   padding: 8px 12px 10px;
   background: var(--panel);
 }
-.people-merge select {
+.roster-merge select {
   min-width: 200px;
 }
-.people-fill {
+.roster-fill {
   margin-top: 10px;
 }
-.people-note {
+.roster-note {
   margin: 0 12px 8px;
   flex-basis: 100%;
 }
-.people-empty {
+.roster-empty {
   padding: 10px 12px;
   margin: 0;
 }
