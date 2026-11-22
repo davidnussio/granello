@@ -731,9 +731,11 @@ const en: Record<string, string> = {
   "Trascrizione affinata: ora distingue i parlanti. Clic su un nome per cambiarlo.":
     "Transcript refined: it now tells speakers apart. Click a name to change it.",
   "Trascrizione online con i parlanti": "Online transcription with speakers",
-  'A fine riunione l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla; la trascrizione locale viene sostituita. Per farlo l\'audio della riunione viene tenuto su {device} fino al caricamento e poi cancellato. Non vale per i meeting con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.':
-    'When the meeting ends the audio is uploaded to Gladia, which transcribes it and tells speakers apart; the local transcript is replaced. For this the meeting\'s audio is kept on {device} until the upload and then deleted. It does not apply to meetings with "local audio" or "hardened" privacy, nor while parts are to review.',
-  "Affina la trascrizione online dopo la riunione": "Refine the transcript online after the meeting",
+  'A fine riunione l\'audio viene tenuto su {device} e il meeting propone "Affina online": solo se lo scegli l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla, e la trascrizione locale viene sostituita. Dopo il caricamento l\'audio viene cancellato; puoi anche eliminarlo senza caricarlo. Non vale per i meeting con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.':
+    'When the meeting ends the audio is kept on {device} and the meeting offers "Refine online": only if you choose it is the audio uploaded to Gladia, which transcribes it and tells speakers apart, and the local transcript is replaced. After the upload the audio is deleted; you can also delete it without uploading. It does not apply to meetings with "local audio" or "hardened" privacy, nor while parts are to review.',
+  "Proponi l'affinamento online dopo la riunione": "Offer online refinement after the meeting",
+  "Audio conservato: puoi affinare la trascrizione online con Gladia":
+    "Audio kept: you can refine the transcript online with Gladia",
   "Senza la chiave di Gladia l'audio non viene conservato e non parte niente.":
     "Without the Gladia key no audio is kept and nothing runs.",
   "Chiave API di Gladia": "Gladia API key",

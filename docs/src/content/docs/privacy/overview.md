@@ -18,7 +18,7 @@ Granello is built so that what is said in a meeting stays yours. This page says 
 | --- | --- | --- |
 | Notes and transcript, as text | You generate AI notes, ask the chat or use ✦ in the editor, with an online AI provider | Use a [local provider](/privacy/local-models/), or set the meeting to [hardened](/privacy/levels/) |
 | A template you describe to the AI, with its current fields | You use **Set up with AI** in a template, with an online AI provider | Use a [local provider](/privacy/local-models/) for AI notes |
-| The meeting's audio | Only with **online transcription** turned on, when the meeting ends | Leave the option off (the default), or set the meeting to local audio or hardened |
+| The meeting's audio | Only with **online transcription** turned on, and only when you press *Refine online* on that meeting | Leave the option off (the default), or set the meeting to local audio or hardened |
 | The address of a link | You create a link preview: the linked page is asked for its title, once | Do not create link previews |
 | A request for embedded content | You press **Load** on an embed (video, design, map) | Do not press Load |
 | A request for your calendar | Granello downloads the iCal addresses you added | Do not add a calendar |
@@ -32,7 +32,7 @@ Images from the Internet are never loaded in a note.
 Both are **off by default**.
 
 - **Save recordings** keeps each meeting's audio in a folder on your Mac, to listen to it again. It is never uploaded.
-- **Online transcription** uploads a meeting's audio to an online transcription service when the meeting ends, to get a transcript that tells speakers apart. The audio is kept in the data folder until the upload, then deleted. It never runs for a meeting with local audio or hardened privacy, or with parts still to review.
+- **Online transcription** keeps a meeting's audio when it ends, and the meeting offers *Refine online*: only if you press it is the audio uploaded to an online transcription service, to get a transcript that tells speakers apart. The audio stays in the data folder until you upload or delete it, and is deleted after the upload. It never runs for a meeting with local audio or hardened privacy, or with parts still to review.
 
 ## Where things are stored
 

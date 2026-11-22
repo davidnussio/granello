@@ -215,6 +215,33 @@ req("C-PRIV-03", "Nessun log formatta note, trascrizioni, titoli, chiavi o indir
   return problems;
 });
 
+req("C-PRIV-08", "L'audio va a Gladia solo quando l'utente sceglie Affina online", () => {
+  const problems = [];
+  const sources = files(
+    "src",
+    (p) => /\.tsx?$/.test(p) && !p.includes("/i18n/") && !p.endsWith("preview.tsx"),
+  );
+  for (const f of sources) {
+    const src = read(f);
+    const line = (i) => src.slice(0, i).split("\n").length;
+    // il comando si chiama solo dalla funzione `refine` del meeting
+    for (const m of src.matchAll(/api\.refineTranscript\(/g)) {
+      const before = src.slice(Math.max(0, m.index - 400), m.index);
+      if (!f.endsWith("MeetingView.tsx") || !/const refine = async \(\) => \{[^}]*$/.test(before)) {
+        problems.push(`${f}:${line(m.index)}: refineTranscript chiamato fuori da refine()`);
+      }
+    }
+    // e `refine` parte solo da un'azione dell'utente: un pulsante o l'azione di un toast
+    for (const m of src.matchAll(/refineRef\.current\(\)/g)) {
+      const before = src.slice(Math.max(0, m.index - 20), m.index);
+      if (!/(run|onClick)[:=]\s*\{?\(\)\s*=>\s*$/.test(before)) {
+        problems.push(`${f}:${line(m.index)}: l'affinamento parte senza un clic`);
+      }
+    }
+  }
+  return problems;
+});
+
 // ---------------- documentazione ----------------
 
 /** Le pagine di una cartella della documentazione, senza estensione. */

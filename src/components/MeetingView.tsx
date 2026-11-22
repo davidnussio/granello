@@ -287,12 +287,17 @@ export default function MeetingView({
         setRecVersion((v) => v + 1);
         // ora c'è tutta la trascrizione: l'AI scrive cosa si diceva nei momenti segnati
         fillRef.current(true);
-        // se l'audio è stato conservato, parte da solo l'affinamento online
+        // se l'audio è stato conservato, l'affinamento online si propone: lo avvia l'utente
         api
           .keptAudio(id)
           .then((kept) => {
             setKeptAudio(kept);
-            if (kept) refineRef.current();
+            if (kept) {
+              toast(t("Audio conservato: puoi affinare la trascrizione online con Gladia"), {
+                label: t("Affina online"),
+                run: () => refineRef.current(),
+              });
+            }
           })
           .catch(() => {});
       }),

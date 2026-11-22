@@ -15,7 +15,7 @@ Tutto quello che Granello salva è sul tuo Mac.
 | `models/` | I modelli whisper che hai scaricato |
 | `attachments/` | Le immagini incollate e i file allegati. Vengono tolti quando si elimina l'ultimo meeting che li usa |
 | `recordings/` | Le registrazioni salvate, se non hai scelto un'altra cartella |
-| `audio/` | L'audio in attesa della trascrizione online, solo con quell'opzione attiva. Cancellato dopo il caricamento |
+| `audio/` | L'audio in attesa della trascrizione online, solo con quell'opzione attiva, finché non lo affini o lo elimini. Cancellato dopo il caricamento |
 | `waveforms/` | Le forme d'onda mostrate nei player, calcolate dalle registrazioni |
 
 ## Altrove

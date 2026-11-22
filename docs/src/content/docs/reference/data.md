@@ -15,7 +15,7 @@ Everything Granello stores is on your Mac.
 | `models/` | The whisper models you downloaded |
 | `attachments/` | Images you pasted and files you attached. Removed when the last meeting that uses them is deleted |
 | `recordings/` | Saved recordings, unless you chose another folder |
-| `audio/` | Audio waiting for online transcription, only with that option on. Deleted after the upload |
+| `audio/` | Audio waiting for online transcription, only with that option on, until you refine or delete it. Deleted after the upload |
 | `waveforms/` | The waveforms shown in the players, computed from the recordings |
 
 ## Elsewhere

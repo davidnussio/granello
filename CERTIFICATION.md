@@ -48,6 +48,7 @@ with its check, in the same change.
 | C-PRIV-05 | Redaction is permanent, and parts to review are counted. | `db::redaction_is_permanent_and_reviews_are_counted` |
 | C-PRIV-06 | A vault's minimum privacy raises every meeting in it. | `db::a_vault_can_raise_the_privacy_of_its_meetings`, `vaults::a_vault_keeps_its_own_meetings_and_minimum_privacy` |
 | C-PRIV-07 | Hardened meetings never reach the sync folder. | `sync::hardened_meetings_stay_on_the_mac` |
+| C-PRIV-08 | Audio reaches Gladia only when the user presses *Refine online*: never automatically when a meeting ends. | `certify.mjs` |
 
 ## Data
 

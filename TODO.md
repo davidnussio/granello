@@ -19,7 +19,7 @@ Browse meetings by project, person, tag and period (cascading columns). A meetin
 Today transcription is always local (whisper) and only text goes to the AI provider.
 These tasks add an online option without giving up privacy first.
 
-- [x] **Online transcription and diarization**: optionally use an online model to transcribe and to tell speakers apart (who said what), instead of the local whisper model. Off by default. Done as a pass after the meeting: the audio is kept on disk, uploaded once to Gladia, the transcript is replaced by one with speakers, and the audio is deleted. Never tried against the real service yet.
+- [x] **Online transcription and diarization**: optionally use an online model to transcribe and to tell speakers apart (who said what), instead of the local whisper model. Off by default. Done as a pass after the meeting, started by the user (*Refine online*, never automatic): the audio is kept on disk, uploaded once to Gladia, the transcript is replaced by one with speakers, and the audio is deleted. Never tried against the real service yet.
   - [ ] Try it on a real Italian recording and compare with another EU-hosted service before settling on Gladia.
   - [ ] Refine an imported audio file too (today only live recordings are kept).
   - [ ] Recordings longer than 135 minutes (Gladia's limit for one request).
