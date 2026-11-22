@@ -418,6 +418,12 @@ pub fn set_meetings_project(state: State<AppState>, ids: Vec<String>, project_id
     state.db.lock().set_meetings_project(&ids, project_id.as_deref()).map_err(err)
 }
 
+/// Fissa uno o più meeting in cima alla barra laterale, o li toglie dai fissati.
+#[tauri::command]
+pub fn set_meetings_pinned(state: State<AppState>, ids: Vec<String>, pinned: bool) -> CmdResult<()> {
+    state.db.lock().set_meetings_pinned(&ids, pinned).map_err(err)
+}
+
 /// Apre la stampa di sistema sulla finestra: da lì si stampa o si salva in PDF. Dal
 /// JavaScript `window.print()` non è affidabile nella webview di macOS.
 #[tauri::command]

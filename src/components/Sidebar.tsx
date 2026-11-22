@@ -23,6 +23,8 @@ export default function Sidebar(p: Props) {
   const now = Date.now();
   const soon = p.events.filter((e) => e.end > now && e.start < now + 18 * 3600_000).slice(0, 4);
   const selectedId = p.view.kind === "meeting" ? p.view.id : null;
+  // nell'ordine in cui sono stati fissati: un meeting nuovo non sposta quelli già in cima
+  const pinned = p.meetings.filter((m) => m.pinnedAt !== null).toSorted((a, b) => a.pinnedAt! - b.pinnedAt!);
 
   return (
     <aside className="sidebar">
@@ -56,6 +58,25 @@ export default function Sidebar(p: Props) {
           {t("▤ Libreria")}
         </button>
       </nav>
+
+      {/* durante una ricerca l'elenco è dei risultati: i fissati tornano a ricerca finita */}
+      {pinned.length > 0 && !p.query && (
+        <section className="side-section side-pinned" aria-label={t("Fissati")}>
+          <h4>{t("Fissati")}</h4>
+          {pinned.map((m) => (
+            <button
+              key={m.id}
+              className={"side-item pinned" + (m.id === selectedId ? " active" : "")}
+              onClick={() => p.setView({ kind: "meeting", id: m.id })}
+            >
+              <span className="side-title">
+                {p.rec.meetingId === m.id && <span className="rec-dot" />}
+                {m.title || t("Senza titolo")}
+              </span>
+            </button>
+          ))}
+        </section>
+      )}
 
       {soon.length > 0 && !p.query && (
         <section className="side-section">

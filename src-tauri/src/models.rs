@@ -21,6 +21,9 @@ pub struct Meeting {
     /// Il progetto in cui sta, se ne ha uno.
     #[serde(default)]
     pub project_id: Option<String>,
+    /// Quando è stato fissato in cima alla barra laterale; assente se non è fissato.
+    #[serde(default)]
+    pub pinned_at: Option<i64>,
 }
 
 /// Quanto di un meeting può uscire da questo Mac.
@@ -65,6 +68,8 @@ pub struct MeetingSummary {
     pub attendees: Vec<String>,
     pub tags: Vec<String>,
     pub project_id: Option<String>,
+    /// Quando è stato fissato; assente se non è fissato.
+    pub pinned_at: Option<i64>,
     pub snippet: Option<String>,
 }
 

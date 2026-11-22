@@ -53,6 +53,7 @@ const MEETING_FIELDS: &[&str] = &[
     "tags",
     "privacy",
     "project_id",
+    "pinned_at",
 ];
 
 const ENTITIES: &[Entity] = &[

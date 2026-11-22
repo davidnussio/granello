@@ -15,7 +15,13 @@ fn now_ms() -> i64 {
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
 pub(crate) const MIGRATIONS: &[&str] =
-    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9];
+    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10];
+
+/// Meeting fissati: restano in cima alla barra laterale, sotto la Libreria, nell'ordine in
+/// cui sono stati fissati. NULL = non fissato.
+const SCHEMA_V10: &str = r#"
+ALTER TABLE meetings ADD COLUMN pinned_at INTEGER;
+"#;
 
 /// Sync tra dispositivi (fase 0, vedi `sync.rs`). Un segmento della trascrizione riceve un id
 /// che vale su ogni dispositivo: quello numerico resta locale. Le altre tabelle sono del sync:
@@ -302,6 +308,7 @@ impl Db {
             enhanced_md: row.get("enhanced_md")?,
             privacy: Privacy::parse(&row.get::<_, String>("privacy")?),
             project_id: row.get("project_id")?,
+            pinned_at: row.get("pinned_at")?,
         })
     }
 
@@ -480,8 +487,9 @@ impl Db {
         for m in &data.meetings {
             self.delete_meeting_rows(&m.id)?;
             self.conn.execute(
-                "INSERT INTO meetings (id, title, created_at, started_at, ended_at, attendees, tags, notes_md, enhanced_md)
-                 VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6, ?7, ?8)",
+                "INSERT INTO meetings (id, title, created_at, started_at, ended_at, attendees, tags, notes_md, enhanced_md,
+                                       pinned_at)
+                 VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 params![
                     m.id,
                     m.title,
@@ -490,7 +498,9 @@ impl Db {
                     serde_json::to_string(&m.attendees)?,
                     serde_json::to_string(&m.tags)?,
                     m.notes_md,
-                    m.enhanced_md
+                    m.enhanced_md,
+                    // un fissato di esempio lo è da quando si è tenuto
+                    m.pinned.then_some(m.started_at)
                 ],
             )?;
             for s in &m.segments {
@@ -629,6 +639,26 @@ impl Db {
         Ok(())
     }
 
+    /// Fissa i meeting in cima alla barra laterale, o li toglie dai fissati. Uno già fissato
+    /// tiene il suo posto: rifissarlo non lo sposta in fondo.
+    pub fn set_meetings_pinned(&self, ids: &[String], pinned: bool) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        let now = now_ms();
+        for (i, id) in ids.iter().enumerate() {
+            if pinned {
+                // a più meeting fissati insieme resta l'ordine in cui sono stati scelti
+                self.conn.execute(
+                    "UPDATE meetings SET pinned_at = ?1 WHERE id = ?2 AND pinned_at IS NULL",
+                    params![now + i as i64, id],
+                )?;
+            } else {
+                self.conn.execute("UPDATE meetings SET pinned_at = NULL WHERE id = ?1", [id])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
     fn project_meetings(&self, id: &str) -> Result<Vec<String>> {
         let mut stmt = self.conn.prepare("SELECT id FROM meetings WHERE project_id = ?1")?;
         let rows = stmt.query_map([id], |r| r.get(0))?;
@@ -741,7 +771,7 @@ impl Db {
             None => {
                 let mut stmt = self.conn.prepare(
                     "SELECT id, title, created_at, enhanced_md IS NOT NULL AND enhanced_md != '', attendees, tags,
-                            project_id
+                            project_id, pinned_at
                      FROM meetings ORDER BY created_at DESC",
                 )?;
                 let rows = stmt.query_map([], |r| {
@@ -755,6 +785,7 @@ impl Db {
                         attendees: serde_json::from_str(&att).unwrap_or_default(),
                         tags: serde_json::from_str(&tags).unwrap_or_default(),
                         project_id: r.get(6)?,
+                        pinned_at: r.get(7)?,
                         snippet: None,
                     })
                 })?;
@@ -770,7 +801,7 @@ impl Db {
                 let mut stmt = self.conn.prepare(
                     "SELECT m.id, m.title, m.created_at,
                             m.enhanced_md IS NOT NULL AND m.enhanced_md != '', m.attendees,
-                            snippet(meetings_fts, -1, '«', '»', '…', 12), m.tags, m.project_id
+                            snippet(meetings_fts, -1, '«', '»', '…', 12), m.tags, m.project_id, m.pinned_at
                      FROM meetings_fts f JOIN meetings m ON m.id = f.meeting_id
                      WHERE meetings_fts MATCH ?1
                      ORDER BY bm25(meetings_fts, 0.0, 10.0, 4.0, 3.0, 1.0) LIMIT 50",
@@ -786,6 +817,7 @@ impl Db {
                         attendees: serde_json::from_str(&att).unwrap_or_default(),
                         tags: serde_json::from_str(&tags).unwrap_or_default(),
                         project_id: r.get(7)?,
+                        pinned_at: r.get(8)?,
                         snippet: r.get(5)?,
                     })
                 })?;
@@ -1451,6 +1483,47 @@ mod tests {
         db.set_meetings_project(std::slice::from_ref(&b.id), None).unwrap();
         assert_eq!(project(&b.id), None);
         assert_eq!(db.list_projects().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn pinned_meetings_keep_the_order_they_were_pinned_in() {
+        let db = Db::open_in_memory().unwrap();
+        let a = db.create_meeting("Uno", None, &[], None).unwrap();
+        let b = db.create_meeting("Due", None, &[], None).unwrap();
+        let pinned = |id: &str| db.get_meeting(id).unwrap().unwrap().pinned_at;
+        assert_eq!(pinned(&a.id), None);
+        db.set_meetings_pinned(&[b.id.clone(), a.id.clone()], true).unwrap();
+        let (pa, pb) = (pinned(&a.id).unwrap(), pinned(&b.id).unwrap());
+        assert!(pb < pa, "chi è scelto prima viene prima");
+        // rifissare non sposta: il meeting tiene il suo posto
+        db.set_meetings_pinned(std::slice::from_ref(&b.id), true).unwrap();
+        assert_eq!(pinned(&b.id), Some(pb));
+        let listed = db.list_meetings(None).unwrap();
+        assert_eq!(listed.iter().find(|m| m.id == a.id).unwrap().pinned_at, Some(pa));
+        db.set_meetings_pinned(std::slice::from_ref(&a.id), false).unwrap();
+        assert_eq!(pinned(&a.id), None);
+        assert_eq!(pinned(&b.id), Some(pb));
+    }
+
+    #[test]
+    fn meetings_start_unpinned_after_migration() {
+        let dir = std::env::temp_dir().join(format!("granello-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("db.sqlite");
+        {
+            // un database com'era prima dei fissati: fino allo schema 9
+            let conn = Connection::open(&path).unwrap();
+            for schema in &MIGRATIONS[..9] {
+                conn.execute_batch(schema).unwrap();
+            }
+            conn.pragma_update(None, "user_version", 9).unwrap();
+            conn.execute_batch("INSERT INTO meetings (id, title, created_at) VALUES ('m', 'Vecchio', 1);").unwrap();
+        }
+        let db = Db::open(&path).unwrap();
+        assert_eq!(db.get_meeting("m").unwrap().unwrap().pinned_at, None);
+        db.set_meetings_pinned(&["m".to_string()], true).unwrap();
+        assert!(db.get_meeting("m").unwrap().unwrap().pinned_at.is_some());
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

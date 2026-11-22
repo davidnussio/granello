@@ -296,6 +296,15 @@ input.vault-name:focus {
 .sidebar > .side-section {
   padding: 0 8px;
 }
+/* i fissati restano compatti: tanti non spingono via l'elenco dei meeting */
+.side-pinned {
+  max-height: 30vh;
+  overflow-y: auto;
+  flex: none;
+}
+.side-item.pinned {
+  padding: 5px 10px;
+}
 .side-item {
   width: 100%;
   background: none;
@@ -2204,6 +2213,20 @@ h3 {
   max-width: 220px;
   text-overflow: ellipsis;
   color: var(--muted);
+}
+.pin-icon {
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+  vertical-align: -0.2em;
+}
+.pin-action .pin-icon {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+.chip.icon-action.pin-action.on {
+  color: var(--accent);
 }
 .project-select.set {
   color: var(--project);
@@ -4443,4 +4466,23 @@ span.lib-cross {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+/* Libreria: i meeting fissati */
+.lib-pinned {
+  color: var(--accent);
+  margin-right: 4px;
+}
+.lib-pinned .pin-icon {
+  width: 0.95em;
+  height: 0.95em;
+}
+.lib-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.lib-preview .lib-actions .btn {
+  margin-top: 0;
 }

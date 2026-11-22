@@ -16,6 +16,7 @@ import Markdown from "./Markdown";
 import TranscriptPanel from "./TranscriptPanel";
 import Recordings from "./Recordings";
 import PrivacyIcon, { privacyHint, privacyLabel } from "./PrivacyIcon";
+import PinIcon from "./PinIcon";
 import ChatPanel from "./ChatPanel";
 import ProjectDialog, { projectColor } from "./ProjectDialog";
 import { dayLabel, mmss, time } from "../format";
@@ -670,6 +671,20 @@ export default function MeetingView({
     }
   };
 
+  /** Fissa il meeting in cima alla barra laterale, o lo toglie dai fissati. */
+  const togglePinned = async () => {
+    const previous = meeting?.pinnedAt ?? null;
+    const pinned = previous === null;
+    setMeeting((m) => (m ? { ...m, pinnedAt: pinned ? Date.now() : null } : m));
+    try {
+      await api.setMeetingsPinned([id], pinned);
+      onChanged();
+    } catch (e) {
+      setMeeting((m) => (m ? { ...m, pinnedAt: previous } : m));
+      toast(errorText(e));
+    }
+  };
+
   const changeTemplate = async (templateId: string) => {
     setMeeting((m) => (m ? { ...m, templateId } : m));
     // su una nota ancora vuota il template porta le sue note di partenza; se c'è già
@@ -887,6 +902,21 @@ export default function MeetingView({
             </select>
             {/* lontano dalle azioni di tutti i giorni (registra, trascrizione, chiedi) */}
             <span className="meeting-actions">
+              <button
+                className={"chip icon-action pin-action" + (meeting.pinnedAt !== null ? " on" : "")}
+                onClick={togglePinned}
+                aria-pressed={meeting.pinnedAt !== null}
+                aria-label={
+                  meeting.pinnedAt !== null ? t("Togli dai fissati") : t("Fissa nella barra laterale")
+                }
+                title={
+                  meeting.pinnedAt !== null
+                    ? t("Togli dai fissati")
+                    : t("Fissa nella barra laterale: resta sotto la Libreria")
+                }
+              >
+                <PinIcon filled={meeting.pinnedAt !== null} />
+              </button>
               <button
                 className={"chip icon-action" + (confirmOut === "copy" ? " confirm" : "")}
                 onClick={copyNote}

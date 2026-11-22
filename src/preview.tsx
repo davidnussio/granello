@@ -182,6 +182,20 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     data.meetings = [...data.meetings];
     return null;
   },
+  set_meetings_pinned: (a) => {
+    const ids = a.ids as string[];
+    const now = Date.now();
+    const pin = (m: { id: string; pinnedAt: number | null }) => {
+      if (!ids.includes(m.id)) return;
+      if (!a.pinned) m.pinnedAt = null;
+      else m.pinnedAt ??= now + ids.indexOf(m.id);
+    };
+    (data.meetings as { id: string; pinnedAt: number | null }[]).forEach(pin);
+    for (const d of Object.values(data.details) as { meeting: { id: string; pinnedAt: number | null } }[])
+      pin(d.meeting);
+    data.meetings = [...data.meetings];
+    return null;
+  },
   // i vault vivono in memoria: serve a provare la sezione delle impostazioni e il selettore
   list_vaults: () => vaults,
   pick_vault_dir: () => "/Volumes/Cifrato/Granello",

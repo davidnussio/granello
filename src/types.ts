@@ -10,6 +10,8 @@ export interface Meeting {
   tags: string[];
   /** Il progetto in cui sta, se ne ha uno. */
   projectId: string | null;
+  /** Quando è stato fissato in cima alla barra laterale; null se non è fissato. */
+  pinnedAt: number | null;
   templateId: string | null;
   notesMd: string;
   enhancedMd: string | null;
@@ -77,6 +79,8 @@ export interface MeetingSummary {
   attendees: string[];
   tags: string[];
   projectId: string | null;
+  /** Quando è stato fissato; null se non è fissato. */
+  pinnedAt: number | null;
   snippet: string | null;
 }
 

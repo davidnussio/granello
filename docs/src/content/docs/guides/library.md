@@ -1,6 +1,6 @@
 ---
 title: The Library
-description: Browse meetings by project, person, tag and period, tag several at once, and list decisions and actions across meetings.
+description: Browse meetings by project, person, tag and period, pin the ones you keep coming back to, tag several at once, and list decisions and actions across meetings.
 ---
 
 The Library browses your meetings in columns: pick a dimension, then a value, then a meeting, with a preview next to it.
@@ -9,6 +9,7 @@ The Library browses your meetings in columns: pick a dimension, then a value, th
 
 ## Dimensions
 
+- **Pinned**: the meetings you pinned to the sidebar, see below.
 - **Projects**: the projects you created, each with the meetings that belong to it.
 - **People**: who took part.
 - **Tags**: the tags on your meetings.
@@ -26,6 +27,10 @@ A meeting belongs to one project at most. To put a meeting in a project, open it
 Hover a project to edit it (✎), archive it when it is done (⤓) or delete it (×). Archiving and deleting keep the meetings: an archived project moves under **Archived**, and the meetings of a deleted project are left without a project.
 
 Projects made with earlier versions, when a project was a promoted tag, are converted on the first launch: each one keeps its name and its meetings, and the tag stays on the meetings as a plain tag.
+
+## Pinned meetings
+
+The pin in a meeting's header, next to copy, print and delete, keeps it in the sidebar right under **Library**, in the order you pinned them. Press it again to unpin. You can also pin or unpin from the Library preview, or pin several selected meetings at once. During a search the sidebar shows only the results; the pinned meetings come back when the search field is empty.
 
 ## Cross two dimensions
 

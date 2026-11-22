@@ -1,6 +1,6 @@
 ---
 title: La Libreria
-description: Sfoglia i meeting per progetto, persona, tag e periodo, dai un tag a più meeting insieme ed elenca decisioni e azioni attraverso i meeting.
+description: Sfoglia i meeting per progetto, persona, tag e periodo, fissa quelli a cui torni spesso, dai un tag a più meeting insieme ed elenca decisioni e azioni attraverso i meeting.
 ---
 
 La Libreria sfoglia i meeting a colonne: scegli una dimensione, poi un valore, poi un meeting, con l'anteprima accanto.
@@ -9,6 +9,7 @@ La Libreria sfoglia i meeting a colonne: scegli una dimensione, poi un valore, p
 
 ## Dimensioni
 
+- **Fissati**: i meeting che hai fissato nella barra laterale, vedi sotto.
 - **Progetti**: i progetti che hai creato, ognuno con i meeting che gli appartengono.
 - **Persone**: chi ha partecipato.
 - **Tag**: i tag dei tuoi meeting.
@@ -26,6 +27,10 @@ Un meeting sta in un progetto al massimo. Per mettere un meeting in un progetto 
 Passando su un progetto puoi modificarlo (✎), archiviarlo quando è chiuso (⤓) o eliminarlo (×). Archiviare ed eliminare tengono i meeting: un progetto archiviato va sotto **Archiviati**, e i meeting di un progetto eliminato restano senza progetto.
 
 I progetti creati con le versioni precedenti, quando un progetto era un tag promosso, vengono convertiti al primo avvio: ognuno tiene il nome e i suoi meeting, e il tag resta sui meeting come tag normale.
+
+## Meeting fissati
+
+La puntina nell'intestazione di un meeting, accanto a copia, stampa ed elimina, lo tiene nella barra laterale subito sotto **Libreria**, nell'ordine in cui li hai fissati. Premila di nuovo per toglierlo. Puoi fissare o togliere anche dall'anteprima della Libreria, o fissare insieme più meeting selezionati. Durante una ricerca la barra laterale mostra solo i risultati; i fissati tornano quando il campo di ricerca è vuoto.
 
 ## Incrociare due dimensioni
 

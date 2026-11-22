@@ -12,6 +12,7 @@
 //! minutes: 42
 //! attendees: Marco Bianchi, Elena Rossi
 //! tags: cliente-nord, prezzi
+//! pinned: yes            (facoltativo: fissato in cima alla barra laterale)
 //! --- notes
 //! …Markdown; {{date:+7}} diventa la data di oggi più sette giorni…
 //! --- enhanced
@@ -49,6 +50,8 @@ pub struct DemoMeeting {
     pub notes_md: String,
     pub enhanced_md: Option<String>,
     pub segments: Vec<DemoSegment>,
+    /// Fissato in cima alla barra laterale.
+    pub pinned: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -186,6 +189,7 @@ pub fn parse(text: &str, now_ms: i64) -> Result<DemoData> {
             "title" => m.title = value.into(),
             "attendees" => m.attendees = list(value),
             "tags" => m.tags = list(value),
+            "pinned" => m.pinned = value == "yes",
             "minutes" => minutes = value.parse().unwrap_or(30),
             "when" => {
                 let (days, at) = value.split_once(' ').ok_or_else(|| anyhow!("when non valido in {}: {value}", m.id))?;
@@ -221,7 +225,7 @@ mod tests {
     fn parses_the_readable_format() {
         let now = Local.with_ymd_and_hms(2026, 11, 20, 12, 0, 0).unwrap().timestamp_millis();
         let data = parse(
-            "projects: nord\narchived: sito\n\n=== demo-a\ntitle: Rinnovo\nwhen: 1 10:00\nminutes: 40\nattendees: Marco, Elena\ntags: nord, prezzi\n\
+            "projects: nord\narchived: sito\n\n=== demo-a\ntitle: Rinnovo\nwhen: 1 10:00\nminutes: 40\nattendees: Marco, Elena\ntags: nord, prezzi\npinned: yes\n\
 --- notes\n# Prezzo\nScade il [[{{date:+7}}]]\n--- enhanced\nNote AI\n--- transcript\n00:12 them Buongiorno a tutti.\n01:05 me Cominciamo.\n\
 === demo-b\ntitle: Altro\nwhen: 0 09:30\n--- notes\nciao\n",
             now,
@@ -237,6 +241,7 @@ mod tests {
         assert_eq!(Local.timestamp_millis_opt(a.started_at).unwrap().format("%Y-%m-%d %H:%M").to_string(), "2026-11-19 10:00");
         assert_eq!((a.segments[1].source.as_str(), a.segments[1].start_ms), ("me", 65_000));
         assert_eq!(data.meetings[1].enhanced_md, None);
+        assert!(a.pinned && !data.meetings[1].pinned);
         assert_eq!(data.people(), vec!["Elena", "Marco"]);
         assert!(parse("=== altro\ntitle: x\nwhen: 0 10:00\n", now).is_err());
     }

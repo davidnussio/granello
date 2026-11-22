@@ -851,6 +851,18 @@ const en: Record<string, string> = {
   "nel Portachiavi": "in the Keychain",
   "in Gestione credenziali": "in Credential Manager",
   "in un file leggibile solo da te": "in a file only you can read",
+  Fissati: "Pinned",
+  Fissato: "Pinned",
+  Fissa: "Pin",
+  "Fissa nella barra laterale": "Pin to the sidebar",
+  "Fissa nella barra laterale: resta sotto la Libreria": "Pin to the sidebar: it stays under Library",
+  "Togli dai fissati": "Unpin",
+  "Fissato nella barra laterale": "Pinned to the sidebar",
+  "Fissa tutti nella barra laterale": "Pin all to the sidebar",
+  "Togli tutti dai fissati": "Unpin all",
+  "Nessun meeting fissato ha anche {name}.": "No pinned meeting also has {name}.",
+  "Nessun meeting fissato: aprine uno e premi la puntina accanto a copia, stampa ed elimina.":
+    "No pinned meetings: open one and press the pin next to copy, print and delete.",
 };
 
 export default en;

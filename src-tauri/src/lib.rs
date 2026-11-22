@@ -159,6 +159,7 @@ pub fn run() {
             commands::archive_project,
             commands::delete_project,
             commands::set_meetings_project,
+            commands::set_meetings_pinned,
             commands::list_people,
             commands::delete_person,
             commands::suggest_people,

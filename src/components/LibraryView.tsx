@@ -6,6 +6,7 @@ import { locale, t } from "../i18n";
 import { sparkle } from "../sparkles";
 import Recordings from "./Recordings";
 import ProjectDialog, { ProjectDot } from "./ProjectDialog";
+import PinIcon from "./PinIcon";
 
 interface Props {
   projects: Project[];
@@ -16,7 +17,7 @@ interface Props {
   toast: (text: string) => void;
 }
 
-type Dim = "projects" | "people" | "tags" | "period" | "recordings";
+type Dim = "pinned" | "projects" | "people" | "tags" | "period" | "recordings";
 /** Le dimensioni che raggruppano i meeting (le registrazioni no). */
 type GroupDim = Exclude<Dim, "recordings">;
 
@@ -50,7 +51,9 @@ interface Group {
   project?: Project;
 }
 
-const DIMS: { id: Dim; icon: string; label: () => string }[] = [
+const DIMS: { id: Dim; icon: React.ReactNode; label: () => string }[] = [
+  // una voce sola, senza seconda colonna: i meeting fissati nella barra laterale
+  { id: "pinned", icon: <PinIcon filled />, label: () => t("Fissati") },
   { id: "projects", icon: "▣", label: () => t("Progetti") },
   { id: "people", icon: "☺", label: () => t("Persone") },
   { id: "tags", icon: "#", label: () => t("Tag") },
@@ -105,6 +108,9 @@ function byPeriod(meetings: MeetingSummary[]): Group[] {
 
 /** Le voci di una dimensione, ognuna con i suoi meeting. */
 function groupsOf(dim: GroupDim, meetings: MeetingSummary[], projects: Project[]): Group[] {
+  if (dim === "pinned") {
+    return [{ key: "pinned", label: t("Fissati"), meetings: meetings.filter((m) => m.pinnedAt !== null) }];
+  }
   if (dim === "people") return groupBy(meetings, (m) => m.attendees);
   if (dim === "period") return byPeriod(meetings);
   if (dim === "tags") return groupBy(meetings, (m) => m.tags);
@@ -249,6 +255,8 @@ export default function LibraryView({
     if (dim === "recordings") return [];
     const all = groupsOf(dim, base, projects);
     // con il filtro in cima restano solo le voci che hanno meeting, tolta quella del filtro stesso
+    // i fissati sono una voce sola: restano anche quando sono il filtro stesso
+    if (dim === "pinned") return all;
     if (cross) return all.filter((g) => g.meetings.length > 0 && !(dim === cross.dim && g.key === cross.key));
     if (dim !== "projects") return all;
     return all.filter((g) => showArchived || !g.archived || g.key === groupKey);
@@ -346,6 +354,17 @@ export default function LibraryView({
     }
   };
 
+  /** Fissa i meeting nella barra laterale, o li toglie dai fissati. */
+  const pinMeetings = async (ids: string[], pinned: boolean) => {
+    try {
+      await api.setMeetingsPinned(ids, pinned);
+      await reload();
+      onMeetingsChanged();
+    } catch (e) {
+      toast(errorText(e));
+    }
+  };
+
   /** Clic su un meeting: da solo lo sceglie, con Cmd lo aggiunge alla selezione, con Maiusc fino a lì. */
   const pick = (m: MeetingSummary, e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => {
     setCol(2);
@@ -417,10 +436,11 @@ export default function LibraryView({
       setPicked(new Set(listed.map((m) => m.id)));
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
-      setCol((c) => Math.min(2, c + 1));
+      // i fissati non hanno la colonna dei valori: si salta
+      setCol((c) => Math.min(2, c + (dim === "pinned" && c === 0 ? 2 : 1)));
     } else if (e.key === "ArrowLeft") {
       e.preventDefault();
-      setCol((c) => Math.max(0, c - 1));
+      setCol((c) => Math.max(0, c - (dim === "pinned" && c === 2 ? 2 : 1)));
     } else if (e.key === "Enter" && mode === "items") {
       if (!currentItem) return;
       e.preventDefault();
@@ -589,7 +609,7 @@ export default function LibraryView({
         )}
 
         <div
-          hidden={dim === "recordings"}
+          hidden={dim === "recordings" || dim === "pinned"}
           className={"lib-col" + (col === 1 ? " focus" : "")}
           role="listbox"
           aria-label={DIMS.find((d) => d.id === dim)!.label()}
@@ -767,7 +787,14 @@ export default function LibraryView({
               onClick={(e) => pick(m, e)}
               onDoubleClick={() => onOpen(m.id)}
             >
-              <span className="lib-meeting-title">{m.title || t("Senza titolo")}</span>
+              <span className="lib-meeting-title">
+                {m.pinnedAt !== null && dim !== "pinned" && (
+                  <span className="lib-pinned" title={t("Fissato nella barra laterale")}>
+                    <PinIcon filled />
+                  </span>
+                )}
+                {m.title || t("Senza titolo")}
+              </span>
               <span className="lib-meeting-meta">
                 {dayLabel(m.createdAt)}
                 {m.attendees.length
@@ -781,11 +808,17 @@ export default function LibraryView({
             <p className="muted small lib-empty">
               {filter
                 ? t("Nessun risultato")
-                : cross || (dim !== "tags" && dim !== "projects")
-                  ? t("Nessun meeting qui.")
-                  : dim === "projects"
-                    ? t("Nessun meeting qui: apri un meeting e scegli questo progetto, in alto a destra.")
-                    : t("Nessun meeting qui: aggiungi il tag #{tag} a un meeting.", { tag: group.label })}
+                : dim === "pinned"
+                  ? cross
+                    ? t("Nessun meeting fissato ha anche {name}.", { name: hash(cross.dim) + cross.label })
+                    : t(
+                        "Nessun meeting fissato: aprine uno e premi la puntina accanto a copia, stampa ed elimina.",
+                      )
+                  : cross || (dim !== "tags" && dim !== "projects")
+                    ? t("Nessun meeting qui.")
+                    : dim === "projects"
+                      ? t("Nessun meeting qui: apri un meeting e scegli questo progetto, in alto a destra.")
+                      : t("Nessun meeting qui: aggiungi il tag #{tag} a un meeting.", { tag: group.label })}
             </p>
           )}
         </div>
@@ -871,6 +904,31 @@ export default function LibraryView({
                   ))}
                 </p>
               )}
+              {selection.every((m) => m.pinnedAt !== null) ? (
+                <button
+                  className="btn small"
+                  onClick={() =>
+                    pinMeetings(
+                      selection.map((m) => m.id),
+                      false,
+                    )
+                  }
+                >
+                  {t("Togli tutti dai fissati")}
+                </button>
+              ) : (
+                <button
+                  className="btn small"
+                  onClick={() =>
+                    pinMeetings(
+                      selection.map((m) => m.id),
+                      true,
+                    )
+                  }
+                >
+                  {t("Fissa tutti nella barra laterale")}
+                </button>
+              )}
               <button className="btn small ghost" onClick={() => setPicked(new Set())}>
                 {t("Annulla la selezione")}
               </button>
@@ -905,9 +963,24 @@ export default function LibraryView({
                   ))}
                 </ul>
               )}
-              <button className="btn small" onClick={() => onOpen(current.id)}>
-                {t("Apri il meeting")}
-              </button>
+              <div className="lib-actions">
+                <button className="btn small" onClick={() => onOpen(current.id)}>
+                  {t("Apri il meeting")}
+                </button>
+                <button
+                  className={"btn small ghost" + (current.pinnedAt !== null ? " on" : "")}
+                  aria-pressed={current.pinnedAt !== null}
+                  onClick={() => pinMeetings([current.id], current.pinnedAt === null)}
+                  title={
+                    current.pinnedAt !== null
+                      ? t("Togli dai fissati")
+                      : t("Fissa nella barra laterale: resta sotto la Libreria")
+                  }
+                >
+                  <PinIcon filled={current.pinnedAt !== null} />{" "}
+                  {current.pinnedAt !== null ? t("Fissato") : t("Fissa")}
+                </button>
+              </div>
               <p className="muted small lib-hint">
                 {t(
                   "⌘ clic o Maiusc clic su altri meeting: li selezioni insieme per dare loro un progetto o un tag.",

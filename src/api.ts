@@ -121,6 +121,8 @@ export const api = {
   /** Mette i meeting in un progetto, o li toglie dal loro (null). */
   setMeetingsProject: (ids: string[], projectId: string | null) =>
     invoke<void>("set_meetings_project", { ids, projectId }),
+  /** Fissa i meeting in cima alla barra laterale, o li toglie dai fissati. */
+  setMeetingsPinned: (ids: string[], pinned: boolean) => invoke<void>("set_meetings_pinned", { ids, pinned }),
   /** Apre la stampa di sistema sulla finestra (da lì si salva anche in PDF). */
   printWindow: () => invoke<void>("print_window"),
   /** Aggiunge e toglie tag a più meeting insieme. */
