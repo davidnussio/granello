@@ -137,18 +137,27 @@ export function groupCommands<T extends { group: string }>(items: T[]): T[] {
 
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
-/** Ricerca per il menu "/": senza distinzione di maiuscole e accenti, su titolo e parole chiave. */
-export function filterCommands<T extends { title: string; keywords?: string[] }>(
+/**
+ * Ricerca per il menu "/": senza distinzione di maiuscole e accenti, su titolo e parole chiave.
+ * Anche il nome del gruppo è una chiave: "/meeting" mostra tutti i blocchi del gruppo Meeting,
+ * "/strum" tutti gli strumenti. Un gruppo scritto per intero viene prima di tutto il resto.
+ */
+export function filterCommands<T extends { title: string; keywords?: string[]; group?: string }>(
   items: T[],
   query: string,
 ): T[] {
   const q = norm(query.trim());
   if (!q) return items;
-  const starts = items.filter((i) => norm(i.title).startsWith(q));
+  const group = (i: T) => norm(i.group ?? "");
+  // con una o due lettere il gruppo porterebbe dentro mezzo menu: conta da tre in su
+  const whole = items.filter((i) => group(i) === q);
+  const inGroup = q.length >= 3 ? items.filter((i) => !whole.includes(i) && group(i).startsWith(q)) : [];
+  const starts = items.filter((i) => !whole.includes(i) && norm(i.title).startsWith(q));
   const rest = items.filter(
     (i) =>
+      !whole.includes(i) &&
       !starts.includes(i) &&
       (norm(i.title).includes(q) || (i.keywords ?? []).some((k) => norm(k).startsWith(q))),
   );
-  return [...starts, ...rest];
+  return [...new Set([...whole, ...starts, ...inGroup, ...rest])];
 }

@@ -3,7 +3,7 @@ title: Comandi /
 description: Tutti i comandi del menu / di una nota, cosa inseriscono, la loro scorciatoia e come si scrivono in Markdown.
 ---
 
-Digita `/` in una nota per aprire il menu dei comandi. Continua a scrivere per filtrarlo (capisce parole italiane e inglesi: `/tabella` e `/table` vanno bene tutte e due), spostati con le frecce, inserisci con Invio, chiudi con Esc. Dentro il codice il menu non si apre.
+Digita `/` in una nota per aprire il menu dei comandi. Continua a scrivere per filtrarlo (capisce parole italiane e inglesi: `/tabella` e `/table` vanno bene tutte e due), spostati con le frecce, inserisci con Invio, chiudi con Esc. Dentro il codice il menu non si apre. Il nome di un gruppo mostra tutto il gruppo: `/meeting` elenca tutti i blocchi del gruppo Meeting, `/strumenti` tutti gli strumenti.
 
 ![Il menu / aperto in una nota vuota: in cima Struttura ed Elenchi](../../../../assets/shots/it/commands/menu.webp)
 

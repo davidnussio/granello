@@ -3,7 +3,7 @@ title: Slash commands
 description: Every command of the / menu in a note, what it inserts, its shortcut and how it is written in Markdown.
 ---
 
-Type `/` in a note to open the command menu. Keep typing to filter it (it understands English and Italian words, so `/table` and `/tabella` both work), move with the arrows, insert with Enter, close with Esc. The menu does not open inside code.
+Type `/` in a note to open the command menu. Keep typing to filter it (it understands English and Italian words, so `/table` and `/tabella` both work), move with the arrows, insert with Enter, close with Esc. The menu does not open inside code. The name of a group shows the whole group: `/meeting` lists every block of the Meeting group, `/tools` every tool.
 
 ![The / menu open in an empty note: Structure and Lists at the top](../../../assets/shots/en/commands/menu.webp)
 
