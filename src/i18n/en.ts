@@ -164,6 +164,8 @@ const en: Record<string, string> = {
   "Ferma la registrazione prima di eliminare il meeting": "Stop the recording before deleting the meeting",
   "Chiedi su questo meeting": "Ask about this meeting",
   "Chiudi pannello": "Close panel",
+  "Mostra la trascrizione": "Show the transcript",
+  "Trascrizione ({n})": "Transcript ({n})",
   "Scrivi una email di follow-up": "Write a follow-up email",
   "Quali sono le azioni e chi le fa?": "What are the action items and who owns them?",
   "Cosa non è stato deciso?": "What was left undecided?",
@@ -555,6 +557,8 @@ const en: Record<string, string> = {
   "Citazione dalla trascrizione": "Transcript quote",
   "Una frase detta, con chi e a che minuto": "Something that was said, with who and when",
   "❝ Cita": "❝ Quote",
+  "Cita nelle note l'ultima frase trascritta, con chi l'ha detta e il minuto":
+    "Quote the last transcribed sentence in your notes, with who said it and the minute",
   "Cita nelle note: la frase, chi l'ha detta e il minuto":
     "Quote in the notes: the sentence, who said it and the minute",
   Io: "Me",

@@ -10,6 +10,13 @@ export function showInTranscript(ms: number) {
   window.dispatchEvent(new CustomEvent<number>(SHOW_IN_TRANSCRIPT, { detail: ms }));
 }
 
+/**
+ * Evento per la pagina del meeting: il comando "/" chiede una citazione. `detail`: l'editor.
+ * La pagina lo annulla (`preventDefault`) e inserisce lei la citazione con il minuto della
+ * registrazione; dove nessuno lo annulla (i modelli) il comando la inserisce a 0:00.
+ */
+export const QUOTE_FROM_SLASH = "granello:quote-from-slash";
+
 /** "12:34" oppure "1:02:03" in millisecondi. */
 export function parseTime(text: string): number | null {
   const m = /^(?:(\d{1,2}):)?(\d{1,3}):([0-5]\d)$/.exec(text.trim());

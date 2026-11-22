@@ -1,7 +1,7 @@
 import type { Editor } from "@tiptap/react";
 import { dataBlock, type BlockView } from "../dataBlock";
 import { area, field, h } from "../dom";
-import { insertAside, oneLine, parseTime, showInTranscript } from "../meeting";
+import { insertAside, oneLine, parseTime, QUOTE_FROM_SLASH, showInTranscript } from "../meeting";
 import { mmss } from "../../format";
 import { t } from "../../i18n";
 import type { EditorPlugin } from "../types";
@@ -81,7 +81,8 @@ function render(view: BlockView<TranscriptQuote>) {
 
 /**
  * Citazione dalla trascrizione: la frase, chi l'ha detta e il minuto. Si crea selezionando
- * il testo nel pannello della trascrizione. In Markdown:
+ * il testo nel pannello della trascrizione, con "Cita l'ultima frase" mentre si registra, o dal
+ * menu "/" (vuota, al minuto attuale della registrazione). In Markdown:
  *
  *     ::: quote 12:34 Marco
  *     Lo sconto del 10% vale solo fino a gennaio.
@@ -92,6 +93,8 @@ const QuoteBlock = dataBlock<TranscriptQuote>({
   tag: "quote",
   empty: { ms: 0, who: "", text: "" },
   autofocus: "text",
+  // dal comando "/" durante la registrazione arriva già con il minuto: è vuota lo stesso
+  isEmpty: (data) => !data.who && !data.text,
   format: {
     kind: "container",
     parse: (info, lines) => {
@@ -124,7 +127,10 @@ export const transcriptQuote: EditorPlugin = {
         return t("Meeting");
       },
       keywords: ["citazione", "trascrizione", "quote", "transcript", "frase", "detto"],
-      run: (e) => e.chain().focus().insertContent({ type: "transcriptQuote" }).run(),
+      run: (e) => {
+        const ask = new CustomEvent<Editor>(QUOTE_FROM_SLASH, { detail: e, cancelable: true });
+        if (window.dispatchEvent(ask)) e.chain().focus().insertContent({ type: "transcriptQuote" }).run();
+      },
     },
   ],
 };

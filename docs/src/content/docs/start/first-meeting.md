@@ -27,7 +27,7 @@ To look around first, **Load sample data** on the Home screen fills the app with
 
 ## Get the notes
 
-Open **Transcript** to read what was said, with who spoke and the minute. Then press **Generate AI notes**: the model merges your notes and the transcript into complete notes, following the meeting's template. The AI notes stay editable, and your own notes are kept in their tab.
+The **Transcript** panel on the right shows what was said, with who spoke and the minute. Then press **Generate AI notes**: the model merges your notes and the transcript into complete notes, following the meeting's template. The AI notes stay editable, and your own notes are kept in their tab.
 
 ![AI notes next to the transcript](../../../assets/shots/en/transcript.webp)
 

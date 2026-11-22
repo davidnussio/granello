@@ -27,7 +27,7 @@ Per dare prima un'occhiata, **Carica i dati di esempio** in Home riempie l'app c
 
 ## Ottenere le note
 
-Apri **Trascrizione** per leggere quello che è stato detto, con chi parla e il minuto. Poi premi **Genera note AI**: il modello unisce i tuoi appunti e la trascrizione in note complete, seguendo il template del meeting. Le note AI restano modificabili, e le tue note restano nella loro scheda.
+Il pannello **Trascrizione** a destra mostra quello che è stato detto, con chi parla e il minuto. Poi premi **Genera note AI**: il modello unisce i tuoi appunti e la trascrizione in note complete, seguendo il template del meeting. Le note AI restano modificabili, e le tue note restano nella loro scheda.
 
 ![Le note AI accanto alla trascrizione](../../../../assets/shots/it/transcript.webp)
 

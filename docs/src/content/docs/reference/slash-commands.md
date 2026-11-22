@@ -247,7 +247,7 @@ Markdown: `::: moment 12:34` … `:::`.
 
 ### Transcript quote
 
-A sentence said in the meeting, with who said it and the minute. The quickest way to make one is to select text in the Transcript panel and press **❝ Quote**; the command inserts an empty one to fill in. Quotes are listed in the [Library](/guides/library/#items-across-meetings).
+A sentence said in the meeting, with who said it and the minute. The quickest way to make one is to select text in the Transcript panel and press **❝ Quote** (while recording, the same button at the bottom of the panel quotes the last sentence); the command inserts an empty one to fill in, at the current minute of the recording. Quotes are listed in the [Library](/guides/library/#items-across-meetings).
 
 Markdown: `::: quote 12:34 Name` … `:::`.
 

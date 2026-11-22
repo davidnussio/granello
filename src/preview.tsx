@@ -300,6 +300,8 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     importing: false,
     pendingChunks: 0,
   }),
+  // il minuto della registrazione simulata: momenti e citazioni dal menu "/" lo prendono da qui
+  recording_position: () => (params.has("rec") ? 125_000 : null),
   recordings_info: () => ({ dir: "", defaultDir: "", ffmpeg: true }),
   list_recordings: (a) => recordings.filter((r) => !a.meetingId || r.meetingId === a.meetingId),
   recording_waveform: (a) => fakeWave(a.id as number),

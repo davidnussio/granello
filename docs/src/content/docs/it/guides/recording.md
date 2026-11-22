@@ -19,7 +19,9 @@ Sui sistemi più vecchi, vedi [problemi comuni](/it/reference/troubleshooting/) 
 ## Mentre registri
 
 - La barra sotto la nota mostra i livelli dell'audio e il tempo.
-- **⚑ Segna** (⇧⌘M) aggiunge alla nota un segno con il minuto, senza spostare il cursore. A fine trascrizione l'AI scrive in ogni segno cosa si stava dicendo in quel minuto.
+- Il pannello **Trascrizione** a destra è aperto fin dall'inizio, e il testo ci sta accanto anche sullo schermo di un portatile. Il titolo dice quanti pezzi ha la trascrizione; l'icona della barra laterale nell'angolo in alto a destra lo chiude e lo riapre.
+- **⚑ Segna** (⇧⌘M), in fondo al pannello, aggiunge alla nota un segno con il minuto, senza spostare il cursore. A fine trascrizione l'AI scrive in ogni segno cosa si stava dicendo in quel minuto. A pannello chiuso il pulsante passa nella barra sotto la nota.
+- **❝ Cita**, accanto, mette nella nota l'ultima frase trascritta, con chi l'ha detta e il minuto.
 - **Al microfono** dice chi sta parlando quando più persone usano lo stesso microfono. Da quel momento la trascrizione attribuisce il parlato a quella persona.
 
 Puoi fermare e riprendere sullo stesso meeting: la trascrizione continua.

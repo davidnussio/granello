@@ -620,6 +620,17 @@ h3 {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  position: relative;
+}
+/* a pannello chiuso, nello stesso punto in cui sta quando è aperto: come il padding di
+   .side-panel-head, così aprendo e chiudendo l'icona non si sposta */
+.meeting-main > .sidebar-toggle {
+  position: absolute;
+  top: calc(var(--titlebar) + 12px);
+  right: 16px;
+}
+.chip.icon-action.sidebar-toggle.on {
+  color: var(--text);
 }
 .meeting-header {
   padding: calc(var(--titlebar) + 12px) 56px 6px;
@@ -1564,6 +1575,7 @@ h3 {
 }
 .recbar.side-foot {
   justify-content: flex-end;
+  gap: 6px;
   padding: 10px 14px;
 }
 .rec-btn {
@@ -2186,6 +2198,9 @@ h3 {
 .project-select {
   margin-left: auto;
   flex: none;
+  /* in alto, centrato sull'icona del pannello di destra (alta 24px, come la riga del suo titolo) */
+  align-self: flex-start;
+  margin-top: 2px;
   max-width: 220px;
   text-overflow: ellipsis;
   color: var(--muted);

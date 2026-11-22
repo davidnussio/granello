@@ -19,7 +19,9 @@ On older systems, see [troubleshooting](/reference/troubleshooting/) for the loo
 ## While recording
 
 - The bar under the note shows the audio levels and the timer.
-- **⚑ Mark** (⇧⌘M) adds a marker with the minute to your note, without moving the cursor. When the transcription ends, the AI writes in each marker what was being said around that minute.
+- The **Transcript** panel on the right is open from the start, and the text fits next to it on a laptop screen too. Its title shows how many pieces the transcript has; the sidebar icon in the top right corner closes it and opens it again.
+- **⚑ Mark** (⇧⌘M), at the bottom of the panel, adds a marker with the minute to your note, without moving the cursor. When the transcription ends, the AI writes in each marker what was being said around that minute. With the panel closed, the button moves to the bar under the note.
+- **❝ Quote**, next to it, puts the last transcribed sentence in your note, with who said it and the minute.
 - **At the mic** says who is speaking when several people share one microphone. From that moment the transcript credits that person.
 
 You can stop and resume on the same meeting: the transcript continues.

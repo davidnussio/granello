@@ -42,7 +42,7 @@ Everything is saved as readable Markdown, so your notes are still yours outside 
 
 ## Quotes from the transcript
 
-Select a sentence in the Transcript panel and press **❝ Quote**. The note gets a quote with who said it and the minute; ↗ on the quote reopens the transcript at that point.
+Select a sentence in the Transcript panel and press **❝ Quote**. The note gets a quote with who said it and the minute; ↗ on the quote reopens the transcript at that point. While recording, **❝ Quote** at the bottom of the panel quotes the last transcribed sentence without selecting anything. From the `/` menu the quote is empty, at the current minute of the recording.
 
 ## Find and replace
 

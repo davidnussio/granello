@@ -61,6 +61,8 @@ export interface DataBlockSpec<T> {
   render(view: BlockView<T>): void;
   /** `data-focus` del campo da cui partire quando il blocco è appena stato inserito vuoto. */
   autofocus?: string;
+  /** Se il blocco è ancora vuoto (per l'autofocus); di base, se i dati sono quelli di `empty`. */
+  isEmpty?: (data: T) => boolean;
   /**
    * Se presente, il blocco ha il pulsante ✦: l'AI lo crea o lo modifica a richiesta, scrivendolo
    * nel suo formato Markdown. `format` spiega quel formato al modello, con un esempio.
@@ -238,7 +240,8 @@ export function dataBlock<T>(spec: DataBlockSpec<T>) {
           focusNext = undefined;
         };
         paint();
-        const isNew = JSON.stringify(node.attrs.data) === JSON.stringify(spec.empty);
+        const data = node.attrs.data as T;
+        const isNew = spec.isEmpty ? spec.isEmpty(data) : JSON.stringify(data) === JSON.stringify(spec.empty);
         if (isNew && spec.autofocus && editor.isEditable) {
           focusSoon(() => dom.querySelector<HTMLElement>(`[data-focus="${spec.autofocus}"]`)?.focus());
         }

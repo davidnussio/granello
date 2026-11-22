@@ -25,6 +25,7 @@ import { Sparkles, sparkle } from "../sparkles";
 import type { Editor } from "@tiptap/react";
 import { setAiMeeting, setTranscriptState } from "../editor/aiContext";
 import { insertQuote, quoteMd } from "../editor/plugins/transcriptQuote";
+import { QUOTE_FROM_SLASH } from "../editor/meeting";
 import {
   MOMENT_EVENTS,
   emptyMoments,
@@ -52,6 +53,16 @@ const NEW_PROJECT = "+new";
 
 type Tab = "notes" | "enhanced";
 type Side = "none" | "transcript" | "chat";
+
+/**
+ * Il pannello di destra si apre sempre sulla trascrizione: lo spazio per le note basta anche
+ * sullo schermo del portatile. Se lo si chiude resta chiuso per quel meeting, anche quando la
+ * pagina si ricarica (per esempio dopo una sincronizzazione).
+ */
+let lastSide: { id: string; side: Side } | null = null;
+
+/** Il testo di una parte oscurata, come in `src-tauri/src/models.rs`. */
+const REDACTED = "█████";
 
 function useDebounced<T>(fn: (v: T) => void, ms: number) {
   const timer = useRef<number>();
@@ -113,6 +124,8 @@ const ICONS = {
   copy: "M9 9h10v11H9zM5 15V4h10",
   print: "M7 9V4h10v5M7 17H4v-7h16v7h-3M7 14h10v6H7z",
   trash: "M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13M10 11v5M14 11v5",
+  // la classica icona della barra laterale, qui a destra
+  sidebar: "M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM15 4v16",
 } as const;
 
 /** Icona di un'azione dell'intestazione, nello stesso tratto dell'occhio della privacy. */
@@ -148,7 +161,16 @@ export default function MeetingView({
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [tab, setTab] = useState<Tab>("notes");
-  const [side, setSide] = useState<Side>("none");
+  const [side, setSideState] = useState<Side>(() => (lastSide?.id === id ? lastSide.side : "transcript"));
+  const setSide = useCallback(
+    (next: Side | ((s: Side) => Side)) =>
+      setSideState((s) => {
+        const value = typeof next === "function" ? next(s) : next;
+        lastSide = { id, side: value };
+        return value;
+      }),
+    [id],
+  );
   const [streaming, setStreaming] = useState<string | null>(null);
   const [level, setLevel] = useState<{ mic: number; system: number | null }>({ mic: 0, system: null });
   const [elapsed, setElapsed] = useState(0);
@@ -177,6 +199,7 @@ export default function MeetingView({
   const [userName, setUserName] = useState("");
   const fillRef = useRef<(auto: boolean) => void>(() => {});
   const markRef = useRef<(from?: Editor) => void>(() => {});
+  const quoteRef = useRef<(from: Editor) => void>(() => {});
   const fillingRef = useRef(false);
   const [keptAudio, setKeptAudio] = useState(false);
   const [refining, setRefining] = useState(false);
@@ -374,6 +397,25 @@ export default function MeetingView({
   };
   markRef.current = markMoment;
 
+  // Citazione dal comando "/": vuota, ma al minuto della registrazione e non a 0:00.
+  quoteRef.current = async (from: Editor) => {
+    const position = isRecording ? await api.recordingPosition(id).catch(() => null) : null;
+    if (from.isDestroyed) return;
+    from
+      .chain()
+      .focus()
+      .insertContent({ type: "transcriptQuote", attrs: { data: { ms: position ?? 0, who: "", text: "" } } })
+      .run();
+  };
+
+  // L'ultima frase trascritta, intera, diventa una citazione: per chi non ha tempo di selezionarla.
+  // non una parte oscurata né una da verificare: potrebbe essere oscurata dopo, e nelle note resterebbe
+  const lastSegment = segments.findLast((s) => !s.review && s.text.trim() && s.text.trim() !== REDACTED);
+  const quoteLast = () => {
+    if (lastSegment)
+      addQuote({ ms: lastSegment.startMs, source: lastSegment.source, text: lastSegment.text.trim() });
+  };
+
   // Fa scrivere all'AI cosa si diceva nei momenti ancora vuoti. `auto`: a fine registrazione,
   // senza disturbare se non c'è niente da fare o l'AI non è configurata.
   const fillMoments = async (auto: boolean) => {
@@ -406,6 +448,10 @@ export default function MeetingView({
 
   useEffect(() => {
     const onMark = (e: Event) => markRef.current((e as CustomEvent<Editor | undefined>).detail ?? undefined);
+    const onQuote = (e: Event) => {
+      e.preventDefault();
+      quoteRef.current((e as CustomEvent<Editor>).detail);
+    };
     const onFill = () => fillRef.current(false);
     const onShow = (e: Event) => {
       setSide("transcript");
@@ -419,16 +465,18 @@ export default function MeetingView({
       }
     };
     window.addEventListener(MOMENT_EVENTS.mark, onMark);
+    window.addEventListener(QUOTE_FROM_SLASH, onQuote);
     window.addEventListener(MOMENT_EVENTS.fill, onFill);
     window.addEventListener(MOMENT_EVENTS.show, onShow);
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener(MOMENT_EVENTS.mark, onMark);
+      window.removeEventListener(QUOTE_FROM_SLASH, onQuote);
       window.removeEventListener(MOMENT_EVENTS.fill, onFill);
       window.removeEventListener(MOMENT_EVENTS.show, onShow);
       window.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [setSide]);
 
   const toggleRecording = async () => {
     setBusyRec(true);
@@ -695,22 +743,37 @@ export default function MeetingView({
     (name) => !meeting.attendees.some((a) => a.toLowerCase() === name.toLowerCase()),
   );
 
-  // aprono e chiudono il pannello di destra: a pannello aperto stanno sotto di lui
-  const sideButtons = (
-    <>
-      <button
-        className={"btn small ghost" + (side === "transcript" ? " on" : "")}
-        onClick={() => setSide(side === "transcript" ? "none" : "transcript")}
-      >
-        {t("Trascrizione")} {segments.length ? `(${segments.length})` : ""}
-      </button>
-      <button
-        className={"btn small ghost" + (side === "chat" ? " on" : "")}
-        onClick={() => setSide(side === "chat" ? "none" : "chat")}
-      >
-        {sparkle(t("✦ Chiedi"))}
-      </button>
-    </>
+  const markButton = (
+    <button
+      className="btn small mark-btn"
+      onClick={() => markMoment()}
+      title={t("Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)")}
+    >
+      {t("⚑ Segna")}
+    </button>
+  );
+
+  // la chat si apre da sotto; richiudendola si torna alla trascrizione
+  const chatButton = (
+    <button
+      className={"btn small ghost" + (side === "chat" ? " on" : "")}
+      onClick={() => setSide(side === "chat" ? "transcript" : "chat")}
+    >
+      {sparkle(t("✦ Chiedi"))}
+    </button>
+  );
+
+  // apre e chiude il pannello di destra: sta sempre nell'angolo in alto a destra
+  const sidebarToggle = (
+    <button
+      className={"chip icon-action sidebar-toggle" + (side !== "none" ? " on" : "")}
+      onClick={() => setSide(side === "none" ? "transcript" : "none")}
+      aria-label={side === "none" ? t("Mostra la trascrizione") : t("Chiudi pannello")}
+      aria-expanded={side !== "none"}
+      title={side === "none" ? t("Mostra la trascrizione") : t("Chiudi pannello")}
+    >
+      <ActionIcon name="sidebar" />
+    </button>
   );
 
   return (
@@ -1076,29 +1139,24 @@ export default function MeetingView({
             <span className="muted small">{t("Registrazione in corso altrove")}</span>
           )}
           <div className="spacer" />
-          {/* a destra sotto la nota, non nel pannello: resta lì anche quando il pannello è chiuso */}
-          {isRecording && (
-            <button
-              className="btn small mark-btn"
-              onClick={() => markMoment()}
-              title={t(
-                "Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)",
-              )}
-            >
-              {t("⚑ Segna")}
-            </button>
-          )}
-          {side === "none" && sideButtons}
+          {/* il segno sta nel pannello di destra; qui solo se il pannello è chiuso */}
+          {isRecording && side === "none" && markButton}
+          {side === "none" && chatButton}
         </footer>
+        {side === "none" && sidebarToggle}
       </div>
 
       {side !== "none" && (
         <aside className="side-panel">
           <div className="side-panel-head">
-            <strong>{side === "transcript" ? t("Trascrizione") : t("Chiedi su questo meeting")}</strong>
-            <button className="toast-x" aria-label={t("Chiudi pannello")} onClick={() => setSide("none")}>
-              ×
-            </button>
+            <strong>
+              {side === "transcript"
+                ? segments.length
+                  ? t("Trascrizione ({n})", { n: segments.length })
+                  : t("Trascrizione")
+                : t("Chiedi su questo meeting")}
+            </strong>
+            {sidebarToggle}
           </div>
           {/* l'audio salvato di questo meeting, se c'è: si riascolta accanto alla trascrizione */}
           {side === "transcript" && <Recordings meetingId={id} version={recVersion} toast={toast} />}
@@ -1128,7 +1186,24 @@ export default function MeetingView({
               ]}
             />
           )}
-          <footer className="recbar side-foot">{sideButtons}</footer>
+          <footer className="recbar side-foot">
+            {/* mentre si registra: segnare il momento e citare l'ultima frase, accanto alla trascrizione */}
+            {isRecording && (
+              <>
+                {markButton}
+                <button
+                  className="btn small"
+                  disabled={!lastSegment}
+                  onClick={quoteLast}
+                  title={t("Cita nelle note l'ultima frase trascritta, con chi l'ha detta e il minuto")}
+                >
+                  {t("❝ Cita")}
+                </button>
+                <div className="spacer" />
+              </>
+            )}
+            {chatButton}
+          </footer>
         </aside>
       )}
       {creatingProject && (

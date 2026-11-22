@@ -21,7 +21,6 @@ const ONLY_COMMANDS = process.argv[2] === "commands";
 
 const text = {
   it: {
-    transcript: "Trascrizione",
     library: "Libreria",
     notes: "Le mie note",
     items: "Elementi",
@@ -32,7 +31,6 @@ const text = {
     find: "margine",
   },
   en: {
-    transcript: "Transcript",
     library: "Library",
     notes: "My notes",
     items: "Items",
@@ -135,6 +133,9 @@ const openMenu = `(async () => {
   return JSON.stringify({ x: box.left - ${PAD}, y: box.top - ${PAD}, width: menu.right - box.left + ${2 * PAD}, height: menu.bottom - box.top + ${2 * PAD} });
 })()`;
 
+// Il pannello della trascrizione si apre da solo con il meeting: per le note lo si chiude.
+const closePanel = `document.querySelector(".side-panel-head .sidebar-toggle")?.click()`;
+
 // Ogni schermata: i passi dopo il caricamento, in ordine. Una stringa è un clic sull'elemento
 // con quel testo, `{ js }` è codice da eseguire nella pagina; `query` si aggiunge all'indirizzo.
 const shots = (lang) => {
@@ -144,11 +145,11 @@ const shots = (lang) => {
   const l = text[lang];
   return [
     { name: "home", steps: [] },
-    { name: "notes", steps: [meeting, l.notes] },
-    { name: "transcript", steps: [meeting, l.transcript] },
-    { name: "privacy", steps: [meeting, l.transcript, { js: hardenAndSelect }] },
+    { name: "notes", steps: [meeting, l.notes, { js: closePanel }] },
+    { name: "transcript", steps: [meeting] },
+    { name: "privacy", steps: [meeting, { js: hardenAndSelect }] },
     { name: "recording", query: "&rec", steps: [latest] },
-    { name: "find", steps: [meeting, l.notes, { js: find(l.find) }] },
+    { name: "find", steps: [meeting, l.notes, { js: closePanel }, { js: find(l.find) }] },
     { name: "library", steps: [l.library] },
     { name: "items", steps: [l.library, l.items] },
     { name: "recordings", steps: [l.library, l.recordings] },
@@ -307,6 +308,7 @@ try {
     await step(`${lang}/commands`, fixtures.details["demo-rinnovo"].meeting.title);
     await sleep(700);
     await step(`${lang}/commands`, text[lang].notes);
+    await step(`${lang}/commands`, { js: closePanel });
     await sleep(700);
     await capture(join(commandsDir, "menu.webp"), JSON.parse(await step(`${lang}/menu`, { js: openMenu })));
     const logo = `data:image/png;base64,${readFileSync("docs/src/assets/logo.png").toString("base64")}`;
