@@ -38,6 +38,8 @@ export interface Vault {
   active: boolean;
   /** La sua cartella è raggiungibile (un disco esterno può non essere collegato). */
   available: boolean;
+  /** I calendari (configurati una volta nelle impostazioni) che questo vault non mostra. */
+  hiddenCalendars: string[];
 }
 
 /**
@@ -214,7 +216,10 @@ export interface Calendar {
 export interface CalendarInfo {
   id: string;
   name: string;
+  /** Attivo nelle impostazioni: spento, non compare in nessun vault. */
   enabled: boolean;
+  /** Il vault aperto lo mostra. */
+  shown: boolean;
   error: string | null;
 }
 

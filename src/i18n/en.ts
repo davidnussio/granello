@@ -97,9 +97,15 @@ const en: Record<string, string> = {
   "Prossimi meeting": "Upcoming meetings",
   Calendari: "Calendars",
   "Aggiornamento non riuscito: {error}": "Update failed: {error}",
-  "Nascondi gli eventi di questo calendario": "Hide this calendar's events",
-  "Mostra gli eventi di questo calendario": "Show this calendar's events",
+  "Nascondi gli eventi di questo calendario in questo vault": "Hide this calendar's events in this vault",
+  "Mostra gli eventi di questo calendario in questo vault": "Show this calendar's events in this vault",
   "Tutti i calendari sono disattivati.": "All calendars are turned off.",
+  "Questo vault non mostra nessun calendario: sceglili qui sopra.":
+    "This vault shows no calendar: pick them above.",
+  "Vault che mostrano questo calendario": "Vaults that show this calendar",
+  "Mostrato in": "Shown in",
+  "Ogni vault mostra i calendari scelti per lui, nella home e nelle notifiche. Un calendario nuovo compare in tutti i vault finché non lo togli da uno.":
+    "Each vault shows the calendars chosen for it, on the home page and in notifications. A new calendar appears in every vault until you remove it from one.",
   "Nessun evento nei prossimi giorni.": "No events in the next few days.",
   "Nessun evento. Aggiungi l'URL iCal del tuo calendario nelle Impostazioni per vedere qui i meeting.":
     "No events. Add your calendar's iCal URL in Settings to see your meetings here.",

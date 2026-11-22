@@ -150,11 +150,11 @@ export default function App() {
   );
 
   const toggleCalendar = useCallback(
-    async (id: string, enabled: boolean) => {
+    async (id: string, shown: boolean) => {
       // risposta immediata; eventi e stato reale arrivano con l'aggiornamento
-      setCalendars((cs) => cs.map((c) => (c.id === id ? { ...c, enabled } : c)));
+      setCalendars((cs) => cs.map((c) => (c.id === id ? { ...c, shown } : c)));
       try {
-        await api.setCalendarEnabled(id, enabled);
+        await api.showCalendarInVault(id, shown);
       } catch (e) {
         toast(errorText(e));
       }

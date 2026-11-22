@@ -59,12 +59,17 @@ impl CalendarCache {
             .collect();
     }
 
-    /// Gli eventi dei calendari attivi, in ordine di inizio. Lo stesso evento presente in
-    /// più calendari compare una volta sola, dal primo che lo contiene.
-    fn events_between(&self, from: chrono::DateTime<chrono::Utc>, to: chrono::DateTime<chrono::Utc>) -> Vec<CalendarEvent> {
+    /// Gli eventi dei calendari attivi e non nascosti nel vault aperto, in ordine di inizio. Lo
+    /// stesso evento presente in più calendari compare una volta sola, dal primo che lo contiene.
+    fn events_between(
+        &self,
+        from: chrono::DateTime<chrono::Utc>,
+        to: chrono::DateTime<chrono::Utc>,
+        hidden: &[String],
+    ) -> Vec<CalendarEvent> {
         let mut seen = HashSet::new();
         let mut events = Vec::new();
-        for f in self.feeds.iter().filter(|f| f.enabled) {
+        for f in self.feeds.iter().filter(|f| f.enabled && !hidden.contains(&f.id)) {
             let Some(ics) = &f.ics else { continue };
             for mut e in calendar::events_between(ics, from, to) {
                 if seen.insert(e.id.clone()) {
@@ -2011,13 +2016,19 @@ const CAL_TTL: Duration = Duration::from_secs(10 * 60);
 /// dati vecchi, ricorda l'errore e viene ritentato dopo un minuto.
 pub async fn refresh_calendar(state: &AppState, force: bool) -> CmdResult<bool> {
     let calendars = state.main.lock().get_settings().map_err(err)?.calendars;
+    // quelli nascosti nel vault aperto non servono: si scaricano quando si apre un vault che li mostra
+    let hidden = hidden_calendars(state);
     let mut cache = state.calendar.lock().await;
     cache.sync(&calendars);
     let stale: Vec<(usize, String)> = cache
         .feeds
         .iter()
         .enumerate()
-        .filter(|(_, f)| f.enabled && (force || f.fetched_at.map(|t| t.elapsed() > CAL_TTL).unwrap_or(true)))
+        .filter(|(_, f)| {
+            f.enabled
+                && !hidden.contains(&f.id)
+                && (force || f.fetched_at.map(|t| t.elapsed() > CAL_TTL).unwrap_or(true))
+        })
         .map(|(i, f)| (i, f.url.clone()))
         .collect();
     let results =
@@ -2043,13 +2054,20 @@ pub async fn refresh_calendar(state: &AppState, force: bool) -> CmdResult<bool> 
     Ok(downloaded)
 }
 
+/// I calendari che il vault aperto non mostra.
+fn hidden_calendars(state: &AppState) -> Vec<String> {
+    let vault = state.vault.read().id.clone();
+    crate::vaults::hidden_calendars(&state.main.lock(), &vault)
+}
+
 pub async fn current_events(state: &AppState) -> Vec<CalendarEvent> {
     let now = chrono::Utc::now();
-    let mut events = state
-        .calendar
-        .lock()
-        .await
-        .events_between(now - chrono::Duration::hours(12), now + chrono::Duration::days(7));
+    let hidden = hidden_calendars(state);
+    let mut events = state.calendar.lock().await.events_between(
+        now - chrono::Duration::hours(12),
+        now + chrono::Duration::days(7),
+        &hidden,
+    );
     let db = state.db.lock();
     for e in events.iter_mut() {
         e.meeting_id = db.meeting_for_event(&e.id).ok().flatten();
@@ -2057,10 +2075,12 @@ pub async fn current_events(state: &AppState) -> Vec<CalendarEvent> {
     events
 }
 
-/// I calendari configurati con il loro stato e i prossimi eventi di quelli attivi.
+/// I calendari configurati con il loro stato e i prossimi eventi di quelli attivi e mostrati
+/// nel vault aperto.
 #[tauri::command]
 pub async fn upcoming_events(state: State<'_, AppState>, force: Option<bool>) -> CmdResult<CalendarOverview> {
     refresh_calendar(&state, force.unwrap_or(false)).await?;
+    let hidden = hidden_calendars(&state);
     let calendars = state
         .calendar
         .lock()
@@ -2071,23 +2091,11 @@ pub async fn upcoming_events(state: State<'_, AppState>, force: Option<bool>) ->
             id: f.id.clone(),
             name: f.name.clone(),
             enabled: f.enabled,
-            error: f.last_error.clone().filter(|_| f.enabled),
+            shown: !hidden.contains(&f.id),
+            error: f.last_error.clone().filter(|_| f.enabled && !hidden.contains(&f.id)),
         })
         .collect();
     Ok(CalendarOverview { calendars, events: current_events(&state).await })
-}
-
-/// Attiva o disattiva un calendario senza toccare le altre impostazioni.
-#[tauri::command]
-pub fn set_calendar_enabled(state: State<AppState>, id: String, enabled: bool) -> CmdResult<()> {
-    let mut settings = state.main.lock().get_settings().map_err(err)?;
-    let calendar = settings
-        .calendars
-        .iter_mut()
-        .find(|c| c.id == id)
-        .ok_or(tr("Calendario non trovato", "Calendar not found"))?;
-    calendar.enabled = enabled;
-    state.main.lock().save_settings(&settings).map_err(err)
 }
 
 #[cfg(test)]
@@ -2119,22 +2127,28 @@ mod tests {
         let from = chrono::Utc.with_ymd_and_hms(2026, 11, 18, 0, 0, 0).unwrap();
         let to = from + chrono::Duration::days(1);
 
-        let events = cache.events_between(from, to);
+        let events = cache.events_between(from, to, &[]);
         let got: Vec<(&str, &str)> = events.iter().map(|e| (e.title.as_str(), e.calendar_id.as_str())).collect();
         // in ordine di inizio; l'evento presente in entrambi compare una volta, dal primo calendario
         assert_eq!(got, [("Dentista", "casa"), ("Standup", "lavoro"), ("Pranzo", "lavoro")]);
 
         // disattivare un calendario toglie i suoi eventi ma non butta quanto scaricato
         cache.sync(&[cal("lavoro", "https://e.com/l", false), cal("casa", "https://e.com/c", true)]);
-        let events = cache.events_between(from, to);
+        let events = cache.events_between(from, to, &[]);
         assert!(events.iter().all(|e| e.calendar_id == "casa"));
         assert_eq!(events.len(), 2);
         assert!(cache.feeds[0].ics.is_some());
+
+        // un calendario nascosto nel vault aperto non mostra i suoi eventi
+        cache.sync(&[cal("lavoro", "https://e.com/l", true), cal("casa", "https://e.com/c", true)]);
+        cache.feeds[0].ics = Some(ics(&[("a", "Standup", "20261118T100000Z")]));
+        let events = cache.events_between(from, to, &["casa".to_string()]);
+        assert_eq!(events.iter().map(|e| e.title.as_str()).collect::<Vec<_>>(), ["Standup"]);
 
         // un indirizzo cambiato riparte da zero; un calendario tolto sparisce
         cache.sync(&[cal("casa", "https://e.com/altro", true)]);
         assert_eq!(cache.feeds.len(), 1);
         assert!(cache.feeds[0].ics.is_none());
-        assert!(cache.events_between(from, to).is_empty());
+        assert!(cache.events_between(from, to, &[]).is_empty());
     }
 }

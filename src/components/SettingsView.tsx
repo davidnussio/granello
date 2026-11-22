@@ -308,7 +308,12 @@ export default function SettingsView({
         <>
           <section className="card">
             <h3>{t("Calendario")}</h3>
-            <CalendarSettings calendars={s.calendars} onSave={(calendars) => save({ calendars })} />
+            <CalendarSettings
+              calendars={s.calendars}
+              onSave={(calendars) => save({ calendars })}
+              onShownChanged={onCalendarChanged}
+              toast={toast}
+            />
             <label className="field">
               <span>{t("Notifica prima dell'inizio (minuti)")}</span>
               <input

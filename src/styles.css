@@ -576,6 +576,21 @@ h3 {
   font-size: 13px;
   cursor: pointer;
 }
+/* in quali vault compare un calendario */
+.calendar-vaults {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin-top: 8px;
+}
+.calendar-vault {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
 .calendars {
   margin-bottom: 14px;
 }

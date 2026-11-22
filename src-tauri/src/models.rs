@@ -579,6 +579,8 @@ pub struct CalendarInfo {
     pub id: String,
     pub name: String,
     pub enabled: bool,
+    /// Il vault aperto lo mostra (la scelta è per vault, la configurazione è una sola).
+    pub shown: bool,
     /// Perché l'ultimo aggiornamento non è riuscito, se non è riuscito.
     pub error: Option<String>,
 }

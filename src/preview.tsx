@@ -99,6 +99,7 @@ let vaults = [
     main: true,
     active: true,
     available: true,
+    hiddenCalendars: [] as string[],
   },
 ];
 
@@ -198,6 +199,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
         main: false,
         active: false,
         available: true,
+        hiddenCalendars: [],
       },
     ];
     return vaults;
@@ -212,6 +214,21 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   },
   remove_vault: (a) => {
     vaults = vaults.filter((v) => v.id !== a.id);
+    return vaults;
+  },
+  show_calendar_in_vault: (a) => {
+    const vault = (a.vault as string | null) ?? vaults.find((v) => v.active)?.id;
+    vaults = vaults.map((v) =>
+      v.id === vault
+        ? {
+            ...v,
+            hiddenCalendars: [
+              ...v.hiddenCalendars.filter((c) => c !== a.calendar),
+              ...(a.shown ? [] : [a.calendar as string]),
+            ],
+          }
+        : v,
+    );
     return vaults;
   },
   open_vault: (a) => {
@@ -315,19 +332,25 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   kept_audio: () => false,
   calendar_match: () => null,
   suggest_people: () => [],
-  upcoming_events: () => ({
-    calendars: [{ id: "lavoro", name: lang === "it" ? "Lavoro" : "Work", enabled: true, error: null }],
-    events: events.map((e, i) => ({
-      id: `evento-${i}`,
-      title: e.title,
-      start: hour(e.h),
-      end: hour(e.h + 1),
-      attendees: e.attendees,
-      location: null,
-      meetingId: null,
-      calendarId: "lavoro",
-    })),
-  }),
+  upcoming_events: () => {
+    // la scelta del vault aperto vale anche qui
+    const shown = !vaults.find((v) => v.active)?.hiddenCalendars.includes("lavoro");
+    return {
+      calendars: [
+        { id: "lavoro", name: lang === "it" ? "Lavoro" : "Work", enabled: true, shown, error: null },
+      ],
+      events: (shown ? events : []).map((e, i) => ({
+        id: `evento-${i}`,
+        title: e.title,
+        start: hour(e.h),
+        end: hour(e.h + 1),
+        attendees: e.attendees,
+        location: null,
+        meetingId: null,
+        calendarId: "lavoro",
+      })),
+    };
+  },
 };
 
 mockWindows("main");

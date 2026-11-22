@@ -41,6 +41,11 @@ struct Vault {
     /// vault: lo stesso vault può essere in una cartella diversa su ogni Mac.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     sync_dir: Option<String>,
+    /// I calendari (configurati una volta nelle impostazioni) che questo vault non mostra.
+    /// Si salvano quelli nascosti e non quelli mostrati: un calendario nuovo compare ovunque
+    /// finché non lo si toglie da un vault, come prima che si potesse scegliere.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    hidden_calendars: Vec<String>,
 }
 
 /// Quello che si salva: i vault aggiunti, quale è aperto e la privacy minima del principale.
@@ -53,6 +58,8 @@ struct Registry {
     main_min_privacy: Privacy,
     #[serde(skip_serializing_if = "Option::is_none")]
     main_sync_dir: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    main_hidden_calendars: Vec<String>,
 }
 
 impl Registry {
@@ -93,7 +100,14 @@ impl Registry {
                 name
             ));
         }
-        let vault = Vault { id: uuid::Uuid::new_v4().to_string(), name, path: path.to_string(), min_privacy, sync_dir: None };
+        let vault = Vault {
+            id: uuid::Uuid::new_v4().to_string(),
+            name,
+            path: path.to_string(),
+            min_privacy,
+            sync_dir: None,
+            hidden_calendars: Vec::new(),
+        };
         self.vaults.push(vault.clone());
         Ok(vault)
     }
@@ -146,6 +160,31 @@ pub fn set_sync_dir(main: &Db, id: &str, dir: Option<String>) -> CmdResult<()> {
     registry.save(main)
 }
 
+/// I calendari che un vault non mostra (né nella home né nelle notifiche).
+pub fn hidden_calendars(main: &Db, id: &str) -> Vec<String> {
+    let registry = Registry::load(main);
+    if id == MAIN_ID {
+        registry.main_hidden_calendars
+    } else {
+        registry.vaults.into_iter().find(|v| v.id == id).map(|v| v.hidden_calendars).unwrap_or_default()
+    }
+}
+
+/// Mostra o nasconde un calendario in un vault.
+pub fn set_calendar_shown(main: &Db, id: &str, calendar: &str, shown: bool) -> CmdResult<()> {
+    let mut registry = Registry::load(main);
+    let hidden = if id == MAIN_ID {
+        &mut registry.main_hidden_calendars
+    } else {
+        &mut registry.vaults.iter_mut().find(|v| v.id == id).ok_or(tr("Vault non trovato", "Vault not found"))?.hidden_calendars
+    };
+    hidden.retain(|c| c != calendar);
+    if !shown {
+        hidden.push(calendar.to_string());
+    }
+    registry.save(main)
+}
+
 /// Porta i meeting al livello minimo del vault e cancella l'audio che quelli alzati avevano
 /// conservato per la trascrizione online: con un livello di privacy non deve più poter uscire.
 pub(crate) fn enforce(db: &Db, dir: &Path, min: Privacy) -> CmdResult<()> {
@@ -191,6 +230,8 @@ pub struct VaultInfo {
     active: bool,
     /// La sua cartella è raggiungibile (un disco esterno può non essere collegato).
     available: bool,
+    /// I calendari che non mostra.
+    hidden_calendars: Vec<String>,
 }
 
 fn infos(state: &AppState, registry: &Registry) -> Vec<VaultInfo> {
@@ -203,6 +244,7 @@ fn infos(state: &AppState, registry: &Registry) -> Vec<VaultInfo> {
         main: true,
         active: open == MAIN_ID,
         available: true,
+        hidden_calendars: registry.main_hidden_calendars.clone(),
     };
     let others = registry.vaults.iter().map(|v| VaultInfo {
         id: v.id.clone(),
@@ -212,8 +254,23 @@ fn infos(state: &AppState, registry: &Registry) -> Vec<VaultInfo> {
         main: false,
         active: open == v.id,
         available: Path::new(&v.path).join(DB_FILE).is_file(),
+        hidden_calendars: v.hidden_calendars.clone(),
     });
     std::iter::once(main).chain(others).collect()
+}
+
+/// Mostra o nasconde un calendario in un vault (`None`: quello aperto).
+#[tauri::command]
+pub fn show_calendar_in_vault(
+    state: State<AppState>,
+    vault: Option<String>,
+    calendar: String,
+    shown: bool,
+) -> CmdResult<Vec<VaultInfo>> {
+    let vault = vault.unwrap_or_else(|| state.vault.read().id.clone());
+    let main = state.main.lock();
+    set_calendar_shown(&main, &vault, &calendar, shown)?;
+    Ok(infos(&state, &Registry::load(&main)))
 }
 
 #[tauri::command]
@@ -392,6 +449,18 @@ mod tests {
         set_sync_dir(&db, &first.id, None).unwrap();
         assert_eq!(sync_dir(&db, &first.id), None);
         assert!(set_sync_dir(&db, "non-esiste", None).is_err());
+
+        // i calendari si scelgono per vault: di base li mostrano tutti
+        assert!(hidden_calendars(&db, &first.id).is_empty());
+        set_calendar_shown(&db, &first.id, "casa", false).unwrap();
+        set_calendar_shown(&db, &first.id, "casa", false).unwrap();
+        set_calendar_shown(&db, MAIN_ID, "lavoro", false).unwrap();
+        assert_eq!(hidden_calendars(&db, &first.id), ["casa"]);
+        assert_eq!(hidden_calendars(&db, MAIN_ID), ["lavoro"]);
+        set_calendar_shown(&db, &first.id, "casa", true).unwrap();
+        assert!(hidden_calendars(&db, &first.id).is_empty());
+        assert_eq!(hidden_calendars(&db, MAIN_ID), ["lavoro"], "ogni vault ha la sua scelta");
+        assert!(set_calendar_shown(&db, "non-esiste", "casa", false).is_err());
     }
 
     #[test]

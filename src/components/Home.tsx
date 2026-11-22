@@ -7,7 +7,8 @@ import { t } from "../i18n";
 interface Props {
   events: CalendarEvent[];
   calendars: CalendarInfo[];
-  onToggleCalendar: (id: string, enabled: boolean) => void;
+  /** Mostra o nasconde un calendario nel vault aperto. */
+  onToggleCalendar: (id: string, shown: boolean) => void;
   onNew: () => void;
   onOpenEvent: (e: CalendarEvent) => void;
   onRefresh: () => void;
@@ -34,7 +35,9 @@ export default function Home({
 }: Props) {
   const now = Date.now();
   const upcoming = events.filter((e) => e.end > now);
-  const active = calendars.filter((c) => c.enabled);
+  // un calendario spento nelle impostazioni non c'è in nessun vault; gli altri si scelgono qui
+  const usable = calendars.filter((c) => c.enabled);
+  const active = usable.filter((c) => c.shown);
   // da quale calendario arriva un evento interessa solo se ce n'è più di uno attivo
   const calendarName = (id: string) =>
     active.length > 1 ? calendars.find((c) => c.id === id)?.name : undefined;
@@ -117,20 +120,20 @@ export default function Home({
       )}
 
       <h3>{t("Prossimi meeting")}</h3>
-      {calendars.length > 0 && (
+      {usable.length > 0 && (
         <div className="calendar-toggles" role="group" aria-label={t("Calendari")}>
-          {calendars.map((c) => (
+          {usable.map((c) => (
             <button
               key={c.id}
-              className={"chip calendar-toggle" + (c.enabled ? " on" : "") + (c.error ? " failed" : "")}
-              aria-pressed={c.enabled}
-              onClick={() => onToggleCalendar(c.id, !c.enabled)}
+              className={"chip calendar-toggle" + (c.shown ? " on" : "") + (c.error ? " failed" : "")}
+              aria-pressed={c.shown}
+              onClick={() => onToggleCalendar(c.id, !c.shown)}
               title={
                 c.error
                   ? t("Aggiornamento non riuscito: {error}", { error: c.error })
-                  : c.enabled
-                    ? t("Nascondi gli eventi di questo calendario")
-                    : t("Mostra gli eventi di questo calendario")
+                  : c.shown
+                    ? t("Nascondi gli eventi di questo calendario in questo vault")
+                    : t("Mostra gli eventi di questo calendario in questo vault")
               }
             >
               <span className="calendar-dot" />
@@ -146,9 +149,11 @@ export default function Home({
             ? t(
                 "Nessun evento. Aggiungi l'URL iCal del tuo calendario nelle Impostazioni per vedere qui i meeting.",
               )
-            : active.length === 0
+            : usable.length === 0
               ? t("Tutti i calendari sono disattivati.")
-              : t("Nessun evento nei prossimi giorni.")}
+              : active.length === 0
+                ? t("Questo vault non mostra nessun calendario: sceglili qui sopra.")
+                : t("Nessun evento nei prossimi giorni.")}
         </p>
       )}
       {groupByDay(upcoming, (e) => e.start).map(([day, items]) => (

@@ -36,6 +36,7 @@ A vault is a folder with its own database, attachments and recordings: the meeti
 - **One vault is open at a time.** With more than one vault, an icon next to Settings, at the bottom of the sidebar, opens another. The meeting list, the Library, search and chat show only the open vault. You cannot switch while a recording or an AI generation is running.
 - **What a vault holds**: `granello.sqlite` (meetings, notes, AI notes, transcripts, tags, projects, people, chat), `attachments/`, `recordings/`, `audio/` and `waveforms/`.
 - **What stays on this Mac for every vault**: settings, templates, calendar addresses, the list of vaults, the whisper models and the API keys.
+- **Calendars**: each calendar is set up once, and each vault chooses which ones it shows on the Home screen and in notifications: in **Settings → Calendar** ("Shown in"), or with the calendar names above the upcoming meetings, which apply to the open vault. A new calendar appears in every vault until you remove it from one.
 - **Minimum privacy**: none, at least local audio, or always hardened. New meetings in the vault start at that level and cannot go below it. Raising the minimum raises the vault's meetings that were below it right away. See [privacy levels](/privacy/levels/).
 - **A vault on a disk that is not connected** is shown as not available. If it was the open one, Granello starts on the Main vault.
 - **Remove from the list** only forgets the vault: its folder and its data stay where they are. To delete a vault, delete its folder.

@@ -9,7 +9,7 @@ Dopo il primo avvio la Home mostra cosa manca. Le cose da impostare sono tre, tu
 
 1. **Trascrizione locale**: scarica un modello whisper. `large-v3-turbo-q5_0` (547 MB) è quello consigliato su Apple Silicon; `base` basta per una prova veloce.
 2. **Modelli AI**: incolla l'API key del tuo provider, oppure aggiungi un provider locale. La chiave va nel Portachiavi di macOS. Vedi [modelli locali](/it/privacy/local-models/) per tenere tutto sul Mac.
-3. **Calendario** (facoltativo): aggiungi un calendario incollando il suo indirizzo iCal segreto. I prossimi eventi compaiono in Home, con un clic per aprire le loro note.
+3. **Calendario** (facoltativo): aggiungi un calendario incollando il suo indirizzo iCal segreto. I prossimi eventi compaiono in Home, con un clic per aprire le loro note. Ogni calendario si configura una volta sola; con più [vault](/it/reference/data/#vault), ognuno mostra i calendari che scegli per lui.
 
 Per dare prima un'occhiata, **Carica i dati di esempio** in Home riempie l'app con 50 meeting inventati. Si tolgono con un clic e non toccano mai i tuoi meeting. Se la scheda non ti serve, chiudila con la ×: i dati di esempio restano in Impostazioni → Dati e privacy.
 

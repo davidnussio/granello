@@ -207,7 +207,9 @@ export const api = {
   linkTitle: (url: string) => invoke<string | null>("link_title", { url }),
 
   upcomingEvents: (force = false) => invoke<CalendarOverview>("upcoming_events", { force }),
-  setCalendarEnabled: (id: string, enabled: boolean) => invoke<void>("set_calendar_enabled", { id, enabled }),
+  /** Mostra o nasconde un calendario in un vault (di base quello aperto). */
+  showCalendarInVault: (calendar: string, shown: boolean, vault?: string) =>
+    invoke<Vault[]>("show_calendar_in_vault", { calendar, shown, vault: vault ?? null }),
 };
 
 /** Un file copiato tra gli allegati: `path` è relativo alla cartella dati (attachments/…). */
