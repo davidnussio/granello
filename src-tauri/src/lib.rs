@@ -97,7 +97,7 @@ pub fn run() {
                 http: commands::http_client(Duration::from_secs(120)),
                 llm_http: commands::http_client(Duration::from_secs(600)),
                 streams: Mutex::new(Default::default()),
-                transcribing: Arc::new(Default::default()),
+                working: Arc::new(Default::default()),
             });
 {
                 let state = app.state::<AppState>();

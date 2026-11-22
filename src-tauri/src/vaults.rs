@@ -278,9 +278,12 @@ pub fn update_vault(state: State<AppState>, id: String, name: String, min_privac
         PathBuf::from(&vault.path)
     };
     registry.save(&main)?;
+    // prima `db`, poi `vault`: chi tiene il database principale non prende quello del vault
+    drop(main);
+    let db = state.db.lock();
     if state.vault.read().id == id {
         state.vault.write().min_privacy = min_privacy;
-        enforce(&state.db.lock(), &dir, min_privacy)?;
+        enforce(&db, &dir, min_privacy)?;
     } else if dir.join(DB_FILE).is_file() {
         // un vault non disponibile si mette in regola quando lo si riapre
         enforce(&open_db(&dir)?, &dir, min_privacy)?;
@@ -314,8 +317,8 @@ pub fn remove_vault(state: State<AppState>, id: String) -> CmdResult<Vec<VaultIn
 pub fn open_vault(app: AppHandle, state: State<AppState>, id: String) -> CmdResult<Vec<VaultInfo>> {
     if state.busy() {
         return Err(tr(
-            "C'è una registrazione o una generazione in corso: aspetta che finisca prima di cambiare vault.",
-            "A recording or a generation is in progress: wait for it to finish before switching vault.",
+            "C'è un lavoro in corso su questo vault (registrazione, trascrizione o AI): aspetta che finisca prima di cambiare vault.",
+            "Something is still running on this vault (recording, transcription or AI): wait for it to finish before switching vault.",
         )
         .into());
     }
@@ -341,8 +344,11 @@ pub fn open_vault(app: AppHandle, state: State<AppState>, id: String) -> CmdResu
     registry.save(&main)?;
     let settings = main.get_settings().map_err(err)?;
     drop(main);
-    *state.db.lock() = db;
+    // database e vault cambiano insieme: chi tiene `db` vede sempre il vault che gli corrisponde
+    let mut current = state.db.lock();
+    *current = db;
     *state.vault.write() = open;
+    drop(current);
     crate::commands::allow_recordings_dir(&app, &state.vault_dir(), state.chosen_recordings(&settings));
     log::info!("vault aperto");
     Ok(infos(&state, &registry))

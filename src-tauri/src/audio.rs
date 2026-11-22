@@ -398,7 +398,7 @@ struct ImportInfo {
     total_ms: Option<i64>,
 }
 
-/// Una trascrizione al lavoro, contata in `AppState::transcribing` finché esiste.
+/// Una trascrizione al lavoro, contata in `AppState::working` finché esiste.
 struct Active(Arc<AtomicUsize>);
 
 impl Active {
@@ -436,7 +436,7 @@ fn spawn_transcriber(
     let save_recording = cfg.save_recording.clone();
     let speakers = cfg.speakers.clone();
     // finché il thread lavora l'app risulta occupata: niente cambio di vault a metà
-    let active = Active::start(app.state::<AppState>().transcribing.clone());
+    let active = Active::start(app.state::<AppState>().working.clone());
     std::thread::Builder::new().name("granello-transcribe".into()).spawn(move || {
         let _active = active;
         let mut keeper = keep_audio.and_then(|(path, origin)| {

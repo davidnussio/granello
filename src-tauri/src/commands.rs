@@ -78,6 +78,8 @@ impl CalendarCache {
     }
 }
 
+/// Ordine dei lock, per non bloccarsi a vicenda: prima `db`, poi `main` o `vault`. Chi tiene
+/// `main` o `vault` non prende `db`.
 pub struct AppState {
     /// Il database del vault aperto: meeting, trascrizioni, progetti, persone, chat.
     pub db: Arc<Mutex<Db>>,
@@ -102,9 +104,9 @@ pub struct AppState {
     pub llm_http: reqwest::Client,
     /// Generazioni AI in corso, per poterle annullare: stream_id -> flag di annullamento.
     pub streams: Mutex<HashMap<String, Arc<AtomicBool>>>,
-    /// Trascrizioni ancora al lavoro: dopo lo stop di una registrazione i blocchi in coda si
-    /// trascrivono in background e scrivono ancora nel vault aperto.
-    pub transcribing: Arc<std::sync::atomic::AtomicUsize>,
+    /// Lavori in corso sul vault aperto: le trascrizioni (dopo lo stop di una registrazione i
+    /// blocchi in coda si trascrivono ancora in background) e i lavori lunghi di [`Work`].
+    pub working: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl AppState {
@@ -123,14 +125,58 @@ impl AppState {
         }
     }
 
-    /// C'è qualcosa in corso che scrive nel vault aperto: registrazione (anche la coda di
-    /// trascrizione dopo lo stop), dettatura o una generazione dell'AI. Finché dura non si
-    /// può passare a un altro vault.
+    /// C'è qualcosa in corso sul vault aperto: registrazione (anche la coda di trascrizione
+    /// dopo lo stop), dettatura, una generazione dell'AI o un altro lavoro lungo. Finché dura
+    /// non si può passare a un altro vault.
     pub fn busy(&self) -> bool {
         self.session.lock().is_some()
-            || self.transcribing.load(std::sync::atomic::Ordering::SeqCst) > 0
+            || self.working.load(Ordering::SeqCst) > 0
             || self.dictation.lock().is_some()
             || !self.streams.lock().is_empty()
+    }
+
+    /// Comincia un lavoro lungo sul vault aperto.
+    pub fn work(&self) -> Work<'_> {
+        self.working.fetch_add(1, Ordering::SeqCst);
+        let v = self.vault.read();
+        Work { state: self, vault: v.id.clone(), dir: v.dir.clone() }
+    }
+}
+
+/// Un lavoro lungo sul vault aperto (affinamento online, generazione dell'AI, unione di
+/// registrazioni). Finché esiste il vault non si cambia. Se il vault cambia lo stesso (il
+/// lavoro è partito proprio mentre si cambiava), [`Work::db`] se ne accorge: il risultato
+/// non finisce nel database di un altro vault.
+pub struct Work<'a> {
+    state: &'a AppState,
+    vault: String,
+    /// La cartella del vault su cui il lavoro è cominciato.
+    pub dir: PathBuf,
+}
+
+impl Work<'_> {
+    /// Il database del vault su cui il lavoro è cominciato, se è ancora quello aperto.
+    pub fn db(&self) -> CmdResult<parking_lot::MutexGuard<'_, Db>> {
+        let db = self.state.db.lock();
+        if self.state.vault.read().id != self.vault {
+            return Err(tr(
+                "Hai aperto un altro vault mentre il lavoro era in corso: il risultato non è stato salvato. Riapri il vault e riprova.",
+                "You opened another vault while this was running: the result was not saved. Reopen the vault and try again.",
+            )
+            .into());
+        }
+        Ok(db)
+    }
+
+    /// Errore se nel frattempo si è aperto un altro vault.
+    pub fn check(&self) -> CmdResult<()> {
+        self.db().map(drop)
+    }
+}
+
+impl Drop for Work<'_> {
+    fn drop(&mut self) {
+        self.state.working.fetch_sub(1, Ordering::SeqCst);
     }
 }
 
@@ -633,11 +679,11 @@ pub async fn merge_recordings(state: State<'_, AppState>, meeting_id: String) ->
     if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == meeting_id) {
         return Err(tr("Attendi la fine della registrazione", "Wait for the recording to finish").into());
     }
+    let work = state.work();
     let tool = recordings::ffmpeg().ok_or_else(|| tr("Per unire le registrazioni serve ffmpeg, che su questo computer non c'è", "Merging recordings needs ffmpeg, which isn't on this computer"))?;
     // solo quelle chiuse e con il file ancora al suo posto, in ordine di tempo
-    let mut parts: Vec<Recording> = state
-        .db
-        .lock()
+    let mut parts: Vec<Recording> = work
+        .db()?
         .recordings(Some(&meeting_id))
         .map_err(err)?
         .into_iter()
@@ -662,10 +708,10 @@ pub async fn merge_recordings(state: State<'_, AppState>, meeting_id: String) ->
     std::fs::rename(&temp, &output).map_err(err)?;
     let bytes = std::fs::metadata(&output).map(|m| m.len()).unwrap_or(0);
     let duration_ms = if duration_ms > 0 { duration_ms } else { parts.iter().map(|r| r.duration_ms).sum() };
-    let db = state.db.lock();
+    let db = work.db()?;
     db.update_recording(parts[0].id, &output.to_string_lossy(), duration_ms, bytes as i64, parts.iter().any(|r| r.trimmed)).map_err(err)?;
     for r in &parts {
-        recordings::forget_waveform(&state.vault_dir(), r.id);
+        recordings::forget_waveform(&work.dir, r.id);
     }
     for r in &parts[1..] {
         db.delete_recording(r.id).map_err(err)?;
@@ -699,15 +745,16 @@ pub async fn recording_waveform(state: State<'_, AppState>, id: i64) -> CmdResul
 /// Toglie le pause senza audio da una registrazione già salvata (serve ffmpeg).
 #[tauri::command]
 pub async fn trim_recording(state: State<'_, AppState>, id: i64) -> CmdResult<Vec<Recording>> {
+    let work = state.work();
     let recording = find_recording(&state, id)?;
     if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == recording.meeting_id) {
         return Err(tr("Attendi la fine della registrazione", "Wait for the recording to finish").into());
     }
     let path = PathBuf::from(&recording.path);
     let done = tokio::task::spawn_blocking(move || recordings::trim(&path)).await.map_err(err)?.map_err(err)?;
-    let db = state.db.lock();
+    let db = work.db()?;
     db.update_recording(id, &done.path.to_string_lossy(), done.duration_ms, done.bytes as i64, true).map_err(err)?;
-    recordings::forget_waveform(&state.vault_dir(), id);
+    recordings::forget_waveform(&work.dir, id);
     db.recordings(None).map_err(err)
 }
 
@@ -759,11 +806,12 @@ pub fn discard_audio(state: State<AppState>, meeting_id: String) -> CmdResult<()
 /// che distingue i parlanti. Poi cancella l'audio. È l'unico punto in cui l'audio esce dal Mac.
 #[tauri::command]
 pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -> CmdResult<Vec<TranscriptSegment>> {
+    let work = state.work();
     let language = {
         if state.session.lock().as_ref().is_some_and(|s| s.meeting_id == meeting_id) {
             return Err(tr("Attendi la fine della trascrizione locale", "Wait for the local transcription to finish").into());
         }
-        let db = state.db.lock();
+        let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
         if !settings.online_transcription {
@@ -778,7 +826,7 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
         settings.language
     };
     let key = gladia_key(&state).ok_or(tr("Imposta la chiave di Gladia nelle Impostazioni", "Set the Gladia key in Settings"))?;
-    let path = keep::path(&state.vault_dir(), &meeting_id)
+    let path = keep::path(&work.dir, &meeting_id)
         .filter(|p| p.is_file())
         .ok_or(tr("Non c'è audio conservato per questo meeting", "There is no kept audio for this meeting"))?;
     let utterances = gladia::transcribe(&state.http, gladia::BASE_URL, &key, &path, &language).await.map_err(err)?;
@@ -787,8 +835,8 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
     }
     // l'audio parte dal punto del meeting in cui è cominciata la registrazione conservata:
     // dopo una ripresa non è l'inizio, e ciò che viene prima non va toccato
-    let origin = keep::origin(&state.vault_dir(), &meeting_id);
-    let db = state.db.lock();
+    let origin = keep::origin(&work.dir, &meeting_id);
+    let db = work.db()?;
     // i parlanti di questa registrazione non sono quelli delle precedenti: i numeri proseguono
     let taken = db
         .segments(&meeting_id)
@@ -809,7 +857,7 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
         })
         .collect();
     db.replace_segments(&meeting_id, origin, &rows).map_err(err)?;
-    keep::remove(&state.vault_dir(), &meeting_id);
+    keep::remove(&work.dir, &meeting_id);
     db.segments(&meeting_id).map_err(err)
 }
 
@@ -1281,8 +1329,9 @@ pub async fn enhance_notes(
     meeting_id: String,
     stream_id: String,
 ) -> CmdResult<String> {
+    let work = state.work();
     let (model, system, user) = {
-        let db = state.db.lock();
+        let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
         let segments = db.segments(&meeting_id).map_err(err)?;
@@ -1323,11 +1372,7 @@ pub async fn enhance_notes(
             "\n\n*[Notes truncated: the answer hit the length limit. Regenerate to try again.]*",
         ));
     }
-    state
-        .db
-        .lock()
-        .update_meeting(&meeting_id, None, None, Some(&text), None)
-        .map_err(err)?;
+    work.db()?.update_meeting(&meeting_id, None, None, Some(&text), None).map_err(err)?;
     Ok(text)
 }
 
@@ -1345,8 +1390,9 @@ const MAX_MOMENTS: usize = 40;
 /// Le note le aggiorna l'interfaccia: l'utente potrebbe averle cambiate nel frattempo.
 #[tauri::command]
 pub async fn fill_moments(state: State<'_, AppState>, meeting_id: String, moments: Vec<i64>) -> CmdResult<Vec<MomentFill>> {
+    let work = state.work();
     let (model, system, user, asked) = {
-        let db = state.db.lock();
+        let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
         let segments = db.segments(&meeting_id).map_err(err)?;
@@ -1373,6 +1419,8 @@ pub async fn fill_moments(state: State<'_, AppState>, meeting_id: String, moment
     let done = llm::stream_message(&state.llm_http, &model.request(&system, &messages, MOMENTS_MAX_TOKENS, false), &cancel, |_| {})
         .await
         .map_err(err)?;
+    // i momenti sono di un meeting del vault in cui è partita la richiesta
+    work.check()?;
     let texts = prompts::parse_moments(&done.text, asked.len());
     Ok(asked
         .into_iter()
@@ -1413,8 +1461,9 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
         (AssistKind::Sketch, _) => return Err(tr("Lo schizzo è vuoto o troppo grande", "The sketch is empty or too large").into()),
         _ => None,
     };
+    let work = state.work();
     let (model, system, user) = {
-        let db = state.db.lock();
+        let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
         // lo schizzo si legge da solo, senza note né trascrizione; ma anche lui è contenuto
         // del meeting, quindi il vincolo del modello locale vale per ogni richiesta
@@ -1446,6 +1495,8 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
     let done = llm::stream_message(&state.llm_http, &model.request(&system, &messages, ASSIST_MAX_TOKENS, false), &cancel, |_| {})
         .await
         .map_err(err)?;
+    // la risposta va nella nota di un meeting del vault in cui è partita la richiesta
+    work.check()?;
     // il formato di un blocco può essere proprio un recinto di codice: lo legge l'editor
     let text = match kind {
         AssistKind::Block => done.text.trim().to_string(),
@@ -1556,8 +1607,9 @@ pub async fn chat(
     if question.is_empty() {
         return Err(tr("Scrivi una domanda", "Type a question").into());
     }
+    let work = state.work();
     let (model, system, mut history, user_msg_id) = {
-        let db = state.db.lock();
+        let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
         let (model, system) = if scope == "global" {
             let model = resolve_model(&state, &settings, &settings.chat_model)?;
@@ -1601,7 +1653,7 @@ pub async fn chat(
     msgs.push(llm::Msg::user(question));
 
     if let Err(e) = model.check_context(&system, &msgs) {
-        let _ = state.db.lock().delete_chat_message(user_msg_id);
+        let _ = work.db().map(|db| db.delete_chat_message(user_msg_id));
         return Err(e);
     }
     let guard = StreamGuard::new(&state, &stream_id);
@@ -1617,7 +1669,7 @@ pub async fn chat(
     )
     .await;
     drop(guard);
-    let db = state.db.lock();
+    let db = work.db()?;
     match answer {
         Ok(done) if !done.text.trim().is_empty() => {
             let mut text = done.text;
