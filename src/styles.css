@@ -1,6 +1,8 @@
 :root {
   /* lo spazio in alto per i pulsanti della finestra di macOS, che stanno sopra l'app */
   --titlebar: 28px;
+  /* la barra in fondo: uguale sotto la barra laterale, la nota e il pannello di destra */
+  --footer: 56px;
   --bg: #fbf9f4;
   --panel: #f3efe6;
   --card: #ffffff;
@@ -111,7 +113,10 @@ button:disabled {
 }
 .sidebar-bottom {
   border-top: 1px solid var(--line);
-  padding: 8px;
+  padding: 0 8px;
+  height: var(--footer);
+  box-sizing: border-box;
+  flex: none;
   flex-direction: row;
   align-items: center;
   gap: 4px;
@@ -1525,8 +1530,8 @@ h3 {
   padding: 10px 20px;
   border-top: 1px solid var(--line);
   background: var(--panel);
-  /* stessa altezza sotto la nota e sotto il pannello di destra */
-  min-height: 56px;
+  height: var(--footer);
+  flex: none;
   box-sizing: border-box;
 }
 /* segna un momento: sempre ben visibile mentre si registra */
