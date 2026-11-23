@@ -49,7 +49,21 @@ Granello non cifra un vault: la protezione viene da dove lo metti, per esempio u
 
 ## Anteprime per sviluppatori
 
-**Impostazioni → Dati e privacy → Anteprime per sviluppatori** mostra le funzioni non ancora finite. È spenta di default. Per ora ce n'è una: il sync di un vault tra i tuoi Mac attraverso una cartella, in **Impostazioni → Vault**. La cartella di sync contiene note e trascrizioni in chiaro, e un'anteprima può cambiare o sparire da una versione all'altra: provala solo con i dati di esempio.
+**Impostazioni → Dati e privacy → Anteprime per sviluppatori** mostra le funzioni non ancora finite. È spenta di default. Un'anteprima può cambiare o sparire da una versione all'altra: provala solo con i dati di esempio.
+
+### Sync tra i tuoi Mac
+
+Per ora c'è un'anteprima: il sync di un vault tra i tuoi Mac attraverso una cartella, per esempio in iCloud Drive. Si attiva in **Impostazioni → Vault**, con aperto il vault da sincronizzare. La cartella di sync contiene note e trascrizioni in chiaro.
+
+- **Si sincronizza solo il vault aperto**, non tutti. La cartella di sync non è un vault: il vault resta dov'è, e nella cartella ogni Mac scrive le sue modifiche, che gli altri Mac leggono e applicano.
+- **Conflitti**: per ogni campo vince la modifica più recente. Se la stessa nota cambia su due Mac insieme, la versione rimasta indietro viene tenuta da parte.
+- **Viaggiano**: meeting con note, note AI, partecipanti e tag, trascrizioni, progetti e persone.
+- **Non viaggiano**: audio, registrazioni e allegati (per ora), impostazioni, template, calendari e API key.
+- **Non viaggiano mai**: i meeting blindati. Un vault con privacy minima blindata non si sincronizza.
+
+Per aggiungere un altro Mac, accendi lì le anteprime per sviluppatori, apri il vault che deve ricevere i dati (per esempio il Principale) e, in **Impostazioni → Vault**, scegli la stessa cartella di sync. Quel vault si unisce al primo: riceve i suoi meeting e manda i propri. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.
+
+Ogni cartella di sync appartiene a un solo vault. Per sincronizzare un altro vault, aprilo e scegli un'altra cartella vuota, per esempio `Granello-Clienti` accanto alla prima.
 
 ## Eliminare
 

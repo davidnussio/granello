@@ -1,5 +1,6 @@
 //! Sync tra dispositivi, fase 0: un vault si sincronizza attraverso una cartella (per esempio
-//! in iCloud Drive) senza server. Solo nelle build di sviluppo: la cartella contiene note e
+//! in iCloud Drive) senza server. È un'anteprima per sviluppatori: c'è nelle build di sviluppo
+//! e, in quelle pubblicate, solo con l'impostazione accesa. La cartella contiene note e
 //! trascrizioni in chiaro, finché non c'è la cifratura (vedi TODO.md).
 //!
 //! Il database di un SQLite non si sincronizza come file, quindi viaggiano le modifiche:

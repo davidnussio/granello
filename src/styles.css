@@ -227,6 +227,32 @@ input.vault-name:focus {
   font-family: ui-monospace, Menlo, monospace;
   font-size: 11.5px;
 }
+/* sync: come funziona, chiuso finché non lo si apre */
+.sync-help {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  line-height: 1.5;
+}
+.sync-help summary {
+  cursor: pointer;
+  color: var(--text);
+  width: fit-content;
+}
+.sync-help p,
+.sync-help ul,
+.sync-help ol {
+  margin: 8px 0 0;
+}
+.sync-help ul,
+.sync-help ol {
+  padding-left: 20px;
+}
+.sync-help strong {
+  color: var(--text);
+  font-weight: 600;
+}
 .vault-privacy {
   display: flex;
   align-items: center;

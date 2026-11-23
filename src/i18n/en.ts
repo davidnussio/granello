@@ -286,8 +286,30 @@ const en: Record<string, string> = {
   "Sincronizzo…": "Syncing…",
   "Sincronizza ora": "Sync now",
   "Smetti di sincronizzare": "Stop syncing",
-  "Sincronizza il vault aperto con gli altri tuoi Mac attraverso una cartella, per esempio in iCloud Drive. Scegli una cartella vuota, oppure quella in cui un altro Mac sincronizza già questo vault. Il vault resta dov'è: nella cartella vanno solo le modifiche. Audio e allegati per ora non viaggiano.":
-    "Sync the open vault with your other Macs through a folder, for example in iCloud Drive. Choose an empty folder, or the one where another Mac already syncs this vault. The vault stays where it is: only the changes go into the folder. Audio and attachments do not travel yet.",
+  "Sincronizza il vault aperto con gli altri tuoi Mac attraverso una cartella, per esempio in iCloud Drive. Scegli una cartella vuota, oppure quella in cui un altro Mac sincronizza già questo vault.":
+    "Sync the open vault with your other Macs through a folder, for example in iCloud Drive. Choose an empty folder, or the one where another Mac already syncs this vault.",
+  "Come funziona": "How it works",
+  "Si sincronizza solo il vault aperto, non tutti. La cartella non è un vault: il vault resta dov'è, e nella cartella ogni Mac scrive le sue modifiche, che gli altri leggono e applicano. Per ogni campo vince la modifica più recente; se la stessa nota cambia su due Mac insieme, la versione rimasta indietro viene tenuta da parte.":
+    "Only the open vault syncs, not all of them. The folder is not a vault: the vault stays where it is, and in the folder each Mac writes its changes, which the others read and apply. For each field the latest change wins; if the same note changes on two Macs at once, the version left behind is kept aside.",
+  "Viaggiano:": "Synced:",
+  "meeting con note, note AI, partecipanti e tag, trascrizioni, progetti e persone.":
+    "meetings with notes, AI notes, attendees and tags, transcripts, projects and people.",
+  "Non viaggiano:": "Not synced:",
+  "audio, registrazioni e allegati (per ora), impostazioni, template, calendari e API key.":
+    "audio, recordings and attachments (for now), settings, templates, calendars and API keys.",
+  "Mai:": "Never:",
+  "i meeting blindati. Un vault con privacy minima blindata non si sincronizza.":
+    "hardened meetings. A vault whose minimum privacy is hardened does not sync.",
+  "Su un altro Mac": "On another Mac",
+  "Accendi Impostazioni → Dati e privacy → Anteprime per sviluppatori.":
+    "Turn on Settings → Data and privacy → Developer previews.",
+  "Apri il vault che deve ricevere i dati, per esempio il Principale.":
+    "Open the vault that should receive the data, for example Main.",
+  "Qui, scegli la stessa cartella di sync.": "Here, choose the same sync folder.",
+  "Il vault di quel Mac si unisce a questo: riceve i suoi meeting e manda i propri. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.":
+    "That Mac's vault joins this one: it receives these meetings and sends its own. To keep them apart, use a new, empty vault on the other Mac.",
+  "Ogni cartella appartiene a un solo vault. Per sincronizzare un altro vault, aprilo e scegli un'altra cartella vuota, per esempio Granello-Clienti accanto a questa.":
+    "Each folder belongs to one vault. To sync another vault, open it and choose another empty folder, for example Granello-Clients next to this one.",
   "Scegli la cartella di sync…": "Choose the sync folder…",
   "Vault aperto: {name}. Scegline un altro per aprirlo.":
     "Open vault: {name}. Choose another one to open it.",

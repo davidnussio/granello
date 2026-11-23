@@ -51,7 +51,8 @@ pluggable backends, one vault at a time.
 
 **Phase 0 (in progress): try it with iCloud Drive**
 
-Development builds only, with demo data: without encryption the sync folder holds notes and
+A developer preview, with demo data: development builds, or published builds with Settings →
+Data and privacy → Developer previews on. Without encryption the sync folder holds notes and
 transcripts in clear text.
 
 - [ ] Settings → Vaults, on the open vault: choose a sync folder (e.g. in iCloud Drive), sync

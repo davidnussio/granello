@@ -95,7 +95,7 @@ export default function SyncSettings({ vaultId, toast }: Props) {
         <>
           <p className="muted small">
             {t(
-              "Sincronizza il vault aperto con gli altri tuoi Mac attraverso una cartella, per esempio in iCloud Drive. Scegli una cartella vuota, oppure quella in cui un altro Mac sincronizza già questo vault. Il vault resta dov'è: nella cartella vanno solo le modifiche. Audio e allegati per ora non viaggiano.",
+              "Sincronizza il vault aperto con gli altri tuoi Mac attraverso una cartella, per esempio in iCloud Drive. Scegli una cartella vuota, oppure quella in cui un altro Mac sincronizza già questo vault.",
             )}
           </p>
           <button className="btn small" disabled={busy} onClick={choose}>
@@ -103,6 +103,53 @@ export default function SyncSettings({ vaultId, toast }: Props) {
           </button>
         </>
       )}
+      <SyncHelp />
     </section>
+  );
+}
+
+/** Come funziona il sync: cosa va nella cartella, cosa viaggia, come si aggiunge un altro Mac. */
+function SyncHelp() {
+  return (
+    <details className="sync-help small">
+      <summary>{t("Come funziona")}</summary>
+      <p>
+        {t(
+          "Si sincronizza solo il vault aperto, non tutti. La cartella non è un vault: il vault resta dov'è, e nella cartella ogni Mac scrive le sue modifiche, che gli altri leggono e applicano. Per ogni campo vince la modifica più recente; se la stessa nota cambia su due Mac insieme, la versione rimasta indietro viene tenuta da parte.",
+        )}
+      </p>
+      <ul>
+        <li>
+          <strong>{t("Viaggiano:")}</strong>{" "}
+          {t("meeting con note, note AI, partecipanti e tag, trascrizioni, progetti e persone.")}
+        </li>
+        <li>
+          <strong>{t("Non viaggiano:")}</strong>{" "}
+          {t("audio, registrazioni e allegati (per ora), impostazioni, template, calendari e API key.")}
+        </li>
+        <li>
+          <strong>{t("Mai:")}</strong>{" "}
+          {t("i meeting blindati. Un vault con privacy minima blindata non si sincronizza.")}
+        </li>
+      </ul>
+      <p>
+        <strong>{t("Su un altro Mac")}</strong>
+      </p>
+      <ol>
+        <li>{t("Accendi Impostazioni → Dati e privacy → Anteprime per sviluppatori.")}</li>
+        <li>{t("Apri il vault che deve ricevere i dati, per esempio il Principale.")}</li>
+        <li>{t("Qui, scegli la stessa cartella di sync.")}</li>
+      </ol>
+      <p>
+        {t(
+          "Il vault di quel Mac si unisce a questo: riceve i suoi meeting e manda i propri. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.",
+        )}
+      </p>
+      <p>
+        {t(
+          "Ogni cartella appartiene a un solo vault. Per sincronizzare un altro vault, aprilo e scegli un'altra cartella vuota, per esempio Granello-Clienti accanto a questa.",
+        )}
+      </p>
+    </details>
   );
 }
