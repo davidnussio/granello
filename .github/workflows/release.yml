@@ -13,8 +13,8 @@ name: Release
 # - TAURI_SIGNING_PRIVATE_KEY e TAURI_SIGNING_PRIVATE_KEY_PASSWORD: chiave privata
 #   dell'updater (minisign; copia nel password manager di David).
 # - MACOS_CERT_P12 e MACOS_CERT_PASSWORD: l'identità "Developer ID Application: dambox
-#   Sagl (CLFTJ6F63K)" esportata in .p12 (in base64) e la sua password. Si carica con
-#   scripts/ci/upload-signing-cert.sh.
+#   Sagl (CLFTJ6F63K)" esportata in .p12 (in base64) e la sua password. Si caricano
+#   insieme con scripts/ci/upload-signing-cert.sh.
 # - APPLE_API_KEY_P8 (il file .p8 in base64), APPLE_API_KEY_ID e APPLE_API_ISSUER: la
 #   chiave API di App Store Connect per la notarizzazione.
 # Tauri firma ffmpeg (sidecar) e l'app con hardened runtime, notarizza l'app e la
