@@ -14,10 +14,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 /// Una cartella temporanea che sparisce alla fine del test.
-struct Temp(PathBuf);
+pub(crate) struct Temp(pub(crate) PathBuf);
 
 impl Temp {
-    fn new(name: &str) -> Temp {
+    pub(crate) fn new(name: &str) -> Temp {
         let dir = std::env::temp_dir().join(format!("granello-cert-{name}-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         Temp(dir)
@@ -31,7 +31,7 @@ impl Drop for Temp {
 }
 
 /// Lo stato dell'app come lo costruisce `lib.rs`, con la cartella dei dati in `dir`.
-fn app_state(dir: &Path) -> AppState {
+pub(crate) fn app_state(dir: &Path) -> AppState {
     let main = Db::open(&dir.join("granello.sqlite")).unwrap();
     let (vault_db, vault) = crate::vaults::startup(&main, dir).unwrap();
     AppState {

@@ -587,7 +587,13 @@ pub async fn fill_emails_from_contacts(state: State<'_, AppState>) -> CmdResult<
 
 /// Legge la rubrica del Mac solo se l'utente l'ha attivata e macOS lo permette.
 fn contacts_enabled(state: &AppState) -> bool {
-    state.db.lock().get_settings().map(|s| s.contacts_suggestions).unwrap_or(false) && contacts::access().readable()
+    contacts_turned_on(state) && contacts::access().readable()
+}
+
+/// L'utente ha attivato la rubrica in Impostazioni → Persone. Le impostazioni stanno nel
+/// database dell'app, non in quello del vault aperto: valgono per tutti i vault.
+fn contacts_turned_on(state: &AppState) -> bool {
+    state.main.lock().get_settings().map(|s| s.contacts_suggestions).unwrap_or(false)
 }
 
 /// Completamento automatico dei partecipanti: prima la rubrica (usati di recente),
@@ -2251,6 +2257,20 @@ pub async fn upcoming_events(state: State<'_, AppState>, force: Option<bool>) ->
 mod tests {
     use super::*;
     use chrono::TimeZone;
+
+    #[test]
+    fn contacts_follow_the_settings_in_every_vault() {
+        let temp = crate::certification::Temp::new("contatti");
+        let state = crate::certification::app_state(&temp.0);
+        let main = state.main.lock();
+        let mut s = main.get_settings().unwrap();
+        s.contacts_suggestions = true;
+        main.save_settings(&s).unwrap();
+        drop(main);
+        // un altro vault aperto: il suo database non ha le impostazioni dell'app
+        *state.db.lock() = Db::open_in_memory().unwrap();
+        assert!(contacts_turned_on(&state));
+    }
 
     fn ics(events: &[(&str, &str, &str)]) -> String {
         let mut s = String::from("BEGIN:VCALENDAR\r\nVERSION:2.0\r\n");
