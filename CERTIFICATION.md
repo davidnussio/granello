@@ -24,6 +24,7 @@ with its check, in the same change.
 | C-REL-03 | Updates are signed (the updater has its public key) and come only from this repository's GitHub releases. | `certify.mjs` |
 | C-REL-04 | CI creates the release as a draft: publishing it is David's decision. | `certify.mjs` |
 | C-REL-05 | No secrets in tracked files: updater private key, PEM keys, API keys, signing keys. | `certify.mjs` |
+| C-REL-06 | Releases are signed with the Developer ID of dambox Sagl, with the hardened runtime (ffmpeg too), and notarized by Apple: CI checks the DMG with `stapler validate` and `spctl` before creating the release, and the Homebrew cask does not strip the quarantine. | `certify.mjs` |
 
 ## macOS and sandbox
 

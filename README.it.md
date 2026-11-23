@@ -178,7 +178,7 @@ pnpm screenshots commands  # solo le immagini dei comandi / per la documentazion
 
 ### Distribuzione
 
-`pnpm tauri build` produce un'app **non firmata**: su un altro Mac Gatekeeper la blocca. Per distribuirla servono un certificato *Developer ID Application* e la notarizzazione Apple: imposta `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (password specifica per l'app) e `APPLE_TEAM_ID` prima del build, Tauri firma e notarizza da solo. Le entitlement per microfono e rete sono già in `src-tauri/entitlements.plist`.
+`pnpm tauri build` produce un'app **non firmata**: su un altro Mac Gatekeeper la blocca. I rilasci sono firmati con il certificato *Developer ID Application: dambox Sagl (CLFTJ6F63K)*, con l'hardened runtime, e notarizzati da Apple: `release.yml` passa a Tauri il certificato e una chiave API di App Store Connect (`APPLE_CERTIFICATE`, `APPLE_SIGNING_IDENTITY`, `APPLE_API_KEY`, `APPLE_API_ISSUER`, `APPLE_API_KEY_PATH`), Tauri firma ffmpeg e l'app, notarizza l'app e la graffa; poi il workflow notarizza e graffa il DMG e lo controlla con `stapler validate` e `spctl` prima della release. I secret sono elencati in cima a `release.yml`; `scripts/ci/upload-signing-cert.sh` carica il certificato. Per firmare una build locale imposta `APPLE_SIGNING_IDENTITY` (e `APPLE_API_KEY`, `APPLE_API_ISSUER` per notarizzarla). Le entitlement (microfono, rete in uscita, rubrica) sono in `src-tauri/entitlements.plist`.
 
 ### Rilasci e aggiornamenti
 
@@ -215,7 +215,7 @@ Usa le cuffie: senza cancellazione dell'eco il microfono riprende anche gli altr
 - Cancellazione dell'eco tra microfono e audio di sistema.
 - OAuth Google Calendar al posto dell'URL iCal.
 - Esportazione verso Notion / Google Docs, condivisione delle note.
-- Firma con certificato Developer ID. Finché manca, il permesso "Consenti sempre" del Portachiavi si perde a ogni build: per questo le API key vengono lette una sola volta per avvio e tenute in memoria (`secrets.rs`). Con la firma attiva, rivalutare se quella cache serve ancora.
+- Dalla 0.2.7 i rilasci sono firmati con un certificato Developer ID, quindi il "Consenti sempre" del Portachiavi resta dopo un aggiornamento. Rivalutare se serve ancora la cache in memoria delle API key (`secrets.rs`, lette una volta per avvio).
 - Salvataggio opzionale dell'audio per ritrascrivere con un modello migliore.
 
 ## Test

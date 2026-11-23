@@ -117,6 +117,30 @@ req("C-REL-05", "Nessun segreto nei file del repository", () => {
   return problems;
 });
 
+req("C-REL-06", "I rilasci sono firmati con Developer ID e notarizzati da Apple", () => {
+  const problems = [];
+  const mac = tauri.bundle?.macOS ?? {};
+  if (mac.hardenedRuntime === false) problems.push("hardenedRuntime è spento in tauri.conf.json");
+  if (!mac.entitlements) problems.push("mancano le entitlement in tauri.conf.json");
+  const workflow = read(".github/workflows/release.yml");
+  for (const [needle, what] of [
+    ["Developer ID Application: dambox Sagl (CLFTJ6F63K)", "l'identità Developer ID"],
+    ["APPLE_CERTIFICATE:", "il certificato passato a Tauri"],
+    ["APPLE_API_KEY:", "la chiave API per la notarizzazione"],
+    ["notarytool submit", "la notarizzazione del DMG"],
+    ["stapler validate", "il controllo stapler del DMG"],
+    ["spctl --assess --type open", "il controllo Gatekeeper del DMG"],
+    ["non ha l'hardened runtime", "il controllo dell'hardened runtime"],
+  ]) {
+    if (!workflow.includes(needle)) problems.push(`release.yml non ha ${what}`);
+  }
+  const quarantine = /xattr[^\n]*com\.apple\.quarantine|"com\.apple\.quarantine"/;
+  for (const f of ["scripts/homebrew-cask.sh", "README.md", "README.it.md"]) {
+    if (quarantine.test(read(f))) problems.push(`${f} toglie ancora la quarantena`);
+  }
+  return problems;
+});
+
 // ---------------- macOS e sandbox ----------------
 
 req("C-MAC-01", "Il Mac spiega perché chiede microfono, audio della call e rubrica", () => {
