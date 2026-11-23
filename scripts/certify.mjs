@@ -135,7 +135,12 @@ req("C-REL-06", "I rilasci sono firmati con Developer ID e notarizzati da Apple"
     if (!workflow.includes(needle)) problems.push(`release.yml non ha ${what}`);
   }
   const quarantine = /xattr[^\n]*com\.apple\.quarantine|"com\.apple\.quarantine"/;
-  for (const f of ["scripts/homebrew-cask.sh", "README.md", "README.it.md"]) {
+  for (const f of [
+    "scripts/homebrew-cask.sh",
+    "README.md",
+    "README.it.md",
+    ...files("docs/src/content/docs", (p) => /\.mdx?$/.test(p)),
+  ]) {
     if (quarantine.test(read(f))) problems.push(`${f} toglie ancora la quarantena`);
   }
   return problems;

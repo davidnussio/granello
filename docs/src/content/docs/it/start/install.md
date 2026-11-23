@@ -1,6 +1,6 @@
 ---
 title: Installazione
-description: Scarica Granello per i Mac con Apple Silicon, aprilo la prima volta o compilalo dal codice.
+description: Scarica Granello per i Mac con Apple Silicon o compilalo dal codice.
 ---
 
 Granello gira sui Mac con Apple Silicon (M1 o successivi) e macOS 13 o successivo.
@@ -13,15 +13,11 @@ Su Mac, il modo più rapido:
 brew install --cask davidnussio/tap/granello
 ```
 
-Granello si apre subito, senza il passaggio di Gatekeeper descritto sotto.
-
 ## Download
 
-Oppure scarica `Granello-<versione>-macOS-arm64.dmg` dall'[ultimo rilascio](https://github.com/davidnussio/granello/releases/latest). Per registrare gli altri partecipanti dall'audio di sistema serve macOS 14.6 o successivo. Apri il DMG e trascina Granello in Applicazioni. L'app non è ancora firmata con un Developer ID di Apple, quindi macOS la blocca la prima volta: apri *Impostazioni di Sistema → Privacy e sicurezza* e fai clic su *Apri comunque*. Se macOS dice che l'app è danneggiata, esegui nel Terminale:
+Oppure scarica `Granello-<versione>-macOS-arm64.dmg` dall'[ultimo rilascio](https://github.com/davidnussio/granello/releases/latest). Per registrare gli altri partecipanti dall'audio di sistema serve macOS 14.6 o successivo. Apri il DMG e trascina Granello in Applicazioni.
 
-```bash
-xattr -dr com.apple.quarantine /Applications/Granello.app
-```
+Granello è firmato con un Developer ID di Apple (dambox Sagl) e notarizzato da Apple: macOS lo apre subito, che arrivi da Homebrew o dal DMG.
 
 ## Compilare dal codice
 
@@ -46,7 +42,7 @@ scripts/build-ffmpeg.sh
 pnpm tauri build --config src-tauri/tauri.ffmpeg.conf.json
 ```
 
-La build **non è firmata** con un Developer ID di Apple. Sul Mac che l'ha compilata si apre normalmente. Copiata su un altro Mac, Gatekeeper la blocca al primo avvio.
+Una build compilata dal codice **non è firmata** con un Developer ID di Apple. Sul Mac che l'ha compilata si apre normalmente. Copiata su un altro Mac, Gatekeeper la blocca al primo avvio.
 
 ## Provarla senza il backend
 
