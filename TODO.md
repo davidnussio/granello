@@ -1,7 +1,6 @@
 # TODO
 
-The general next steps (Developer ID signing, native system-audio capture, calendar
-OAuth…) live in the "Next steps" section of the [README](README.md).
+The general next steps (native system-audio capture, calendar OAuth…) live in the "Next steps" section of the [README](README.md).
 
 ## Library
 

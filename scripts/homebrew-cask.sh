@@ -29,17 +29,8 @@ cask "granello" do
   depends_on arch: :arm64
   depends_on macos: :ventura
 
+  # firmata con Developer ID e notarizzata: Gatekeeper la apre senza passaggi
   app "Granello.app"
-
-  # The app is not signed with an Apple Developer ID yet:
-  # drop the quarantine attribute so Gatekeeper lets it open.
-  postflight_steps do
-    run "/usr/bin/xattr",
-        args:           ["-dr", "com.apple.quarantine", "{{appdir}}/Granello.app"],
-        must_succeed:   false,
-        writable_paths: ["Granello.app"],
-        writable_base:  "appdir" # string, not symbol: mise bootstrap cannot read symbols here
-  end
 
   zap trash: [
     "~/Library/Application Support/ch.dambox.granello",

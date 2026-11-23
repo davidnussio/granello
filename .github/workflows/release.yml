@@ -2,18 +2,28 @@ name: Release
 
 # Si parte da un tag: aggiorna "version" in package.json, src-tauri/Cargo.toml e
 # src-tauri/tauri.conf.json, committa, poi
-#   git tag -a v0.2.0 -m "Granello 0.2.0" && git push origin main v0.2.0
+#   git tag -s v0.2.0 -m v0.2.0 && git push origin main v0.2.0
 # Il workflow crea la release IN BOZZA con il DMG per Mac Apple Silicon e
 # latest.json. Per ora solo Apple Silicon: Intel, Linux e Windows stanno sul
 # branch feat/linux-windows. Le app installate
 # leggono releases/latest/download/latest.json, che vede solo le release
 # pubblicate: nessuna si aggiorna finché la bozza non viene pubblicata a mano.
 #
-# Secret richiesti: TAURI_SIGNING_PRIVATE_KEY e TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-# (chiave privata dell'updater; copia nel password manager di David).
+# Secret richiesti:
+# - TAURI_SIGNING_PRIVATE_KEY e TAURI_SIGNING_PRIVATE_KEY_PASSWORD: chiave privata
+#   dell'updater (minisign; copia nel password manager di David).
+# - MACOS_CERT_P12 e MACOS_CERT_PASSWORD: l'identità "Developer ID Application: dambox
+#   Sagl (CLFTJ6F63K)", sola, in un .p12 (in base64) e la sua password.
+# - APPLE_API_KEY_P8 (il file .p8 in base64), APPLE_API_KEY_ID e APPLE_API_ISSUER: la
+#   chiave API di App Store Connect per la notarizzazione.
+# Tutti e cinque si caricano da envsec con scripts/ci/sync-signing-secrets.sh.
+# Tauri firma ffmpeg (sidecar) e l'app con hardened runtime, notarizza l'app e la
+# "graffa" (staple); il DMG lo notarizza questo workflow. Con un tag la firma è
+# obbligatoria e il DMG passa stapler e spctl prima della release.
 #
 # In una pull request che tocca il workflow o la configurazione di build, le build
-# girano lo stesso (artefatti scaricabili dalla pagina del run), senza release.
+# girano lo stesso (artefatti scaricabili dalla pagina del run), senza release; firmate
+# e notarizzate se i secret ci sono (non nelle pull request da un fork).
 
 on:
   push:
@@ -28,6 +38,10 @@ on:
 
 permissions:
   contents: write
+
+env:
+  # l'identità con cui firmare: il certificato di MACOS_CERT_P12 deve corrispondere
+  DEVELOPER_ID: "Developer ID Application: dambox Sagl (CLFTJ6F63K)"
 
 concurrency:
   group: release-${{ github.ref }}
@@ -126,16 +140,79 @@ jobs:
         if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
         run: scripts/build-ffmpeg.sh ${{ matrix.triple }}
 
+      # La chiave API di App Store Connect in un file, come la vuole Tauri
+      # (APPLE_API_KEY_PATH) e notarytool. Senza secret: errore con un tag, build non
+      # firmata in una pull request.
+      - name: Firma Apple
+        id: apple
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          missing=""
+          for name in MACOS_CERT_P12 MACOS_CERT_PASSWORD APPLE_API_KEY_P8 APPLE_API_KEY_ID APPLE_API_ISSUER; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            if [ "$GITHUB_REF_TYPE" = tag ]; then
+              echo "::error::Mancano i secret per firma e notarizzazione:$missing. Vedi i commenti in cima a release.yml."
+              exit 1
+            fi
+            echo "::warning::Build non firmata: mancano i secret$missing"
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          KEY="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY_ID.p8"
+          echo "$APPLE_API_KEY_P8" | base64 --decode > "$KEY"
+          chmod 600 "$KEY"
+          if ! grep -q "BEGIN PRIVATE KEY" "$KEY"; then
+            echo "::error::APPLE_API_KEY_P8 non contiene una chiave .p8 in base64"
+            exit 1
+          fi
+          echo "APPLE_API_KEY_PATH=$KEY" >> "$GITHUB_ENV"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
       # Gli artefatti dell'updater (.app.tar.gz firmato) si creano solo qui, così
-      # una build locale non chiede la chiave privata.
+      # una build locale non chiede la chiave privata. Con APPLE_CERTIFICATE Tauri importa
+      # il certificato in un portachiavi temporaneo, firma ffmpeg e l'app con hardened
+      # runtime (entitlement in src-tauri/entitlements.plist), notarizza l'app e la graffa
+      # prima di creare il DMG e il pacchetto dell'updater.
       - name: Build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm tauri build --config src-tauri/tauri.ffmpeg.conf.json --config '{"bundle":{"createUpdaterArtifacts":true}}'
+          SIGNED: ${{ steps.apple.outputs.signed }}
+          APPLE_CERTIFICATE: ${{ secrets.MACOS_CERT_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ env.DEVELOPER_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          # una variabile vuota Tauri la prende per buona: senza firma vanno tolte
+          if [ "$SIGNED" != true ]; then
+            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_API_KEY APPLE_API_ISSUER APPLE_API_KEY_PATH
+          fi
+          pnpm tauri build --config src-tauri/tauri.ffmpeg.conf.json --config '{"bundle":{"createUpdaterArtifacts":true}}'
 
       - name: ffmpeg è nel pacchetto
         run: test -x src-tauri/target/release/bundle/macos/Granello.app/Contents/MacOS/ffmpeg
+
+      - name: App e ffmpeg firmati, notarizzati e accettati da Gatekeeper
+        if: steps.apple.outputs.signed == 'true'
+        run: |
+          APP=src-tauri/target/release/bundle/macos/Granello.app
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          for bin in "$APP" "$APP/Contents/MacOS/ffmpeg"; do
+            INFO="$(codesign -dvv "$bin" 2>&1)"
+            echo "$INFO" | grep -F "Authority=$DEVELOPER_ID" || { echo "::error::$bin non è firmato con $DEVELOPER_ID"; exit 1; }
+            echo "$INFO" | grep -E "flags=.*\(runtime\)" || { echo "::error::$bin non ha l'hardened runtime"; exit 1; }
+            echo "$INFO" | grep -E "^Timestamp=" || { echo "::error::$bin non ha il timestamp sicuro"; exit 1; }
+          done
+          xcrun stapler validate "$APP"
+          spctl --assess --type execute --verbose=2 "$APP"
 
       - name: Nomi degli artefatti
         env:
@@ -149,6 +226,37 @@ jobs:
           mv "$BUNDLE"/macos/Granello.app.tar.gz "artifacts/Granello-$VERSION-$ARCH.app.tar.gz"
           mv "$BUNDLE"/macos/Granello.app.tar.gz.sig "artifacts/Granello-$VERSION-$ARCH.app.tar.gz.sig"
           ls -la artifacts
+
+      # Tauri firma il DMG ma non lo notarizza: senza, Gatekeeper deve chiedere ad Apple
+      # online al primo avvio, e stapler validate fallisce.
+      - name: Notarizzazione del DMG
+        if: steps.apple.outputs.signed == 'true'
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          DMG="$(ls artifacts/*.dmg)"
+          RESULT="$(xcrun notarytool submit "$DMG" --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_ISSUER" --wait --timeout 2h --output-format json)"
+          echo "$RESULT"
+          if [ "$(echo "$RESULT" | jq -r .status)" != Accepted ]; then
+            xcrun notarytool log "$(echo "$RESULT" | jq -r .id)" --key "$APPLE_API_KEY_PATH" \
+              --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" || true
+            echo "::error::Apple non ha accettato il DMG"
+            exit 1
+          fi
+          xcrun stapler staple "$DMG"
+
+      - name: Il DMG passa stapler e Gatekeeper
+        if: steps.apple.outputs.signed == 'true'
+        run: |
+          DMG="$(ls artifacts/*.dmg)"
+          xcrun stapler validate "$DMG"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
+
+      - name: Via la chiave API
+        if: always()
+        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
 
       - uses: actions/upload-artifact@v4
         with:

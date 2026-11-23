@@ -183,7 +183,7 @@ pnpm screenshots commands  # only the / command images for the docs (docs/src/as
 
 ### Distribution
 
-`pnpm tauri build` produces an **unsigned** app: Gatekeeper blocks it on another Mac. Distributing it requires a *Developer ID Application* certificate and Apple notarization: set `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password) and `APPLE_TEAM_ID` before building, and Tauri signs and notarizes on its own. The microphone and network entitlements are already in `src-tauri/entitlements.plist`.
+`pnpm tauri build` produces an **unsigned** app: Gatekeeper blocks it on another Mac. Releases are signed with the *Developer ID Application: dambox Sagl (CLFTJ6F63K)* certificate, with the hardened runtime, and notarized by Apple: `release.yml` passes the certificate and an App Store Connect API key to Tauri (`APPLE_CERTIFICATE`, `APPLE_SIGNING_IDENTITY`, `APPLE_API_KEY`, `APPLE_API_ISSUER`, `APPLE_API_KEY_PATH`), which signs ffmpeg and the app, notarizes the app and staples it; the workflow then notarizes and staples the DMG and checks it with `stapler validate` and `spctl` before the release. The secrets are listed at the top of `release.yml`; `scripts/ci/sync-signing-secrets.sh` uploads them from envsec (context `apple`), with a `.p12` that holds only the Developer ID identity. To sign a local build, set `APPLE_SIGNING_IDENTITY` (and `APPLE_API_KEY`, `APPLE_API_ISSUER` to notarize it too). The entitlements (microphone, outgoing network, contacts) are in `src-tauri/entitlements.plist`.
 
 ### Releases and updates
 
@@ -220,7 +220,7 @@ Use headphones: without echo cancellation the microphone also picks up the other
 - Echo cancellation between the microphone and system audio.
 - Google Calendar OAuth instead of the iCal URL.
 - Export to Notion / Google Docs, sharing notes.
-- Sign with a Developer ID certificate. Until then the Keychain's "Always Allow" is lost on every build, which is why API keys are read once per launch and kept in memory (`secrets.rs`). Once signing is in place, reconsider whether that cache is still needed.
+- From 0.2.7 releases are signed with a Developer ID certificate, so the Keychain's "Always Allow" survives updates. Reconsider whether the in-memory cache of API keys (`secrets.rs`, read once per launch) is still needed.
 - Optionally saving audio to re-transcribe with a better model.
 
 ## Tests
