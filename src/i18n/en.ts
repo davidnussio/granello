@@ -275,6 +275,10 @@ const en: Record<string, string> = {
   "Anteprima per sviluppatori: la cartella di sync contiene note e trascrizioni in chiaro. Provala solo con i dati di esempio.":
     "Developer preview: the sync folder holds notes and transcripts in clear text. Try it only with the sample data.",
   "Ultimo sync: {when}": "Last sync: {when}",
+  "Anteprime per sviluppatori": "Developer previews",
+  "Mostra le funzioni ancora in anteprima": "Show features still in preview",
+  "Per ora c'è il sync tra i tuoi Mac, in Impostazioni → Vault. Le anteprime possono cambiare o sparire da una versione all'altra: provale solo con i dati di esempio.":
+    "For now there is sync between your Macs, in Settings → Vault. Previews may change or disappear from one version to the next: try them only with the sample data.",
   "Non ancora sincronizzato": "Not synced yet",
   "Dispositivi: {n}": "Devices: {n}",
   "Modifiche da inviare: {n}": "Changes to send: {n}",

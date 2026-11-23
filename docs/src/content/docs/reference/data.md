@@ -47,6 +47,10 @@ Granello does not encrypt a vault: the protection comes from where you put it, f
 
 **Settings → Audio and recordings** lets you choose where the Main vault's saved recordings go. Recordings made before the change stay where they were and keep working. Other vaults always keep their recordings in their own folder.
 
+## Developer previews
+
+**Settings → Data and privacy → Developer previews** shows features that are not finished yet. It is off by default. For now there is one: syncing a vault between your Macs through a folder, in **Settings → Vaults**. The sync folder holds notes and transcripts in clear text, and a preview can change or disappear from one version to the next: try it only with the sample data.
+
 ## Deleting
 
 - Deleting a meeting removes its notes, its transcript and its saved recordings.

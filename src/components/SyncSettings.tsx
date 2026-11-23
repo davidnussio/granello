@@ -11,8 +11,8 @@ interface Props {
 }
 
 /**
- * Impostazioni → Vault: il sync del vault aperto attraverso una cartella. Fase 0, solo nelle
- * build di sviluppo: la cartella contiene note e trascrizioni in chiaro.
+ * Impostazioni → Vault: il sync del vault aperto attraverso una cartella. Fase 0, anteprima per
+ * sviluppatori (Impostazioni → Dati e privacy): la cartella contiene note e trascrizioni in chiaro.
  */
 export default function SyncSettings({ vaultId, toast }: Props) {
   const [status, setStatus] = useState<SyncStatus | null>(null);

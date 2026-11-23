@@ -727,14 +727,15 @@ pub(crate) fn turn(state: &AppState) -> Result<Option<Vec<String>>> {
     result
 }
 
-/// Gira ogni pochi secondi, solo nelle build di sviluppo.
+/// Gira ogni pochi secondi, finché il sync è disponibile: nelle build di sviluppo, oppure
+/// quando l'utente ha acceso le anteprime per sviluppatori (si possono accendere e spegnere
+/// senza riavviare, quindi il controllo si fa a ogni giro).
 pub fn spawn(app: AppHandle) {
-    if !available() {
-        return;
-    }
     std::thread::spawn(move || loop {
         std::thread::sleep(EVERY);
-        run(&app);
+        if available(&app.state::<AppState>()) {
+            run(&app);
+        }
     });
 }
 
@@ -749,8 +750,10 @@ fn run(app: &AppHandle) {
     }
 }
 
-fn available() -> bool {
-    cfg!(debug_assertions)
+/// Il sync è ancora un'anteprima: c'è nelle build di sviluppo e, in quelle pubblicate, solo
+/// con le anteprime per sviluppatori accese in Impostazioni → Dati e privacy.
+fn available(state: &AppState) -> bool {
+    cfg!(debug_assertions) || state.main.lock().get_settings().map(|s| s.developer_previews).unwrap_or(false)
 }
 
 // ---------- comandi ----------
@@ -759,7 +762,7 @@ fn available() -> bool {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Status {
-    /// Il sync c'è in questa build (per ora solo in sviluppo).
+    /// Il sync c'è: build di sviluppo, oppure anteprime per sviluppatori accese.
     available: bool,
     /// Perché il vault aperto non si può sincronizzare, se non si può.
     blocked: Option<String>,
@@ -780,6 +783,7 @@ fn status(state: &AppState) -> CmdResult<Status> {
         (v.id.clone(), v.min_privacy)
     };
     let dir = crate::vaults::sync_dir(&state.main.lock(), &vault_id);
+    let available = available(state);
     let db = state.db.lock();
     let conn = db.conn();
     let count = |sql: &str| conn.query_row(sql, [], |r| r.get::<_, i64>(0)).map(|n| n as usize).map_err(err);
@@ -789,7 +793,7 @@ fn status(state: &AppState) -> CmdResult<Status> {
         .map(|entries| entries.filter_map(|e| e.ok()).filter(|e| e.path().is_dir()).count())
         .unwrap_or(0);
     Ok(Status {
-        available: available(),
+        available,
         blocked: (min == Privacy::Hardened).then(|| {
             tr(
                 "Un vault blindato non si sincronizza: niente dei suoi meeting deve uscire dal Mac.",
@@ -820,10 +824,14 @@ pub async fn pick_sync_dir(app: AppHandle) -> CmdResult<Option<String>> {
 /// Attiva il sync del vault aperto in una cartella e fa subito il primo giro.
 #[tauri::command]
 pub async fn enable_sync(app: AppHandle, dir: String) -> CmdResult<Status> {
-    if !available() {
-        return Err(tr("Il sync non c'è ancora in questa versione.", "Sync is not available in this version yet.").into());
-    }
     let state = app.state::<AppState>();
+    if !available(&state) {
+        return Err(tr(
+            "Il sync è un'anteprima per sviluppatori: accendila in Impostazioni → Dati e privacy.",
+            "Sync is a developer preview: turn it on in Settings → Data and privacy.",
+        )
+        .into());
+    }
     let (vault_id, min) = {
         let v = state.vault.read();
         (v.id.clone(), v.min_privacy)
@@ -864,6 +872,13 @@ pub async fn sync_now(app: AppHandle) -> CmdResult<Status> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn developer_previews_stay_off_until_the_user_turns_them_on() {
+        assert!(!crate::models::Settings::default().developer_previews);
+        let saved: crate::models::Settings = serde_json::from_str("{}").unwrap();
+        assert!(!saved.developer_previews, "impostazioni salvate prima delle anteprime");
+    }
 
     struct Mac {
         db: Db,

@@ -47,6 +47,10 @@ Granello non cifra un vault: la protezione viene da dove lo metti, per esempio u
 
 **Impostazioni → Audio e registrazioni** ti fa scegliere dove vanno le registrazioni salvate del vault Principale. Quelle fatte prima del cambio restano dov'erano e continuano a funzionare. Gli altri vault tengono sempre le registrazioni nella propria cartella.
 
+## Anteprime per sviluppatori
+
+**Impostazioni → Dati e privacy → Anteprime per sviluppatori** mostra le funzioni non ancora finite. È spenta di default. Per ora ce n'è una: il sync di un vault tra i tuoi Mac attraverso una cartella, in **Impostazioni → Vault**. La cartella di sync contiene note e trascrizioni in chiaro, e un'anteprima può cambiare o sparire da una versione all'altra: provala solo con i dati di esempio.
+
 ## Eliminare
 
 - Eliminare un meeting toglie le sue note, la sua trascrizione e le sue registrazioni salvate.

@@ -323,6 +323,9 @@ pub struct Settings {
     /// Propone i nomi della rubrica del Mac tra i partecipanti e ne prende le email che
     /// mancano. Spento di default: si accende in Impostazioni → Persone, con il permesso di macOS.
     pub contacts_suggestions: bool,
+    /// Mostra anche nelle build pubblicate le funzioni ancora in anteprima (per ora il sync).
+    /// Spento di default; nelle build di sviluppo le anteprime ci sono comunque.
+    pub developer_previews: bool,
 }
 
 /// Una registrazione salvata: l'audio di una sessione di registrazione di un meeting.

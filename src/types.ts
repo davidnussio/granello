@@ -45,10 +45,10 @@ export interface Vault {
 }
 
 /**
- * Il sync del vault aperto attraverso una cartella (fase 0: solo nelle build di sviluppo).
+ * Il sync del vault aperto attraverso una cartella (fase 0: anteprima per sviluppatori).
  */
 export interface SyncStatus {
-  /** Il sync c'è in questa build. */
+  /** Il sync c'è: build di sviluppo, oppure anteprime per sviluppatori accese. */
   available: boolean;
   /** Perché il vault aperto non si può sincronizzare, se non si può. */
   blocked: string | null;
@@ -206,6 +206,8 @@ export interface Settings {
   hideDemoCard: boolean;
   /** Propone i nomi della rubrica del Mac tra i partecipanti. Spento di default. */
   contactsSuggestions: boolean;
+  /** Mostra anche nelle build pubblicate le funzioni in anteprima (per ora il sync). */
+  developerPreviews: boolean;
 }
 
 /** Una registrazione salvata: l'audio di una sessione di registrazione di un meeting. */

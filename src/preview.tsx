@@ -334,7 +334,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     return vaults;
   },
   // il sync vive in memoria: serve a vedere la sezione nelle impostazioni
-  sync_status: () => sync,
+  sync_status: () => ({ ...sync, available: Boolean(data.settings.developerPreviews) }),
   pick_sync_dir: () => "/Users/anteprima/Library/Mobile Documents/com~apple~CloudDocs/Granello",
   enable_sync: (a) => {
     sync = { ...sync, dir: a.dir as string, lastSync: Date.now(), devices: 1 };

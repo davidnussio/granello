@@ -375,6 +375,22 @@ export default function SettingsView({
               </div>
             </section>
           )}
+          <section className="card">
+            <h3>{t("Anteprime per sviluppatori")}</h3>
+            <label className="row gap check">
+              <input
+                type="checkbox"
+                checked={s.developerPreviews}
+                onChange={(e) => save({ developerPreviews: e.target.checked })}
+              />
+              <span>{t("Mostra le funzioni ancora in anteprima")}</span>
+            </label>
+            <p className="muted small">
+              {t(
+                "Per ora c'è il sync tra i tuoi Mac, in Impostazioni → Vault. Le anteprime possono cambiare o sparire da una versione all'altra: provale solo con i dati di esempio.",
+              )}
+            </p>
+          </section>
         </>
       )}
     </div>

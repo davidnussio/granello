@@ -80,7 +80,7 @@ export const api = {
   removeVault: (id: string) => invoke<Vault[]>("remove_vault", { id }),
   /** Apre un vault: da qui in poi i comandi leggono e scrivono i suoi meeting. */
   openVault: (id: string) => invoke<Vault[]>("open_vault", { id }),
-  /** Il sync del vault aperto (fase 0: solo nelle build di sviluppo). */
+  /** Il sync del vault aperto (fase 0: anteprima per sviluppatori). */
   syncStatus: () => invoke<SyncStatus>("sync_status"),
   /** Fa scegliere la cartella di sync. null se la scelta viene annullata. */
   pickSyncDir: () => invoke<string | null>("pick_sync_dir"),
