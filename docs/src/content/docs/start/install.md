@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Download Granello for Macs with Apple Silicon, open it the first time, or build it from source.
+description: Download Granello for Macs with Apple Silicon, or build it from source.
 ---
 
 Granello runs on Macs with Apple Silicon (M1 or later) and macOS 13 or later.
@@ -13,15 +13,11 @@ On a Mac, the quickest way:
 brew install --cask davidnussio/tap/granello
 ```
 
-Granello opens straight away, without the Gatekeeper step below.
-
 ## Download
 
-Or get `Granello-<version>-macOS-arm64.dmg` from the [latest release](https://github.com/davidnussio/granello/releases/latest). Recording the other participants from the system audio needs macOS 14.6 or later. Open the DMG and drag Granello to Applications. The app is not signed with an Apple Developer ID yet, so macOS blocks it the first time: open *System Settings → Privacy & Security* and click *Open Anyway*. If macOS says the app is damaged, run this in Terminal:
+Or get `Granello-<version>-macOS-arm64.dmg` from the [latest release](https://github.com/davidnussio/granello/releases/latest). Recording the other participants from the system audio needs macOS 14.6 or later. Open the DMG and drag Granello to Applications.
 
-```bash
-xattr -dr com.apple.quarantine /Applications/Granello.app
-```
+Granello is signed with an Apple Developer ID (dambox Sagl) and notarized by Apple, so macOS opens it straight away, whether it comes from Homebrew or from the DMG.
 
 ## Build from source
 
@@ -46,7 +42,7 @@ scripts/build-ffmpeg.sh
 pnpm tauri build --config src-tauri/tauri.ffmpeg.conf.json
 ```
 
-The build is **not signed** with an Apple Developer ID. On the Mac that built it, it opens normally. Copied to another Mac, Gatekeeper blocks it on first launch.
+A build from source is **not signed** with an Apple Developer ID. On the Mac that built it, it opens normally. Copied to another Mac, Gatekeeper blocks it on first launch.
 
 ## Try it without the backend
 

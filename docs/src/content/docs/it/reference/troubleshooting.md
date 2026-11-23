@@ -30,7 +30,7 @@ I modelli vocali possono ripetere un suggerimento sul silenzio o sul rumore. Gra
 
 ## macOS dice che l'app non può essere aperta
 
-Granello non è ancora firmato con un Developer ID di Apple, quindi macOS lo blocca la prima volta. Apri *Impostazioni di Sistema → Privacy e sicurezza* e fai clic su *Apri comunque*. Se macOS dice che l'app è danneggiata, esegui `xattr -dr com.apple.quarantine /Applications/Granello.app` nel Terminale. Vedi [installazione](/it/start/install/).
+Dalla 0.2.7 i rilasci di Granello sono firmati e notarizzati da Apple, e macOS li apre senza chiedere. Se rifiuta ancora, scarica di nuovo il DMG dall'[ultimo rilascio](https://github.com/davidnussio/granello/releases/latest), oppure esegui `brew upgrade --cask granello`. Una build compilata dal codice non è firmata: Gatekeeper la blocca su ogni Mac diverso da quello che l'ha compilata. Vedi [installazione](/it/start/install/).
 
 ## Le note AI si fermano con un errore sulla dimensione
 
