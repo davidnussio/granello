@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, errorText } from "../api";
 import { t } from "../i18n";
 import type { Project } from "../types";
+import { projectBranch, projectOptions } from "../tree";
 
 /** I colori tra cui scegliere, con il nome che li descrive a chi non li vede. */
 const COLORS: { id: string; css: string; label: () => string }[] = [
@@ -28,14 +29,22 @@ export function ProjectDot({ project }: { project: Pick<Project, "color"> }) {
 interface Props {
   /** Il progetto da modificare; assente = se ne crea uno nuovo. */
   project?: Project;
+  /** Tutti i progetti, per scegliere quello che contiene questo. */
+  projects: Project[];
+  /** Per un progetto nuovo: quello in cui nasce. */
+  parentId?: string;
   onClose: () => void;
   /** Il progetto salvato e l'elenco aggiornato di tutti i progetti. */
   onSaved: (project: Project, all: Project[]) => void;
 }
 
-/** Finestra per creare un progetto o cambiarne nome, colore e descrizione. */
-export default function ProjectDialog({ project, onClose, onSaved }: Props) {
+/** Finestra per creare un progetto o cambiarne nome, colore, descrizione e posizione. */
+export default function ProjectDialog({ project, projects, parentId, onClose, onSaved }: Props) {
   const [name, setName] = useState(project?.name ?? "");
+  const [parent, setParent] = useState(project?.parentId ?? parentId ?? "");
+  // non dentro sé stesso né dentro uno dei suoi sotto-progetti
+  const mine = project ? projectBranch(project.id, projects) : new Set<string>();
+  const places = projectOptions(projects, parent).filter((p) => !mine.has(p.id));
   const [color, setColor] = useState(project?.color ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
   const [busy, setBusy] = useState(false);
@@ -49,7 +58,13 @@ export default function ProjectDialog({ project, onClose, onSaved }: Props) {
     setBusy(true);
     setError("");
     try {
-      const saved = await api.saveProject({ id: project?.id, name, color, description });
+      const saved = await api.saveProject({
+        id: project?.id,
+        name,
+        color,
+        description,
+        parentId: parent || null,
+      });
       onSaved(saved, await api.listProjects());
     } catch (e) {
       setError(errorText(e));
@@ -87,6 +102,17 @@ export default function ProjectDialog({ project, onClose, onSaved }: Props) {
             onChange={(e) => setName(e.target.value)}
             placeholder={t("Nome del progetto")}
           />
+        </label>
+        <label className="field">
+          <span>{t("Dentro")}</span>
+          <select value={parent} onChange={(e) => setParent(e.target.value)}>
+            <option value="">{t("Nessun progetto (primo livello)")}</option>
+            {places.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
         </label>
         <div className="field">
           <span id="project-color-label">{t("Colore")}</span>

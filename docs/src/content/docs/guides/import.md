@@ -22,10 +22,9 @@ Each imported note gets the `#obsidian` tag and the minimum privacy of the open 
 | `[[Note#Heading]]`, `![[Note]]` | A link to the note (Granello has no links to a heading, and does not embed a note in another) |
 | `![[image.png]]`, `![](image.png)` | An image, copied into the vault's attachments |
 | `![[file.pdf]]`, `[text](file.pdf)` | An attachment, copied |
-| A top-level folder | The project of the notes inside it, created if it is not there yet |
-| Deeper folders | A tag: `Work/Clients/Acme.md` goes into the project "Work" with the tag `clients` |
-| PARA folders (`Projects`, `Areas`, `Resources`, `Archive`, also numbered like `1 - Projects`) | The folder below is the project and the category a tag: `Projects/Acme/Call.md` goes into "Acme" with the tag `projects`. Projects that come only from `Archive` are created archived |
-| Folders starting with `_` (`_daily`) | Only a tag (`daily`), never a project |
+| A folder | A project, created if it is not there yet. Each subfolder is a project inside the one above: `Work/Clients/Acme.md` goes into "Clients", inside "Work" |
+| PARA folders (`Projects`, `Areas`, `Resources`, `Archive`, also numbered like `1 - Projects`) | Left out of the tree: `Projects/dambox/bizcard/Call.md` goes into "bizcard", inside "dambox". Projects that come only from `Archive` are created archived |
+| Folders starting with `_` (`_daily`) | Never a project: from there down the folders become a tag (`_fit/_daily` → `fit/daily`) |
 | The `progetto` or `project` property | The note's project, in place of the folder |
 | The `partecipanti`, `attendees` or `participants` property | The note's participants, added to [People](/guides/people/) |
 | `tags` and `#tags` in the text | Tags |
@@ -53,4 +52,4 @@ Importing the same folder again brings in only what is new: notes already import
 
 ## Undo an import
 
-Every import stays listed under **Past imports**. **Undo import** deletes the notes and files it brought in, even if you changed them afterwards, and the projects and people it created if they are left empty. Projects and people you already had stay.
+Every import stays listed under **Past imports**. **Undo import** deletes the notes and files it brought in, even if you changed them afterwards, and the projects and people it created if they are left empty (a project that still holds another one stays). Projects and people you already had stay.

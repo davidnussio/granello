@@ -24,7 +24,13 @@ A project collects the notes that belong together: a client, a product, a piece 
 
 A note belongs to one project at most. To put a note in a project, open it and choose the project at the top right of the header, above the copy, print and delete buttons; from there you can also create a new project. To move several notes at once, select them in the Library and choose the project in the preview.
 
-Hover a project to edit it (✎), archive it when it is done (⤓) or delete it (×). Archiving and deleting keep the notes: an archived project moves under **Archived**, and the notes of a deleted project are left without a project.
+A project can sit inside another one: a client with its projects, an area with its topics. Choose **New project inside…** from a project's menu to create one inside it, or choose **Inside** when you create or edit a project. In the Projects column the triangle opens and closes a project's branch (→ and ← do the same with the keyboard), and picking a project shows its notes together with those of the projects inside it. In a note's header the project shows its full path, like `Clients › Nord`.
+
+Each project has a menu: press **⋯** on a project (it shows when you hover it or pick it) or right-click it. From there you can create a project inside it, edit it, archive it when it is done or delete it; deleting asks for a second click. Archiving and deleting keep the notes: an archived project moves under **Archived** together with the projects inside it, and the notes of a deleted project are left without a project, while the projects inside it move up one level.
+
+## Tags with `/`
+
+A tag written with `/`, like `team/standup`, sits under `team` in the Tags column, as in Obsidian. Picking `team` shows the notes of every tag that starts with `team/`, and of `team` itself.
 
 Projects made with earlier versions, when a project was a promoted tag, are converted on the first launch: each one keeps its name and its notes, and the tag stays on the notes as a plain tag.
 

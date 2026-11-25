@@ -392,6 +392,7 @@ pub fn save_project(
     name: String,
     color: String,
     description: String,
+    parent_id: Option<String>,
 ) -> CmdResult<Project> {
     let name: String = name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
     if name.is_empty() {
@@ -400,7 +401,8 @@ pub fn save_project(
     // un colore che non si conosce vale come nessuno: il progetto prende quello predefinito
     let color = if PROJECT_COLORS.contains(&color.as_str()) { color.as_str() } else { "" };
     let description: String = description.trim().chars().take(600).collect();
-    state.db.lock().save_project(id.as_deref().unwrap_or(""), &name, color, &description).map_err(err)
+    let parent = parent_id.filter(|p| !p.is_empty());
+    state.db.lock().save_project(id.as_deref().unwrap_or(""), &name, color, &description, parent.as_deref()).map_err(err)
 }
 
 /// Archivia un progetto chiuso, o lo riporta tra quelli attivi.

@@ -15,7 +15,15 @@ fn now_ms() -> i64 {
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
 pub(crate) const MIGRATIONS: &[&str] =
-    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12];
+    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13];
+
+/// Progetti dentro altri progetti (`dambox › bizcard`). NULL = un progetto di primo livello, come
+/// pure un genitore che qui non c'è (cancellato, o non ancora arrivato dal sync). Niente chiave
+/// esterna: il sync può portare un figlio prima del genitore.
+const SCHEMA_V13: &str = r#"
+ALTER TABLE projects ADD COLUMN parent_id TEXT;
+CREATE INDEX idx_projects_parent ON projects(parent_id);
+"#;
 
 /// Import da altre app (Obsidian) e file senza nota. Un import ricorda da quale cartella è
 /// partito e cosa ha creato, per saltare le note già importate e per poterlo annullare. I file
@@ -630,18 +638,24 @@ impl Db {
             self.upsert_people(&m.attendees.iter().map(|a| (a.clone(), None)).collect::<Vec<_>>())?;
             self.reindex(&m.id)?;
         }
-        // i progetti di esempio portano il nome di un tag: ci entrano i meeting con quel tag
-        for (names, archived) in [(&data.projects, false), (&data.archived, true)] {
-            for name in names {
-                self.conn.execute(
-                    "INSERT OR IGNORE INTO projects (id, name, archived, created_at) VALUES (?1, ?2, ?3, ?4)",
-                    params![uuid::Uuid::new_v4().to_string(), name, archived, now_ms()],
-                )?;
+        // i progetti di esempio portano il nome di un tag: ci entrano i meeting con quel tag.
+        // `clienti/cliente-nord` mette il progetto dentro `clienti`
+        let mut leaves: Vec<String> = Vec::new();
+        for (paths, archived) in [(&data.projects, false), (&data.archived, true)] {
+            for path in paths {
+                let mut parent: Option<String> = None;
+                for name in path.split('/') {
+                    self.conn.execute(
+                        "INSERT OR IGNORE INTO projects (id, name, archived, created_at, parent_id) VALUES (?1, ?2, ?3, ?4, ?5)",
+                        params![uuid::Uuid::new_v4().to_string(), name, archived, now_ms(), parent],
+                    )?;
+                    parent = Some(self.conn.query_row("SELECT id FROM projects WHERE name = ?1", [name], |r| r.get(0))?);
+                }
+                leaves.extend(path.rsplit('/').next().map(String::from));
             }
         }
         for m in &data.meetings {
-            let names = data.projects.iter().chain(&data.archived);
-            if let Some(name) = m.tags.iter().find(|t| names.clone().any(|n| n == *t)) {
+            if let Some(name) = m.tags.iter().find(|t| leaves.contains(t)) {
                 self.conn.execute(
                     "UPDATE meetings SET project_id = (SELECT id FROM projects WHERE name = ?1) WHERE id = ?2",
                     params![name, m.id],
@@ -666,12 +680,16 @@ impl Db {
         for id in &ids {
             self.delete_meeting_rows(id)?;
         }
-        for name in data.projects.iter().chain(&data.archived) {
-            self.conn.execute(
-                "DELETE FROM projects WHERE name = ?1
-                 AND NOT EXISTS (SELECT 1 FROM meetings m WHERE m.project_id = projects.id)",
-                [name],
-            )?;
+        // dai sotto-progetti in su: uno con dentro altro dell'utente resta
+        for path in data.projects.iter().chain(&data.archived) {
+            for name in path.split('/').rev() {
+                self.conn.execute(
+                    "DELETE FROM projects WHERE name = ?1
+                     AND NOT EXISTS (SELECT 1 FROM meetings m WHERE m.project_id = projects.id)
+                     AND NOT EXISTS (SELECT 1 FROM projects c WHERE c.parent_id = projects.id)",
+                    [name],
+                )?;
+            }
         }
         for name in data.people() {
             self.conn.execute(
@@ -689,7 +707,7 @@ impl Db {
     /// I progetti in ordine alfabetico.
     pub fn list_projects(&self) -> Result<Vec<Project>> {
         let mut stmt =
-            self.conn.prepare("SELECT id, name, color, description, archived FROM projects ORDER BY name")?;
+            self.conn.prepare("SELECT id, name, color, description, archived, parent_id FROM projects ORDER BY name")?;
         let rows = stmt.query_map([], |r| {
             Ok(Project {
                 id: r.get(0)?,
@@ -697,14 +715,54 @@ impl Db {
                 color: r.get(2)?,
                 description: r.get(3)?,
                 archived: r.get(4)?,
+                parent_id: r.get(5)?,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
+    /// Il progetto e quelli sopra, dal primo livello: `dambox`, `bizcard`. Un giro (che solo
+    /// un sync andato storto potrebbe lasciare) si ferma.
+    fn project_path(&self, id: &str) -> Result<Vec<String>> {
+        let mut names = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        let mut next = Some(id.to_string());
+        while let Some(id) = next.take() {
+            if !seen.insert(id.clone()) {
+                break;
+            }
+            let row: Option<(String, Option<String>)> = self
+                .conn
+                .query_row("SELECT name, parent_id FROM projects WHERE id = ?1", [&id], |r| Ok((r.get(0)?, r.get(1)?)))
+                .optional()?;
+            let Some((name, parent)) = row else { break };
+            names.push(name);
+            next = parent;
+        }
+        names.reverse();
+        Ok(names)
+    }
+
+    /// Il progetto e tutti quelli che contiene, a ogni livello.
+    pub(crate) fn project_branch(&self, id: &str) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare(
+            "WITH RECURSIVE branch(id) AS (SELECT ?1 UNION SELECT p.id FROM projects p JOIN branch b ON p.parent_id = b.id)
+             SELECT id FROM branch",
+        )?;
+        let rows = stmt.query_map([id], |r| r.get(0))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     /// Crea un progetto (`id` vuoto) o ne cambia nome, colore e descrizione. Due progetti non
     /// possono avere lo stesso nome, senza distinguere le maiuscole.
-    pub fn save_project(&self, id: &str, name: &str, color: &str, description: &str) -> Result<Project> {
+    pub fn save_project(
+        &self,
+        id: &str,
+        name: &str,
+        color: &str,
+        description: &str,
+        parent: Option<&str>,
+    ) -> Result<Project> {
         let taken: Option<String> = self
             .conn
             .query_row("SELECT id FROM projects WHERE name = ?1", [name], |r| r.get(0))
@@ -715,16 +773,35 @@ impl Db {
                 "A project named \"{name}\" already exists. Choose another name."
             ));
         }
+        if let Some(parent) = parent {
+            let exists: bool =
+                self.conn.query_row("SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?1)", [parent], |r| r.get(0))?;
+            if !exists {
+                return Err(crate::tra!(
+                    "Il progetto che dovrebbe contenerlo non c'è più. Scegline un altro.",
+                    "The project meant to contain it no longer exists. Choose another one."
+                ));
+            }
+            if !id.is_empty() && self.project_branch(id)?.iter().any(|p| p == parent) {
+                return Err(crate::tra!(
+                    "Un progetto non può stare dentro sé stesso o dentro uno dei suoi sotto-progetti. Scegli un altro progetto.",
+                    "A project cannot sit inside itself or one of its sub-projects. Choose another project."
+                ));
+            }
+        }
         let id = if id.is_empty() { uuid::Uuid::new_v4().to_string() } else { id.to_string() };
         let tx = self.conn.unchecked_transaction()?;
         self.conn.execute(
-            "INSERT INTO projects (id, name, color, description, created_at) VALUES (?1, ?2, ?3, ?4, ?5)
+            "INSERT INTO projects (id, name, color, description, created_at, parent_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color,
-             description = excluded.description",
-            params![id, name, color, description, now_ms()],
+             description = excluded.description, parent_id = excluded.parent_id",
+            params![id, name, color, description, now_ms(), parent],
         )?;
-        // il nome del progetto è nell'indice di ricerca dei suoi meeting
-        self.reindex_project(&id)?;
+        // i nomi del progetto e di quelli sopra sono nell'indice di ricerca dei meeting, anche
+        // di quelli nei sotto-progetti
+        for p in self.project_branch(&id)? {
+            self.reindex_project(&p)?;
+        }
         tx.commit()?;
         self.list_projects()?
             .into_iter()
@@ -737,13 +814,22 @@ impl Db {
         Ok(())
     }
 
-    /// Elimina il progetto: i suoi meeting restano, senza progetto.
+    /// Elimina il progetto: i suoi meeting restano, senza progetto, e i suoi sotto-progetti
+    /// salgono di un livello.
     pub fn delete_project(&self, id: &str) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
+        let branch = self.project_branch(id)?;
+        self.conn.execute(
+            "UPDATE projects SET parent_id = (SELECT parent_id FROM projects WHERE id = ?1) WHERE parent_id = ?1",
+            [id],
+        )?;
         let ids = self.project_meetings(id)?;
         self.conn.execute("DELETE FROM projects WHERE id = ?1", [id])?;
         for m in ids {
             self.reindex(&m)?;
+        }
+        for p in branch.iter().filter(|p| *p != id) {
+            self.reindex_project(p)?;
         }
         tx.commit()?;
         Ok(())
@@ -1147,12 +1233,9 @@ impl Db {
             .map(|s| s.text)
             .collect::<Vec<_>>()
             .join(" ");
-        let project: String = match &m.project_id {
-            Some(p) => self
-                .conn
-                .query_row("SELECT name FROM projects WHERE id = ?1", [p], |r| r.get(0))
-                .optional()?
-                .unwrap_or_default(),
+        // il progetto con quelli sopra: cercando `dambox` si trovano anche le note di `bizcard`
+        let project = match &m.project_id {
+            Some(p) => self.project_path(p)?.join(" "),
             None => String::new(),
         };
         self.conn.execute("DELETE FROM meetings_fts WHERE meeting_id = ?1", [id])?;
@@ -1355,34 +1438,48 @@ impl Db {
             "INSERT INTO imports (id, source, root, created_at, report) VALUES (?1, ?2, ?3, ?4, ?5)",
             params![id, source, root, now, report.to_string()],
         )?;
+        // ogni livello del percorso è un progetto: uno con lo stesso nome che c'è già si usa
+        // com'è (anche se sta altrove), gli altri nascono dentro quello sopra
         let mut created: Vec<String> = Vec::new();
         let mut project_ids: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-        for name in notes.iter().filter_map(|n| n.project.as_deref()) {
-            if project_ids.contains_key(&name.to_lowercase()) {
-                continue;
+        for path in notes.iter().map(|n| &n.project) {
+            let mut parent: Option<String> = None;
+            for depth in 1..=path.len() {
+                let key = path[..depth].join("/").to_lowercase();
+                let name = &path[depth - 1];
+                let pid = match project_ids.get(&key) {
+                    Some(pid) => pid.clone(),
+                    None => {
+                        let existing: Option<String> = self
+                            .conn
+                            .query_row("SELECT id FROM projects WHERE name = ?1", [name], |r| r.get(0))
+                            .optional()?;
+                        let pid = match existing {
+                            Some(pid) => pid,
+                            None => {
+                                let pid = uuid::Uuid::new_v4().to_string();
+                                // archiviato solo se tutte le sue note venivano dall'archivio
+                                let archived = notes
+                                    .iter()
+                                    .filter(|n| {
+                                        n.project.len() >= depth
+                                            && n.project[..depth].join("/").to_lowercase() == key
+                                    })
+                                    .all(|n| n.archived_project);
+                                self.conn.execute(
+                                    "INSERT INTO projects (id, name, archived, created_at, parent_id) VALUES (?1, ?2, ?3, ?4, ?5)",
+                                    params![pid, name, archived, now, parent],
+                                )?;
+                                created.push(pid.clone());
+                                pid
+                            }
+                        };
+                        project_ids.insert(key, pid.clone());
+                        pid
+                    }
+                };
+                parent = Some(pid);
             }
-            let existing: Option<String> = self
-                .conn
-                .query_row("SELECT id FROM projects WHERE name = ?1", [name], |r| r.get(0))
-                .optional()?;
-            let pid = match existing {
-                Some(pid) => pid,
-                None => {
-                    let pid = uuid::Uuid::new_v4().to_string();
-                    // archiviato solo se tutte le sue note venivano dall'archivio
-                    let archived = notes
-                        .iter()
-                        .filter(|n| n.project.as_deref().is_some_and(|p| p.eq_ignore_ascii_case(name)))
-                        .all(|n| n.archived_project);
-                    self.conn.execute(
-                        "INSERT INTO projects (id, name, archived, created_at) VALUES (?1, ?2, ?3, ?4)",
-                        params![pid, name, archived, now],
-                    )?;
-                    created.push(pid.clone());
-                    pid
-                }
-            };
-            project_ids.insert(name.to_lowercase(), pid);
         }
         self.conn.execute(
             "UPDATE imports SET projects = ?1 WHERE id = ?2",
@@ -1402,7 +1499,7 @@ impl Db {
         )?;
         for n in notes {
             let mid = uuid::Uuid::new_v4().to_string();
-            let project = n.project.as_deref().and_then(|p| project_ids.get(&p.to_lowercase()));
+            let project = project_ids.get(&n.project.join("/").to_lowercase());
             self.conn.execute(
                 "INSERT INTO meetings (id, title, created_at, updated_at, attendees, tags, notes_md, privacy, project_id)
                  VALUES (?1, ?2, ?3, ?4, ?9, ?5, ?6, ?7, ?8)",
@@ -1493,10 +1590,12 @@ impl Db {
                 [&name],
             )?;
         }
-        for pid in serde_json::from_str::<Vec<String>>(&projects.unwrap_or_default()).unwrap_or_default() {
+        // dai sotto-progetti in su: un progetto se ne va solo se non ha più note né sotto-progetti
+        for pid in serde_json::from_str::<Vec<String>>(&projects.unwrap_or_default()).unwrap_or_default().iter().rev() {
             self.conn.execute(
-                "DELETE FROM projects WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM meetings WHERE project_id = ?1)",
-                [&pid],
+                "DELETE FROM projects WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM meetings WHERE project_id = ?1)
+                 AND NOT EXISTS (SELECT 1 FROM projects WHERE parent_id = ?1)",
+                [pid],
             )?;
         }
         self.conn.execute("DELETE FROM imports WHERE id = ?1", [id])?;
@@ -1873,7 +1972,7 @@ mod tests {
     fn demo_data_comes_and_goes_without_touching_real_meetings() {
         let db = Db::open_in_memory().unwrap();
         let mine = db.create_meeting("Il mio meeting", None, &["Marco Bianchi".into()], None).unwrap();
-        let project = db.save_project("", "Mio", "", "").unwrap();
+        let project = db.save_project("", "Mio", "", "", None).unwrap();
         db.set_meetings_project(std::slice::from_ref(&mine.id), Some(&project.id)).unwrap();
         let before_people = db.list_people().unwrap().len();
 
@@ -1886,8 +1985,12 @@ mod tests {
         assert_eq!(db.segments(&first.id).unwrap().len(), first.segments.len());
         assert!(db.list_projects().unwrap().len() > 1);
         // i meeting di esempio stanno nel progetto che porta il nome di un loro tag
-        let demo_project = db.list_projects().unwrap().into_iter().find(|p| p.name == data.projects[0]).unwrap();
+        let projects = db.list_projects().unwrap();
+        let demo_project = projects.iter().find(|p| p.name == "cliente-nord").unwrap();
         assert!(db.list_meetings(None).unwrap().iter().any(|m| m.project_id.as_deref() == Some(&demo_project.id)));
+        // `clienti/cliente-nord`: il progetto sta dentro `clienti`
+        let clienti = projects.iter().find(|p| p.name == "clienti").unwrap();
+        assert_eq!(demo_project.parent_id.as_deref(), Some(clienti.id.as_str()));
 
         assert_eq!(db.remove_demo(&data).unwrap(), data.meetings.len());
         assert_eq!(db.demo_count().unwrap(), 0);
@@ -1973,15 +2076,15 @@ mod tests {
     #[test]
     fn projects_hold_meetings_one_each() {
         let db = Db::open_in_memory().unwrap();
-        let nord = db.save_project("", "Cliente Nord", "blue", "Rinnovo del contratto").unwrap();
-        let app = db.save_project("", "App mobile", "", "").unwrap();
+        let nord = db.save_project("", "Cliente Nord", "blue", "Rinnovo del contratto", None).unwrap();
+        let app = db.save_project("", "App mobile", "", "", None).unwrap();
         assert_eq!((nord.color.as_str(), nord.description.as_str(), nord.archived), ("blue", "Rinnovo del contratto", false));
         // in ordine alfabetico
         let names: Vec<String> = db.list_projects().unwrap().into_iter().map(|p| p.name).collect();
         assert_eq!(names, vec!["App mobile", "Cliente Nord"]);
         // due progetti non possono avere lo stesso nome, nemmeno con altre maiuscole
-        assert!(db.save_project("", "cliente nord", "", "").is_err());
-        assert!(db.save_project(&app.id, "Cliente Nord", "", "").is_err());
+        assert!(db.save_project("", "cliente nord", "", "", None).is_err());
+        assert!(db.save_project(&app.id, "Cliente Nord", "", "", None).is_err());
 
         let a = db.create_meeting("Prezzi", None, &[], None).unwrap();
         let b = db.create_meeting("Roadmap", None, &[], None).unwrap();
@@ -1993,7 +2096,7 @@ mod tests {
         assert_eq!((project(&a.id), project(&b.id)), (Some(nord.id.clone()), Some(app.id.clone())));
         // il nome del progetto si trova con la ricerca, anche dopo averlo cambiato
         assert_eq!(db.list_meetings(Some("nord")).unwrap().len(), 1);
-        let renamed = db.save_project(&nord.id, "Cliente Sud", "blue", "").unwrap();
+        let renamed = db.save_project(&nord.id, "Cliente Sud", "blue", "", None).unwrap();
         assert_eq!(renamed.id, nord.id);
         assert_eq!(db.list_meetings(Some("nord")).unwrap().len(), 0);
         assert_eq!(db.list_meetings(Some("sud")).unwrap()[0].id, a.id);
@@ -2007,6 +2110,34 @@ mod tests {
         db.set_meetings_project(std::slice::from_ref(&b.id), None).unwrap();
         assert_eq!(project(&b.id), None);
         assert_eq!(db.list_projects().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn projects_sit_inside_other_projects() {
+        let db = Db::open_in_memory().unwrap();
+        let dambox = db.save_project("", "dambox", "", "", None).unwrap();
+        let bizcard = db.save_project("", "bizcard", "", "", Some(&dambox.id)).unwrap();
+        let cards = db.save_project("", "Tessere", "", "", Some(&bizcard.id)).unwrap();
+        assert_eq!(bizcard.parent_id.as_deref(), Some(dambox.id.as_str()));
+        // né dentro sé stesso né dentro un suo sotto-progetto, né dentro uno che non c'è
+        assert!(db.save_project(&dambox.id, "dambox", "", "", Some(&dambox.id)).is_err());
+        assert!(db.save_project(&dambox.id, "dambox", "", "", Some(&cards.id)).is_err());
+        assert!(db.save_project("", "Altro", "", "", Some("nessuno")).is_err());
+
+        // cercando il progetto sopra si trovano le note di quelli sotto, anche dopo un nuovo nome
+        let m = db.create_meeting("Demo", None, &[], None).unwrap();
+        db.set_meetings_project(std::slice::from_ref(&m.id), Some(&cards.id)).unwrap();
+        assert_eq!(db.list_meetings(Some("dambox")).unwrap().len(), 1);
+        db.save_project(&dambox.id, "Studio", "", "", None).unwrap();
+        assert_eq!(db.list_meetings(Some("dambox")).unwrap().len(), 0);
+        assert_eq!(db.list_meetings(Some("studio")).unwrap().len(), 1);
+
+        // eliminando bizcard, Tessere sale sotto Studio e la nota resta dov'era
+        db.delete_project(&bizcard.id).unwrap();
+        let parent = |id: &str| db.list_projects().unwrap().into_iter().find(|p| p.id == id).unwrap().parent_id;
+        assert_eq!(parent(&cards.id), Some(dambox.id.clone()));
+        assert_eq!(db.get_meeting(&m.id).unwrap().unwrap().project_id, Some(cards.id.clone()));
+        assert_eq!(db.list_meetings(Some("bizcard")).unwrap().len(), 0);
     }
 
     #[test]
@@ -2140,7 +2271,7 @@ mod tests {
         let db = Db::open(&path).unwrap();
         let project = db.list_projects().unwrap().remove(0);
         assert_eq!((project.name.as_str(), project.color.as_str(), project.description.as_str()), ("Lancio", "", "Primavera"));
-        assert_eq!(db.save_project("p", "Lancio", "teal", "Primavera").unwrap().color, "teal");
+        assert_eq!(db.save_project("p", "Lancio", "teal", "Primavera", None).unwrap().color, "teal");
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -2394,20 +2525,20 @@ mod tests {
     #[test]
     fn saves_and_undoes_an_import() {
         let db = Db::open_in_memory().unwrap();
-        let existing = db.save_project("", "Lavoro", "blue", "").unwrap();
-        let note = |title: &str, project: Option<&str>, path: &str| NewNote {
+        let existing = db.save_project("", "Lavoro", "blue", "", None).unwrap();
+        let note = |title: &str, project: &[&str], path: &str| NewNote {
             title: title.into(),
             notes_md: format!("{title} con ![](attachments/{path}.png)"),
             tags: vec!["obsidian".into()],
             attendees: vec!["Giulia Ferri".into()],
-            project: project.map(String::from),
+            project: project.iter().map(|p| p.to_string()).collect(),
             archived_project: false,
             created_at: 1_000,
             updated_at: 2_000,
             source_path: format!("{path}.md"),
             source_hash: "h".into(),
         };
-        let notes = [note("Acme", Some("lavoro"), "a"), note("Diario", Some("Personale"), "b"), note("Sciolta", None, "c")];
+        let notes = [note("Acme", &["lavoro"], "a"), note("Diario", &["Personale", "2024"], "b"), note("Sciolta", &[], "c")];
         let files = [NewFile {
             path: "attachments/x.pdf".into(),
             name: "vecchio.pdf".into(),
@@ -2427,7 +2558,12 @@ mod tests {
         assert_eq!(full.privacy, Privacy::Audio);
         assert_eq!(full.attendees, ["Giulia Ferri"]);
         assert_eq!(db.search_people("Giulia", 5).unwrap().len(), 1);
-        assert_eq!(db.list_projects().unwrap().len(), 2, "Personale è nuovo");
+        let projects = db.list_projects().unwrap();
+        assert_eq!(projects.len(), 3, "Personale e 2024 sono nuovi");
+        let id = |name: &str| projects.iter().find(|p| p.name == name).unwrap();
+        assert_eq!(id("2024").parent_id.as_deref(), Some(id("Personale").id.as_str()), "2024 sta dentro Personale");
+        let diario = list.iter().find(|m| m.title == "Diario").unwrap();
+        assert_eq!(diario.project_id.as_deref(), Some(id("2024").id.as_str()));
         assert_eq!(db.list_meetings(Some("Diario")).unwrap().len(), 1, "le note importate si cercano");
         assert_eq!(db.loose_files().unwrap()[0].name, "vecchio.pdf");
         assert!(db.attachment_in_use("attachments/x.pdf").unwrap(), "un file senza nota resta in uso");

@@ -4954,3 +4954,84 @@ button.lib-row {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* progetti e tag in albero: il rientro dice il livello, il triangolo apre e chiude il ramo */
+.lib-row.tree {
+  padding-left: calc(var(--depth, 0) * 14px);
+}
+.lib-row.tree .lib-row-main {
+  padding-left: 2px;
+}
+.lib-twisty {
+  flex: none;
+  width: 18px;
+  height: 22px;
+  margin-left: 3px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+button.lib-twisty:hover {
+  background: var(--card);
+  color: var(--text);
+}
+.lib-twisty svg {
+  transition: transform 0.12s ease;
+}
+.lib-twisty[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+/* un solo pulsante ⋯ per le azioni su un progetto: sul passaggio, sulla voce scelta e mentre il menu è aperto */
+.lib-menu-btn {
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 6px;
+  letter-spacing: 0.5px;
+}
+.lib-row.on .lib-menu-btn,
+.lib-menu-btn.open {
+  display: inline-block;
+}
+
+/* menu sopra la pagina (pulsante ⋯ o clic destro) */
+.menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 190px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.menu-item {
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+  outline: none;
+}
+.menu-item.danger {
+  color: var(--rec);
+}
+.menu-item.danger:hover,
+.menu-item.danger:focus-visible,
+.menu-item.asking {
+  background: color-mix(in srgb, var(--rec) 14%, transparent);
+  color: var(--rec);
+}

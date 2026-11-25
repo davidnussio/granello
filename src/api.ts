@@ -128,8 +128,13 @@ export const api = {
   removeDemo: () => invoke<number>("remove_demo"),
   listProjects: () => invoke<Project[]>("list_projects"),
   /** Crea un progetto (senza `id`) o ne cambia nome, colore e descrizione. */
-  saveProject: (project: { id?: string; name: string; color: string; description: string }) =>
-    invoke<Project>("save_project", project),
+  saveProject: (project: {
+    id?: string;
+    name: string;
+    color: string;
+    description: string;
+    parentId: string | null;
+  }) => invoke<Project>("save_project", project),
   /** Archivia un progetto chiuso (true) o lo riporta tra quelli attivi (false). */
   archiveProject: (id: string, archived: boolean) => invoke<Project[]>("archive_project", { id, archived }),
   /** Elimina un progetto: i suoi meeting restano, senza progetto. */

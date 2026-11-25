@@ -3,7 +3,7 @@
 //! `demo/en.txt`, in un formato semplice da leggere e modificare a mano:
 //!
 //! ```text
-//! projects: cliente-nord, app-mobile
+//! projects: clienti/cliente-nord, app-mobile   (`clienti/…`: un progetto dentro un altro)
 //! archived: sito-2025
 //!
 //! === demo-rinnovo
@@ -56,7 +56,8 @@ pub struct DemoMeeting {
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DemoData {
-    /// Tag da mostrare come progetti attivi.
+    /// Tag da mostrare come progetti attivi. `clienti/cliente-nord`: il progetto del tag
+    /// `cliente-nord` sta dentro il progetto `clienti`.
     pub projects: Vec<String>,
     /// Tag da mostrare come progetti archiviati.
     pub archived: Vec<String>,
@@ -262,8 +263,9 @@ mod tests {
                 assert!(m.segments.windows(2).all(|w| w[0].start_ms < w[1].start_ms), "{} trascrizione non in ordine", m.id);
             }
             // ogni progetto ha almeno un meeting, altrimenti nella Libreria resta vuoto
-            for tag in data.projects.iter().chain(&data.archived) {
-                assert!(data.meetings.iter().any(|m| m.tags.contains(tag)), "nessun meeting per {tag} ({lang:?})");
+            for path in data.projects.iter().chain(&data.archived) {
+                let tag = path.rsplit('/').next().unwrap().to_string();
+                assert!(data.meetings.iter().any(|m| m.tags.contains(&tag)), "nessun meeting per {tag} ({lang:?})");
             }
         }
     }

@@ -699,11 +699,16 @@ const en: Record<string, string> = {
   "A cosa serve questo progetto": "What this project is for",
   Crea: "Create",
   "+ Nuovo progetto": "+ New project",
-  "Cambia nome, colore e descrizione": "Change name, color and description",
-  "Elimina il progetto {name}": "Delete the project {name}",
-  "Elimina il progetto: le sue note restano, senza progetto":
-    "Delete the project: its notes stay, without a project",
-  "Elimina?": "Delete?",
+  "Azioni sul progetto": "Project actions",
+  "Azioni sul progetto {name}": "Actions on the project {name}",
+  "Nuovo progetto dentro…": "New project inside…",
+  "Modifica…": "Edit…",
+  "Elimina…": "Delete…",
+  "Elimina: le note restano": "Delete: the notes stay",
+  Dentro: "Inside",
+  "Nessun progetto (primo livello)": "No project (top level)",
+  "Apri {name}": "Open {name}",
+  "Chiudi {name}": "Close {name}",
   "Nessun progetto: creane uno con + Nuovo progetto.": "No projects: create one with + New project.",
   "Nessuna nota qui: apri una nota e scegli questo progetto, in alto a destra.":
     "No notes here: open a note and choose this project, at the top right.",
@@ -716,8 +721,6 @@ const en: Record<string, string> = {
     "⌘-click or Shift-click other notes: select them together to give them a project or a tag.",
   "Progetto di questa nota": "Project of this note",
   "Il progetto in cui sta questa nota": "The project this note belongs to",
-  "Riporta il progetto tra quelli attivi": "Bring the project back among the active ones",
-  "Archivia: il progetto è chiuso, le note restano": "Archive: the project is closed, its notes stay",
   Riattiva: "Reactivate",
   Archivia: "Archive",
   "Nessun tag: aggiungine uno a una nota, sotto il titolo.": "No tags: add one to a note, below its title.",
@@ -974,7 +977,8 @@ const en: Record<string, string> = {
   "file usati dalle note, copiati come allegati": "files used by the notes, copied as attachments",
   "file che nessuna nota usa, in Libreria → File": "files no note uses, in Library → Files",
   "note già importate, saltate": "notes already imported, skipped",
-  "Progetti dalle cartelle di primo livello:": "Projects from the top-level folders:",
+  "Progetti dalle cartelle (ogni sottocartella è un progetto dentro quello sopra):":
+    "Projects from the folders (each subfolder is a project inside the one above):",
   "{n} link portano a note che non ci sono: restano link, segnati come mancanti, e funzionano appena crei una nota con quel titolo.":
     "{n} links point to notes that don't exist: they stay links, marked as missing, and work as soon as you create a note with that title.",
   "{n} note cambiate in Obsidian dopo l'ultimo import: non vengono aggiornate":
