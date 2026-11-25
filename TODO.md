@@ -43,8 +43,6 @@ and "Undo import" deletes everything it created.
     done (`[/]`, `[-]`, `[>]`…) become open tasks. `.canvas` files are skipped.
   - Importing the same folder again skips the notes already imported (by path), and the
     report lists the ones changed in Obsidian since then.
-- [ ] Editor, found with a real vault: a URL with `_` gains a `\` at every save (the plain
-  URL link escapes inside `<…>`); an image inside a list item moves a blank line at every save.
 - [ ] More sources later (Notion export, Apple Notes, plain Markdown folders).
 - [ ] **Link between notes** `[[Title]]`: a pill that opens the note with that title, also
   inserted by hand with `[[`; renaming a note updates the links to it; a link to a missing
