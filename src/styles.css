@@ -145,6 +145,10 @@ button:disabled {
 .settings > .card:only-of-type > h3 {
   display: none;
 }
+/* nella pagina degli import il titolo è la fonte (Obsidian), non ripete la pagina */
+.settings > .card.import-source > h3 {
+  display: block;
+}
 /* vault: l'icona accanto a Impostazioni che apre la scelta, e l'elenco nelle impostazioni */
 .vault-switch {
   position: relative;
@@ -1060,7 +1064,28 @@ h3 {
   border: none;
   padding: 0;
 }
-.ProseMirror :is(.mention, .date-pill, .math-inline).ProseMirror-selectednode {
+/* link a un'altra nota: [[Titolo]] */
+.ProseMirror .note-link {
+  color: var(--accent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  cursor: pointer;
+  font-weight: 500;
+}
+.ProseMirror .note-link::before {
+  content: "↗ ";
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+.ProseMirror .note-link:hover {
+  border-bottom-color: var(--accent);
+}
+/* la nota non c'è (ancora): tratteggiato e attenuato */
+.ProseMirror .note-link.missing {
+  color: var(--muted);
+  border-bottom-style: dashed;
+  border-bottom-color: var(--muted);
+}
+.ProseMirror :is(.mention, .date-pill, .math-inline, .note-link).ProseMirror-selectednode {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
@@ -4618,6 +4643,101 @@ button.lib-row {
   display: none;
 }
 
+/* Libreria → File: schede per tipo, poi un file per riga */
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+}
+.files-kinds {
+  align-self: flex-start;
+}
+.files-count {
+  margin-left: 4px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.files-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  overflow: hidden;
+}
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  min-height: 44px;
+}
+.file-row + .file-row {
+  border-top: 1px solid var(--line);
+}
+.file-row.missing {
+  opacity: 0.6;
+}
+.file-thumb {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-content: center;
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 18px;
+  overflow: hidden;
+}
+.file-thumb img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+}
+.file-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.file-name,
+.file-note {
+  min-width: 0;
+  max-width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-name {
+  font-weight: 550;
+  color: var(--text);
+}
+.file-note {
+  color: var(--muted);
+  font-size: inherit;
+}
+.file-name:not(:disabled):hover,
+.file-note:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+/* in una finestra stretta i dettagli vanno a capo: da dove viene il file non deve sparire */
+.file-meta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 4px;
+  min-width: 0;
+}
+
 /* livello di privacy: occhio sul pulsante Registra e in cima alla trascrizione */
 .privacy-icon {
   width: 15px;
@@ -4779,4 +4899,58 @@ button.lib-row {
 }
 .lib-preview .lib-actions .btn {
   margin-top: 0;
+}
+
+/* Impostazioni → Importa da */
+.import-counts {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.import-counts strong {
+  font-variant-numeric: tabular-nums;
+}
+.import-details {
+  margin-bottom: 10px;
+}
+.import-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.import-details ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.import-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.import-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  min-height: 44px;
+}
+.import-row + .import-row {
+  border-top: 1px solid var(--line);
+}
+.import-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.import-title {
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

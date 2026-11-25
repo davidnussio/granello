@@ -24,6 +24,7 @@ Tutto viene salvato come Markdown leggibile, così le tue note restano tue anche
 | Evidenziatore | ⌘⇧H | `==testo==` |
 | Persona | `@` | `@[Nome]` |
 | Data | menu `/` | `[[2026-11-26]]` |
+| Link a una nota | `[[` o menu `/` | `[[Titolo]]`, `[[Titolo\|testo]]` |
 | Sondaggio | menu `/` | `::: poll Domanda` |
 | Kanban | menu `/` | `::: kanban` |
 | Linea del tempo | menu `/` | `::: timeline` |

@@ -273,6 +273,13 @@ export function commandExamples(lang, image) {
         "@[Elena Rossi] sends the counter-offer, @[Marco Bianchi] takes it to the board.",
       ),
     },
+    {
+      id: "note-link",
+      md: pick(
+        "Riprendiamo da [[Rinnovo contratto Nord 2027|la call di rinnovo]] e da [[Budget 2027]].",
+        "We pick up from [[Nord contract renewal 2027|the renewal call]] and [[Budget 2027]].",
+      ),
+    },
     { id: "today", md: pick(`Call di chiusura: [[${day(0)}]]`, `Closing call: [[${day(0)}]]`) },
     {
       id: "tomorrow",

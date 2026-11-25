@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/react";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { api, errorText, notify, type Attachment } from "../../api";
+import { sizeLabel } from "../../format";
 import { t } from "../../i18n";
 import type { MdState } from "../markdown";
 import type { EditorPlugin } from "../types";
@@ -25,11 +26,6 @@ function resolve(src: string): Promise<string> {
     p.catch(() => loaded.delete(src));
   }
   return p;
-}
-
-function sizeLabel(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 function base64(file: File): Promise<string> {
@@ -165,12 +161,21 @@ const Image = Node.create({
   addStorage() {
     return {
       markdown: {
-        serialize(state: MdState, node: PMNode) {
+        serialize(state: MdState & { inTightList?: boolean }, node: PMNode, parent: PMNode, index: number) {
           const alt = String(node.attrs.alt)
             .replace(/[[\]\n]/g, " ")
             .trim();
+          // `- testo` e sotto `  ![](…)`: in un elenco compatto l'immagine sta a capo, senza righe
+          // vuote prima o dopo il testo (o le altre immagini) dello stesso elemento. Con una riga
+          // vuota l'elenco si rileggerebbe largo, e al salvataggio dopo si aggiungerebbe una riga
+          // vuota tra gli elementi. Riletta, l'immagine torna comunque un blocco a sé.
+          const tight = state.inTightList && parent.type.name === "listItem";
+          const isText = (i: number) =>
+            i >= 0 && i < parent.childCount && ["paragraph", "image"].includes(parent.child(i).type.name);
+          if (tight && isText(index - 1)) state.flushClose(1);
           state.write(`![${alt}](${node.attrs.src})`);
-          state.closeBlock(node);
+          if (tight && isText(index + 1)) state.ensureNewLine();
+          else state.closeBlock(node);
         },
       },
     };

@@ -24,6 +24,7 @@ Everything is saved as readable Markdown, so your notes are still yours outside 
 | Highlight | ⌘⇧H | `==text==` |
 | Person | `@` | `@[Name]` |
 | Date | `/` menu | `[[2026-11-26]]` |
+| Link to a note | `[[` or `/` menu | `[[Title]]`, `[[Title\|text]]` |
 | Poll | `/` menu | `::: poll Question` |
 | Kanban board | `/` menu | `::: kanban` |
 | Timeline | `/` menu | `::: timeline` |

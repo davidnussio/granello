@@ -60,6 +60,8 @@ with its check, in the same change.
 | C-DATA-02 | Migrations are versioned and run once; earlier data survives them. | `db::migrations_are_versioned_and_idempotent` and the other `db::…_on_migration` tests |
 | C-DATA-03 | Meetings left recording after a crash are closed and reindexed. | `db::recovers_meetings_left_recording` |
 | C-DATA-04 | Sample data is valid in both languages, every meeting is tagged `#faker`, and removing it never touches real meetings. | `demo::shipped_demo_data_is_valid`, `db::demo_data_comes_and_goes_without_touching_real_meetings` |
+| C-DATA-05 | An import only reads the source folder: nothing in an Obsidian vault is written, moved or deleted, and a second import skips what is already there. | `obsidian::copies_files_and_never_touches_the_vault` |
+| C-DATA-06 | Undoing an import removes only what it created: its notes, its files and the projects it created that are left empty. | `db::saves_and_undoes_an_import` |
 
 ## Vaults
 

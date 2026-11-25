@@ -4,7 +4,7 @@ import type { ItemKind, LibraryItem, Meeting, MeetingSummary, Project } from "..
 import { dayLabel, mmss, time } from "../format";
 import { locale, t } from "../i18n";
 import { sparkle } from "../sparkles";
-import Recordings from "./Recordings";
+import Files from "./Files";
 import ProjectDialog, { ProjectDot } from "./ProjectDialog";
 import PinIcon from "./PinIcon";
 
@@ -19,9 +19,9 @@ interface Props {
   person?: string;
 }
 
-type Dim = "pinned" | "projects" | "people" | "tags" | "period" | "recordings";
-/** Le dimensioni che raggruppano i meeting (le registrazioni no). */
-type GroupDim = Exclude<Dim, "recordings">;
+type Dim = "pinned" | "projects" | "people" | "tags" | "period" | "files";
+/** Le dimensioni che raggruppano i meeting (i file no). */
+type GroupDim = Exclude<Dim, "files">;
 /** Le dimensioni con una colonna di voci da scegliere: i fissati sono un filtro senza voci. */
 type FacetDim = Exclude<GroupDim, "pinned">;
 const FACETS: FacetDim[] = ["projects", "people", "tags", "period"];
@@ -68,8 +68,8 @@ const DIMS: { id: Dim; icon: React.ReactNode; label: () => string }[] = [
   { id: "people", icon: "☺", label: () => t("Persone") },
   { id: "tags", icon: "#", label: () => t("Tag") },
   { id: "period", icon: "▦", label: () => t("Periodo") },
-  // non raggruppa i meeting: mostra l'audio salvato, con il player e il link al meeting
-  { id: "recordings", icon: "◉", label: () => t("Registrazioni") },
+  // non raggruppa i meeting: mostra le registrazioni, gli allegati e i file senza nota
+  { id: "files", icon: "▤", label: () => t("File") },
 ];
 
 /** Maiusc + clic: aggiunge le voci di `range`, o le toglie se la voce cliccata era già scelta. */
@@ -226,8 +226,8 @@ export default function LibraryView({
   const [col, setCol] = useState(person ? 2 : 1);
   /** Si sta usando la tastiera: solo allora si vede la riga dove sono le frecce. Un clic la nasconde. */
   const [usingKeys, setUsingKeys] = useState(false);
-  /** Quanti meeting hanno registrazioni salvate, per il numero accanto a Registrazioni. */
-  const [recorded, setRecorded] = useState<number | null>(null);
+  /** Quanti file ci sono (registrazioni comprese), per il numero accanto a File. */
+  const [fileCount, setFileCount] = useState<number | null>(null);
   /** Cosa elenca la terza colonna: i meeting, oppure i loro elementi. */
   const [mode, setMode] = useState<"meetings" | "items">("meetings");
   const [items, setItems] = useState<LibraryItem[]>([]);
@@ -261,17 +261,16 @@ export default function LibraryView({
   }, [mode, toast]);
 
   useEffect(() => {
-    api
-      .listRecordings()
-      .then((list) => setRecorded(new Set(list.map((r) => r.meetingId)).size))
-      .catch(() => setRecorded(null));
+    Promise.all([api.listRecordings(), api.listFiles()])
+      .then(([recordings, files]) => setFileCount(recordings.length + files.length))
+      .catch(() => setFileCount(null));
   }, []);
 
-  const recordingsView = active[0] === "recordings";
+  const filesView = active[0] === "files";
   const pinnedOn = active.includes("pinned");
   /** Le colonne di voci, una per dimensione scelta, nell'ordine in cui sono state aggiunte. */
   const facets = useMemo(
-    () => active.filter((d): d is FacetDim => d !== "pinned" && d !== "recordings"),
+    () => active.filter((d): d is FacetDim => d !== "pinned" && d !== "files"),
     [active],
   );
   const meetingsCol = facets.length + 1;
@@ -340,8 +339,8 @@ export default function LibraryView({
 
   /** Il numero accanto a ogni dimensione: quante voci ha la sua colonna, o quanti meeting. */
   const dimCount = (d: Dim): number | null =>
-    d === "recordings"
-      ? recorded
+    d === "files"
+      ? fileCount
       : d === "pinned"
         ? filtered.filter((m) => m.pinnedAt !== null).length
         : columns[d].groups.length;
@@ -360,7 +359,7 @@ export default function LibraryView({
    * finestra stretta la Libreria scorre in orizzontale, come il Finder.
    */
   const filterCol = "minmax(170px, 220px)";
-  const template = recordingsView
+  const template = filesView
     ? `${filterCol} 1fr`
     : facets.length > 1
       ? `${filterCol} ${filterCol} ${filterCol} minmax(190px, 1fr) minmax(210px, 1.1fr)`
@@ -371,14 +370,14 @@ export default function LibraryView({
   const listed = useMemo(() => {
     const q = filter.trim().toLowerCase();
     // nella vista elementi il testo cercato filtra gli elementi, non i meeting
-    const found = (recordingsView ? [] : filtered).filter(
+    const found = (filesView ? [] : filtered).filter(
       (m) =>
         mode === "items" ||
         !q ||
         [m.title, ...m.attendees, ...m.tags].some((s) => s.toLowerCase().includes(q)),
     );
     return found.toSorted((a, b) => (oldestFirst ? a.createdAt - b.createdAt : b.createdAt - a.createdAt));
-  }, [recordingsView, filtered, filter, oldestFirst, mode]);
+  }, [filesView, filtered, filter, oldestFirst, mode]);
 
   const current = listed.find((m) => m.id === meetingId) ?? listed[0] ?? null;
 
@@ -499,18 +498,18 @@ export default function LibraryView({
    * Clic su una dimensione, come nel Finder: da solo la sceglie al posto delle altre, con Cmd la
    * aggiunge (o la toglie) e la sua colonna si affianca alle altre, con Maiusc aggiunge tutte quelle
    * fino a lì, o le toglie se la dimensione cliccata era già scelta (ne resta sempre almeno una).
-   * Le registrazioni non filtrano i meeting: stanno sempre da sole.
+   * I file non filtrano i meeting: stanno sempre da soli.
    */
   const pickDim = (d: Dim, e: Mods) => {
     setCol(0);
-    const groupable = d !== "recordings" && !recordingsView;
+    const groupable = d !== "files" && !filesView;
     if (groupable && (e.metaKey || e.ctrlKey)) {
       if (!active.includes(d)) showDims([...active, d]);
       else if (active.length > 1) showDims(active.filter((x) => x !== d));
     } else if (groupable && e.shiftKey) {
       const ids = DIMS.map((x) => x.id);
       const [from, to] = [ids.indexOf(active.at(-1)!), ids.indexOf(d)].toSorted((a, b) => a - b);
-      const range = ids.slice(from, to + 1).filter((x) => x !== "recordings");
+      const range = ids.slice(from, to + 1).filter((x) => x !== "files");
       const next = shiftRange(active, range, active.includes(d));
       if (next.length) showDims(next);
     } else showDims([d]);
@@ -826,7 +825,7 @@ export default function LibraryView({
         >
           {oldestFirst ? t("↑ Più vecchi") : t("↓ Più recenti")}
         </button>
-        {!recordingsView && (
+        {!filesView && (
           <div className="seg lib-mode" role="group" aria-label={t("Cosa elencare")}>
             <button
               className={mode === "meetings" ? "on" : ""}
@@ -888,9 +887,9 @@ export default function LibraryView({
           </ul>
         </div>
 
-        {recordingsView && (
+        {filesView && (
           <div className="lib-col lib-recordings">
-            <Recordings onOpen={onOpen} toast={toast} />
+            <Files onOpen={onOpen} toast={toast} onCount={setFileCount} />
           </div>
         )}
 
@@ -903,7 +902,7 @@ export default function LibraryView({
           </div>
         )}
 
-        {mode === "items" && !recordingsView && (
+        {mode === "items" && !filesView && (
           <div className={"lib-col lib-items" + (at === meetingsCol ? " focus" : "")}>
             <div className="lib-kinds" role="group" aria-label={t("Tipi di elemento")}>
               {KINDS.map((k) => (
@@ -975,7 +974,7 @@ export default function LibraryView({
         )}
 
         <div
-          hidden={recordingsView || mode === "items"}
+          hidden={filesView || mode === "items"}
           className={"lib-col lib-meetings" + (at === meetingsCol ? " focus" : "")}
           role="listbox"
           aria-multiselectable="true"
@@ -1011,7 +1010,7 @@ export default function LibraryView({
               </span>
             </button>
           ))}
-          {!recordingsView && listed.length === 0 && (
+          {!filesView && listed.length === 0 && (
             <p className="muted small lib-empty">
               {filter
                 ? t("Nessun risultato")
@@ -1030,7 +1029,7 @@ export default function LibraryView({
           )}
         </div>
 
-        <div hidden={recordingsView || mode === "items"} className="lib-col lib-preview">
+        <div hidden={filesView || mode === "items"} className="lib-col lib-preview">
           {bulk ? (
             <>
               <h2>{t("{n} note selezionate", { n: selection.length })}</h2>

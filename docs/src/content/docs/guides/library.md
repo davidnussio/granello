@@ -14,7 +14,7 @@ The Library browses your notes in columns: pick a dimension, then a value, then 
 - **People**: who took part.
 - **Tags**: the tags on your notes.
 - **Period**: this week, then one group per month.
-- **Recordings**: the saved audio, see below.
+- **Files**: recordings, images and other files, see below.
 
 Arrow keys move through the columns and Enter opens the note; Shift + arrow also adds the next entry or dimension. ⌘ + ↑↓ moves without changing what is picked, and Space then picks or removes the entry under the cursor (in the list of notes, it adds or removes the note from the selection).
 
@@ -71,9 +71,19 @@ Filter by type with the chips at the top, and search in their text. Double-click
 
 ![The Items view: decisions and actions from several notes in one list](../../../assets/shots/en/items.webp)
 
-## Recordings
+## Files
 
-With **Save recordings** on, the Library shows one card per note with its recordings. Each has a player with the audio waveform: click or drag it to move.
+**Files** lists the files of the open vault in three tabs:
+
+- **Recordings**: the saved audio, see below.
+- **Images**: the images pasted or dropped into your notes.
+- **Other files**: attachments of your notes, and the files an [import](/guides/import/) brought in without a note.
+
+Click a file's name to open it with the default app, and the note's title to open the note. A file that came without a note shows the folder it came from, and **Delete** removes it; to remove a note's attachment, delete it from the note.
+
+### Recordings
+
+With **Save recordings** on, the Files tab shows one card per note with its recordings. Each has a player with the audio waveform: click or drag it to move.
 
 - **Remove pauses** cuts the silent parts. Afterwards the audio's minutes no longer match the transcript.
 - **Merge** joins the recordings of a note recorded in several takes into one file.

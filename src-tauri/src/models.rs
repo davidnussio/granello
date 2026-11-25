@@ -152,6 +152,14 @@ pub fn normalize_names(items: Vec<String>, max_len: usize, max_items: usize) -> 
     out
 }
 
+/// Il titolo di una nota come lo scrive un link `[[…]]`: niente parentesi quadre né barre,
+/// che chiuderebbero il link.
+pub fn link_title(title: &str) -> String {
+    let t: String =
+        title.replace('[', "(").replace(']', ")").replace('|', "-").split_whitespace().collect::<Vec<_>>().join(" ");
+    t.chars().take(200).collect()
+}
+
 /// Tag: minuscoli, senza `#` iniziale, senza spazi né virgole (diventano trattini).
 pub fn normalize_tags(items: Vec<String>) -> Vec<String> {
     let cleaned = items
@@ -346,6 +354,62 @@ pub struct Recording {
     pub bytes: i64,
     /// Le pause senza audio sono state tolte: i minuti non corrispondono più alla trascrizione.
     pub trimmed: bool,
+}
+
+/// Un file senza nota della Libreria (arrivato da un import).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LooseFile {
+    pub id: String,
+    /// `attachments/<nome>`, come per gli allegati delle note.
+    pub path: String,
+    pub name: String,
+    pub bytes: i64,
+    /// La cartella da cui veniva, per riconoscerlo.
+    pub folder: String,
+    pub created_at: i64,
+}
+
+/// Una nota pronta da scrivere nel database durante un import.
+#[derive(Debug, Clone)]
+pub struct NewNote {
+    pub title: String,
+    pub notes_md: String,
+    pub tags: Vec<String>,
+    pub attendees: Vec<String>,
+    /// Il nome del progetto: creato se non c'è.
+    pub project: Option<String>,
+    /// Il progetto, se va creato, nasce archiviato (la nota stava nell'archivio).
+    pub archived_project: bool,
+    pub created_at: i64,
+    pub updated_at: i64,
+    /// Percorso nella cartella importata e impronta del contenuto, per riconoscerla la volta dopo.
+    pub source_path: String,
+    pub source_hash: String,
+}
+
+/// Un file senza nota pronto da scrivere nel database durante un import.
+#[derive(Debug, Clone)]
+pub struct NewFile {
+    pub path: String,
+    pub name: String,
+    pub bytes: i64,
+    pub folder: String,
+    pub created_at: i64,
+    pub source_path: String,
+}
+
+/// Un import fatto: da dove, quando, quanto ne resta e il rapporto di quello che è stato saltato.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportRecord {
+    pub id: String,
+    pub source: String,
+    pub root: String,
+    pub created_at: i64,
+    pub notes: i64,
+    pub files: i64,
+    pub report: serde_json::Value,
 }
 
 impl Settings {

@@ -139,3 +139,9 @@ export function groupByDay<T>(items: T[], ts: (t: T) => number): [string, T[]][]
   }
   return out;
 }
+
+/** La dimensione di un file: "12 KB", "3.4 MB". */
+export function sizeLabel(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}

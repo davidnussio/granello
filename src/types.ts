@@ -227,6 +227,53 @@ export interface Recording {
   trimmed: boolean;
 }
 
+/** Un file della Libreria che non è una registrazione: un allegato di una nota o un file senza nota. */
+export interface LibraryFile {
+  id: string;
+  /** `attachments/…`, come nelle note. */
+  path: string;
+  name: string;
+  bytes: number;
+  meetingId: string | null;
+  meetingTitle: string | null;
+  /** La cartella da cui veniva un file senza nota. */
+  folder: string | null;
+  at: number;
+  /** Il file non c'è più nella cartella degli allegati. */
+  missing: boolean;
+}
+
+/** Un file o una nota lasciati fuori da un import, con il perché. */
+export interface ImportSkipped {
+  path: string;
+  reason: string;
+}
+
+/** Cosa importerebbe (o ha importato) una cartella Obsidian. */
+export interface ImportSummary {
+  obsidian: boolean;
+  notes: number;
+  attachments: number;
+  loose: number;
+  projects: string[];
+  already: number;
+  changed: string[];
+  missingLinks: number;
+  skipped: ImportSkipped[];
+}
+
+/** Un import fatto, che si può annullare. */
+export interface ImportRecord {
+  id: string;
+  source: string;
+  root: string;
+  createdAt: number;
+  /** Note e file senza nota che ne restano. */
+  notes: number;
+  files: number;
+  report: ImportSummary | null;
+}
+
 /** Dove finiscono le registrazioni e se su questo Mac c'è ffmpeg. */
 export interface RecordingsInfo {
   dir: string;

@@ -252,7 +252,12 @@ const NoteTable = Table.extend({
             row.forEach((cellNode, _o, j) => {
               if (j) state.write(" | ");
               const from = state.out.length;
-              if (cellNode.firstChild?.textContent.trim()) state.renderInline(cellNode.firstChild);
+              // un link, una persona o una data da soli non hanno testo, ma la cella non è vuota
+              let filled = false;
+              cellNode.firstChild?.forEach((c) => {
+                if (!c.isText || c.text?.trim()) filled = true;
+              });
+              if (filled) state.renderInline(cellNode.firstChild!);
               const text = state.out
                 .slice(from)
                 .replace(/\\?\|/g, "\\|")

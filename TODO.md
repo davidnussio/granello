@@ -13,6 +13,42 @@ Browse meetings by project, person, tag and period (cascading columns). A meetin
 - [x] A view of items across meetings (decisions, action items, quotes). It reads what the notes already have: decision callouts, checklists and transcript quotes. The dedicated decision and action-item blocks (see "Editor components") will feed the same view.
 - [ ] A board to arrange a selection of those items, if the first two views are not enough.
 
+- [ ] **Files**: a Library entry in place of "Recordings" that lists every file of the vault:
+  recordings, images and other attachments of the notes, and files imported without a note.
+
+## Import from other apps
+
+Settings → Import from. One source per page; the first is Obsidian. An import is a **copy,
+made once**: the source folder is only read, never changed. Every import is recorded, its
+notes carry a tag (`#obsidian`) and the vault's minimum privacy, nothing is sent to a model,
+and "Undo import" deletes everything it created.
+
+- [ ] **Obsidian**, decided on 2026-11-25:
+  - `[[Note]]`, `[[Note|alias]]` become a **link between notes** (a new editor block, see
+    below); `[[Note#heading]]` loses the heading; `![[note]]` (transclusion) becomes a link.
+  - `![[image.png]]`, `![](image.png)`, `![[doc.pdf]]` are copied into `attachments/` (image or
+    📎 attachment); files over 25 MB are left out and listed in the report.
+  - **Folders**: the top-level folder becomes the note's project (created if missing), the
+    rest of the path a tag (`Lavoro/Clienti/Acme.md` → project "Lavoro", tag "clienti").
+    Changed on 2026-11-25 after a real vault: in a PARA vault (Projects, Areas, Resources,
+    Archive, also translated or numbered) the folder below is the project and the category a
+    tag; folders starting with `_` give only a tag; a `progetto`/`project` property wins over
+    the folder, and `partecipanti`/`attendees` become the participants.
+  - **Loose files** (no note uses them) go into Library → Files, without a note.
+  - **Frontmatter**: `tags` and inline `#tags` become tags, `created`/`date` (or a date in the
+    file name, or the file's date) the note's date, `title` the title; every other property
+    is kept in a collapsible "Properties" section at the top of the note.
+  - Callouts are mapped onto NOTE / WARNING / DECISION; a foldable callout (`[!x]-`) becomes a
+    collapsible section. `%%comments%%` and `^block-ids` are dropped; task states other than
+    done (`[/]`, `[-]`, `[>]`…) become open tasks. `.canvas` files are skipped.
+  - Importing the same folder again skips the notes already imported (by path), and the
+    report lists the ones changed in Obsidian since then.
+- [ ] More sources later (Notion export, Apple Notes, plain Markdown folders).
+- [ ] **Link between notes** `[[Title]]`: a pill that opens the note with that title, also
+  inserted by hand with `[[`; renaming a note updates the links to it; a link to a missing
+  note is shown as such. Not `[[toc]]`, `[[2026-11-26]]`, `[[rating:4]]` and the other
+  reserved forms.
+
 ## Privacy and online models
 
 Today transcription is always local (whisper) and only text goes to the AI provider.
@@ -124,6 +160,14 @@ code block, divider, links and snippets.
 **Storage:** notes are stored as Markdown, and every block has a readable Markdown
 form (see the table in the README). Blocks made of data rather than text share one
 base, `src/editor/dataBlock.ts`: the transcript-linked blocks can build on it.
+
+**Markdown that changes on every save** (found while making bare URLs and images in list
+items stable; both were already there):
+
+- [ ] An empty checklist item followed by a plain list (`- [ ] ` then `- Chi riceve…`, in the
+  demo note "Flusso di una consegna") gains a `- \[ \]` line at every save.
+- [ ] An image as the first thing in a list item (`- ![](attachments/x.png)`) is moved out of
+  the list when the note is read: the item stays empty and the list is split in two.
 
 **Where to go next:** decision and action item with an owner. They
 build on data Granello already has (timestamped segments, people directory,

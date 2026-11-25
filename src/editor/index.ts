@@ -10,6 +10,7 @@ import { snippets } from "./plugins/snippets";
 import { highlight } from "./plugins/highlight";
 import { mention } from "./plugins/mention";
 import { date } from "./plugins/date";
+import { noteLink } from "./plugins/noteLink";
 import { math } from "./plugins/math";
 import { callout } from "./plugins/callout";
 import { toggle } from "./plugins/toggle";
@@ -41,6 +42,7 @@ export {
   highlight,
   mention,
   date,
+  noteLink,
   math,
   callout,
   toggle,
@@ -103,6 +105,7 @@ export const defaultPlugins: EditorPlugin[] = [
   ai,
   mention,
   date,
+  noteLink,
   find,
 ];
 

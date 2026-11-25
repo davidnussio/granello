@@ -123,6 +123,30 @@ pub fn referenced(markdown: &str) -> Vec<String> {
     found
 }
 
+/// Gli allegati citati in un testo Markdown con il nome che la nota mostra: il testo del link
+/// (`[📎 verbale.pdf (12 KB)](…)` → `verbale.pdf`) o di un'immagine (`![schema](…)`).
+pub fn labeled(markdown: &str) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    for path in referenced(markdown) {
+        let label = markdown
+            .match_indices(&format!("]({path}"))
+            .find_map(|(at, _)| {
+                let open = markdown[..at].rfind('[')?;
+                let text = markdown[open + 1..at].trim();
+                let text = text.strip_prefix("📎").unwrap_or(text).trim();
+                // la dimensione tra parentesi in fondo la calcola chi mostra il file
+                let text = match text.rfind(" (") {
+                    Some(i) if text.ends_with(" KB)") || text.ends_with(" MB)") => &text[..i],
+                    _ => text,
+                };
+                (!text.is_empty() && !text.contains('\n')).then(|| text.to_string())
+            })
+            .unwrap_or_else(|| path.trim_start_matches("attachments/").to_string());
+        out.push((path, label));
+    }
+    out
+}
+
 /// Elimina un allegato. Un file già sparito non è un errore.
 pub fn remove(data_dir: &Path, rel: &str) {
     if let Ok(path) = resolve(data_dir, rel) {
@@ -226,6 +250,11 @@ mod tests {
                   Di nuovo attachments/abc123.png, e un link normale https://example.com/attachments/";
         assert_eq!(referenced(md), ["attachments/abc123.png", "attachments/def-456.pdf"]);
         assert!(referenced("nessun allegato").is_empty());
+        assert_eq!(
+            labeled(md),
+            [("attachments/abc123.png".into(), "schema".into()), ("attachments/def-456.pdf".into(), "verbale.pdf".into())]
+        );
+        assert_eq!(labeled("![](attachments/x.png)"), [("attachments/x.png".into(), "x.png".into())]);
     }
 
     #[test]
