@@ -303,6 +303,11 @@ export default function LibraryView({
   const [cursor, setCursor] = useState<Partial<Record<FacetDim, string>>>(
     person ? { people: person.toLowerCase() } : {},
   );
+  /**
+   * La dimensione dove sono le frecce nella prima colonna, se ci si è arrivati con ⌘ + freccia
+   * senza sceglierla; altrimenti è l'ultima scelta.
+   */
+  const [dimCursor, setDimCursor] = useState<Dim | null>(null);
   const [meetingId, setMeetingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [oldestFirst, setOldestFirst] = useState(false);
@@ -627,6 +632,7 @@ export default function LibraryView({
    */
   const pickDim = (d: Dim, e: Mods) => {
     setCol(0);
+    setDimCursor(d);
     const groupable = d !== "files" && d !== "all" && !filesView;
     // aggiungendo un filtro a Tutte le note, resta solo il filtro
     const filters = active.filter((x) => x !== "all");
@@ -692,7 +698,10 @@ export default function LibraryView({
     if (e.key === " " && tag !== "INPUT") {
       e.preventDefault();
       setUsingKeys(true);
-      if (facet && cursor[facet]) {
+      if (at === 0) {
+        // nella prima colonna Spazio aggiunge o toglie la dimensione, come ⌘ clic
+        pickDim(dimCursor ?? active.at(-1)!, { metaKey: true, ctrlKey: false, shiftKey: false });
+      } else if (facet && cursor[facet]) {
         const now = chosen(facet);
         const key = cursor[facet];
         setSel({ ...sel, [facet]: now.includes(key) ? now.filter((k) => k !== key) : [...now, key] });
@@ -711,12 +720,14 @@ export default function LibraryView({
         return;
       }
       if (at === 0) {
-        // Maiusc + freccia aggiunge la dimensione accanto, la freccia da sola passa all'altra
+        // Maiusc + freccia aggiunge la dimensione accanto, ⌘ + freccia sposta solo il cursore, la
+        // freccia da sola passa all'altra
         const next = move(
           DIMS,
-          DIMS.findIndex((d) => d.id === active.at(-1)),
+          DIMS.findIndex((d) => d.id === (dimCursor ?? active.at(-1))),
         );
-        if (next) pickDim(next.id, { metaKey: false, ctrlKey: false, shiftKey: e.shiftKey });
+        if (next && onlyMove) setDimCursor(next.id);
+        else if (next) pickDim(next.id, { metaKey: false, ctrlKey: false, shiftKey: e.shiftKey });
       } else if (facet) {
         const rows = columns[facet].groups;
         const next = move(
@@ -783,7 +794,7 @@ export default function LibraryView({
     root.current
       ?.querySelectorAll(".lib-row.cur, .lib-meeting.on, .lib-item.on")
       .forEach((el) => el.scrollIntoView({ block: "nearest" }));
-  }, [active, cursor, current?.id, currentItem?.id]);
+  }, [active, dimCursor, cursor, current?.id, currentItem?.id]);
 
   useEffect(() => root.current?.focus(), []);
 
@@ -1017,7 +1028,9 @@ export default function LibraryView({
               role="option"
               aria-selected={active.includes(d.id)}
               className={
-                "lib-row" + (active.includes(d.id) ? " on" : "") + (d.id === active.at(-1) ? " cur" : "")
+                "lib-row" +
+                (active.includes(d.id) ? " on" : "") +
+                (d.id === (dimCursor ?? active.at(-1)) ? " cur" : "")
               }
               onClick={(e) => pickDim(d.id, e)}
             >
