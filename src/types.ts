@@ -363,6 +363,6 @@ export interface LibraryItem {
 export type View =
   | { kind: "meeting"; id: string }
   | { kind: "chat" }
-  | { kind: "library"; person?: string }
+  | { kind: "library"; person?: string; all?: boolean }
   | { kind: "settings"; section?: SettingsSection }
   | { kind: "home" };

@@ -27,13 +27,18 @@ interface Props {
   toast: (text: string) => void;
   /** Apre la Libreria sui meeting di questa persona. */
   person?: string;
+  /** Apre la Libreria su tutte le note (da «Tutte le note» nella barra laterale). */
+  all?: boolean;
 }
 
-type Dim = "pinned" | "projects" | "people" | "tags" | "period" | "files";
+type Dim = "all" | "pinned" | "projects" | "people" | "tags" | "period" | "files";
 /** Le dimensioni che raggruppano i meeting (i file no). */
 type GroupDim = Exclude<Dim, "files">;
-/** Le dimensioni con una colonna di voci da scegliere: i fissati sono un filtro senza voci. */
-type FacetDim = Exclude<GroupDim, "pinned">;
+/**
+ * Le dimensioni con una colonna di voci da scegliere: i fissati sono un filtro senza voci, tutte
+ * le note nessun filtro.
+ */
+type FacetDim = Exclude<GroupDim, "pinned" | "all">;
 const FACETS: FacetDim[] = ["projects", "people", "tags", "period"];
 /**
  * Con più voci scelte nella stessa colonna, in persone e tag un meeting deve averle tutte (Ermanno
@@ -79,6 +84,8 @@ interface Group {
 }
 
 const DIMS: { id: Dim; icon: React.ReactNode; label: () => string }[] = [
+  // nessun filtro: tutte le note del vault, dalla più recente
+  { id: "all", icon: "≡", label: () => t("Tutte le note") },
   // una voce sola, senza seconda colonna: i meeting fissati nella barra laterale
   { id: "pinned", icon: <PinIcon filled />, label: () => t("Fissati") },
   { id: "projects", icon: "▣", label: () => t("Progetti") },
@@ -283,10 +290,11 @@ export default function LibraryView({
   onMeetingsChanged,
   toast,
   person,
+  all: allNotes,
 }: Props) {
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
   /** Le dimensioni scelte nella prima colonna, nell'ordine in cui sono state aggiunte. */
-  const [active, setActive] = useState<Dim[]>([person ? "people" : "projects"]);
+  const [active, setActive] = useState<Dim[]>([person ? "people" : allNotes ? "all" : "projects"]);
   /** Le voci scelte in ogni colonna; una colonna senza voci scelte non filtra. */
   const [sel, setSel] = useState<Partial<Record<FacetDim, string[]>>>(
     person ? { people: [person.toLowerCase()] } : {},
@@ -353,7 +361,7 @@ export default function LibraryView({
   const pinnedOn = active.includes("pinned");
   /** Le colonne di voci, una per dimensione scelta, nell'ordine in cui sono state aggiunte. */
   const facets = useMemo(
-    () => active.filter((d): d is FacetDim => d !== "pinned" && d !== "files"),
+    () => active.filter((d): d is FacetDim => d !== "all" && d !== "pinned" && d !== "files"),
     [active],
   );
   const meetingsCol = facets.length + 1;
@@ -454,9 +462,11 @@ export default function LibraryView({
   const dimCount = (d: Dim): number | null =>
     d === "files"
       ? fileCount
-      : d === "pinned"
-        ? filtered.filter((m) => m.pinnedAt !== null).length
-        : columns[d].total;
+      : d === "all"
+        ? meetings.length
+        : d === "pinned"
+          ? filtered.filter((m) => m.pinnedAt !== null).length
+          : columns[d].total;
 
   /** Le voci scelte, con il loro nome, per il segnaposto del filtro e i messaggi. */
   const chosenLabels = facets.flatMap((d) => chosen(d).map((k) => hash(d) + known[d].get(k)!.label));
@@ -613,19 +623,21 @@ export default function LibraryView({
    * Clic su una dimensione, come nel Finder: da solo la sceglie al posto delle altre, con Cmd la
    * aggiunge (o la toglie) e la sua colonna si affianca alle altre, con Maiusc aggiunge tutte quelle
    * fino a lì, o le toglie se la dimensione cliccata era già scelta (ne resta sempre almeno una).
-   * I file non filtrano i meeting: stanno sempre da soli.
+   * I file non filtrano i meeting e Tutte le note non filtra niente: stanno sempre da soli.
    */
   const pickDim = (d: Dim, e: Mods) => {
     setCol(0);
-    const groupable = d !== "files" && !filesView;
+    const groupable = d !== "files" && d !== "all" && !filesView;
+    // aggiungendo un filtro a Tutte le note, resta solo il filtro
+    const filters = active.filter((x) => x !== "all");
     if (groupable && (e.metaKey || e.ctrlKey)) {
-      if (!active.includes(d)) showDims([...active, d]);
-      else if (active.length > 1) showDims(active.filter((x) => x !== d));
+      if (!filters.includes(d)) showDims([...filters, d]);
+      else if (filters.length > 1) showDims(filters.filter((x) => x !== d));
     } else if (groupable && e.shiftKey) {
       const ids = DIMS.map((x) => x.id);
       const [from, to] = [ids.indexOf(active.at(-1)!), ids.indexOf(d)].toSorted((a, b) => a - b);
-      const range = ids.slice(from, to + 1).filter((x) => x !== "files");
-      const next = shiftRange(active, range, active.includes(d));
+      const range = ids.slice(from, to + 1).filter((x) => x !== "files" && x !== "all");
+      const next = shiftRange(filters, range, filters.includes(d));
       if (next.length) showDims(next);
     } else showDims([d]);
   };

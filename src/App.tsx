@@ -464,9 +464,10 @@ export default function App() {
         )}
         {view.kind === "library" && (
           <LibraryView
-            // aperta su una persona (da Impostazioni → Persone) riparte da lì
-            key={view.person ?? ""}
+            // aperta su una persona (da Impostazioni → Persone) o su tutte le note riparte da lì
+            key={view.person ?? (view.all ? "all" : "")}
             person={view.person}
+            all={view.all}
             projects={projects}
             onProjectsChanged={setProjects}
             onOpen={(id) => setView({ kind: "meeting", id })}

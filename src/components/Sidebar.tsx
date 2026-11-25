@@ -230,7 +230,7 @@ export default function Sidebar(p: Props) {
             {p.meetings.length === 0 ? (
               <p className="muted small pad">{t("Ancora nessuna nota")}</p>
             ) : (
-              <button className="side-all" onClick={() => p.setView({ kind: "library" })}>
+              <button className="side-all" onClick={() => p.setView({ kind: "library", all: true })}>
                 <span>{t("Tutte le note")}</span>
                 <span className="side-count">
                   {p.meetings.length} <span aria-hidden="true">›</span>

@@ -9,6 +9,7 @@ The Library browses your notes in columns: pick a dimension, then a value, then 
 
 ## Dimensions
 
+- **All notes**: every note, newest first, with no filter.
 - **Pinned**: the notes you pinned to the sidebar, see below.
 - **Projects**: the projects you created, each with the notes that belong to it.
 - **People**: who took part.
@@ -46,7 +47,7 @@ Under **Library** the sidebar shows, in order:
 - **Pinned**: the notes you pinned.
 - **Today** and **Yesterday**, each with how many notes it has: each note with the time it was last changed on the right of the title, as in the weeks below, then ✦ when the AI has enhanced it, how many people took part and up to two tags. A title in italics is a note not enhanced by the AI yet.
 - **This week** and **Last week**: one line per note with the weekday and time of its last change, and how many notes the week has. The first four are shown; **N more** shows the rest.
-- **All notes**, at the bottom, opens the Library.
+- **All notes**, at the bottom, opens the Library on all notes.
 
 These sections go by the last change, the most recent first: editing the title, the notes, the AI notes, the participants or the tags of an older note brings it back under **Today**. Tagging several notes at once from the Library does not move them. In the note itself, the date at the top says when it was last edited, if that was more than an hour after the recording ended.
 

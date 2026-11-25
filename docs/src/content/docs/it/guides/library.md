@@ -9,6 +9,7 @@ La Libreria sfoglia le note a colonne: scegli una dimensione, poi un valore, poi
 
 ## Dimensioni
 
+- **Tutte le note**: ogni nota, dalla più recente, senza filtri.
 - **Fissati**: le note che hai fissato nella barra laterale, vedi sotto.
 - **Progetti**: i progetti che hai creato, ognuno con le note che gli appartengono.
 - **Persone**: chi ha partecipato.
@@ -46,7 +47,7 @@ Sotto **Libreria** la barra laterale mostra, in ordine:
 - **Fissati**: le note che hai fissato.
 - **Oggi** e **Ieri**, ognuna con quante note ha: ogni nota con l'ora dell'ultima modifica a destra del titolo, come nelle settimane sotto, poi ✦ se l'AI l'ha rielaborata, quante persone c'erano e al massimo due tag. Un titolo in corsivo è una nota non ancora rielaborata dall'AI.
 - **Questa settimana** e **Settimana scorsa**: una riga per nota con il giorno della settimana e l'ora dell'ultima modifica, e quante note ha la settimana. Si vedono le prime quattro; **Altre N** mostra le altre.
-- **Tutte le note**, in fondo, apre la Libreria.
+- **Tutte le note**, in fondo, apre la Libreria su tutte le note.
 
 Queste sezioni seguono l'ultima modifica, dalla più recente: se cambi il titolo, le note, le note AI, i partecipanti o i tag di una nota vecchia, torna sotto **Oggi**. I tag dati a più note insieme dalla Libreria non le spostano. Nella nota, la data in alto dice quando è stata modificata l'ultima volta, se è più di un'ora dopo la fine della registrazione.
 
