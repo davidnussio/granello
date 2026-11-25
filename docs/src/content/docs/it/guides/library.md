@@ -42,9 +42,9 @@ La puntina nell'intestazione di una nota, accanto a copia, stampa ed elimina, la
 
 Sotto **Libreria** la barra laterale mostra, in ordine:
 
-- **In arrivo**: gli eventi del calendario delle prossime ore.
+- **In arrivo**: gli eventi del calendario delle prossime ore, con quanti sono.
 - **Fissati**: le note che hai fissato.
-- **Oggi** e **Ieri**: ogni nota con l'ora dell'ultima modifica, ✦ se l'AI l'ha rielaborata, quante persone c'erano e al massimo due tag. Un titolo in corsivo è una nota non ancora rielaborata dall'AI.
+- **Oggi** e **Ieri**, ognuna con quante note ha: ogni nota con l'ora dell'ultima modifica a destra del titolo, come nelle settimane sotto, poi ✦ se l'AI l'ha rielaborata, quante persone c'erano e al massimo due tag. Un titolo in corsivo è una nota non ancora rielaborata dall'AI.
 - **Questa settimana** e **Settimana scorsa**: una riga per nota con il giorno della settimana e l'ora dell'ultima modifica, e quante note ha la settimana. Si vedono le prime quattro; **Altre N** mostra le altre.
 - **Tutte le note**, in fondo, apre la Libreria.
 

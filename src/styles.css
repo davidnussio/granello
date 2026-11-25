@@ -348,6 +348,19 @@ input.vault-name:focus {
 .side-card .side-tags {
   margin-top: 2px;
 }
+/* la prima riga di una nota di oggi o di ieri: titolo che si tronca e, a destra, l'ora */
+.side-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.side-card-head .side-title {
+  flex: 1;
+}
+.side-card-head .side-time {
+  flex: none;
+}
 .side-item {
   width: 100%;
   background: none;

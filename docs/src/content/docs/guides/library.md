@@ -42,9 +42,9 @@ The pin in a note's header, next to copy, print and delete, keeps it in the side
 
 Under **Library** the sidebar shows, in order:
 
-- **Coming up**: the calendar events of the next hours.
+- **Coming up**: the calendar events of the next hours, with how many there are.
 - **Pinned**: the notes you pinned.
-- **Today** and **Yesterday**: each note with the time it was last changed, ✦ when the AI has enhanced it, how many people took part and up to two tags. A title in italics is a note not enhanced by the AI yet.
+- **Today** and **Yesterday**, each with how many notes it has: each note with the time it was last changed on the right of the title, as in the weeks below, then ✦ when the AI has enhanced it, how many people took part and up to two tags. A title in italics is a note not enhanced by the AI yet.
 - **This week** and **Last week**: one line per note with the weekday and time of its last change, and how many notes the week has. The first four are shown; **N more** shows the rest.
 - **All notes**, at the bottom, opens the Library.
 

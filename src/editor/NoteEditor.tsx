@@ -55,7 +55,11 @@ export default function NoteEditor({
       content: value,
       editable,
       editorProps: { attributes: { spellcheck: "true" } },
-      onUpdate: ({ editor: ed }) => onChangeRef.current(getMarkdown(ed)),
+      // solo un cambio del documento è una modifica: aprire una nota, o cambiare se si può
+      // scrivere, non la salva (e non la porta tra quelle modificate oggi)
+      onUpdate: ({ editor: ed, transaction }) => {
+        if (transaction.docChanged) onChangeRef.current(getMarkdown(ed));
+      },
     },
     [extensions],
   );
@@ -70,7 +74,8 @@ export default function NoteEditor({
   }, [docKey, editor, editable ? null : value]);
 
   useEffect(() => {
-    editor?.setEditable(editable);
+    // senza l'evento «update»: per TipTap sarebbe una modifica del testo
+    editor?.setEditable(editable, false);
   }, [editor, editable]);
 
   const onEditorRef = useRef(onEditor);
