@@ -128,6 +128,8 @@ pub struct Project {
     pub color: String,
     pub description: String,
     pub archived: bool,
+    /// Il progetto che lo contiene; `None` = di primo livello.
+    pub parent_id: Option<String>,
 }
 
 /// I colori tra cui scegliere per un progetto (i nomi che il frontend sa disegnare).
@@ -377,8 +379,9 @@ pub struct NewNote {
     pub notes_md: String,
     pub tags: Vec<String>,
     pub attendees: Vec<String>,
-    /// Il nome del progetto: creato se non c'è.
-    pub project: Option<String>,
+    /// Il progetto con quelli che lo contengono, dal primo livello (`dambox`, `bizcard`): ognuno
+    /// creato se non c'è. Vuoto = senza progetto.
+    pub project: Vec<String>,
     /// Il progetto, se va creato, nasce archiviato (la nota stava nell'archivio).
     pub archived_project: bool,
     pub created_at: i64,

@@ -7,6 +7,16 @@ import { sparkle } from "../sparkles";
 import Files from "./Files";
 import ProjectDialog, { ProjectDot } from "./ProjectDialog";
 import PinIcon from "./PinIcon";
+import Menu from "./Menu";
+import {
+  archivedIn,
+  projectBranch,
+  projectOptions,
+  projectPath,
+  projectTitle,
+  projectTree,
+  tagLevels,
+} from "../tree";
 
 interface Props {
   projects: Project[];
@@ -54,11 +64,18 @@ const KINDS: { id: ItemKind; icon: string; label: () => string }[] = [
 /** Una voce della seconda colonna: un progetto, una persona, un tag o un periodo, con i suoi meeting. */
 interface Group {
   key: string;
+  /** Il nome completo: `progetto/bizcard`, o il nome del progetto. */
   label: string;
+  /** Il nome nella colonna, sotto la voce che la contiene: `bizcard`. */
+  short?: string;
+  /** Le note della voce e di quelle che contiene. */
   meetings: MeetingSummary[];
   archived?: boolean;
   /** Solo nella dimensione dei progetti: il progetto di questa voce. */
   project?: Project;
+  /** Progetti e tag con `/` stanno in un albero: la voce che contiene questa, e a che livello. */
+  parent?: string;
+  depth?: number;
 }
 
 const DIMS: { id: Dim; icon: React.ReactNode; label: () => string }[] = [
@@ -121,6 +138,45 @@ function byPeriod(meetings: MeetingSummary[]): Group[] {
   return [...out, ...[...months.values()].toSorted((a, b) => b.key.localeCompare(a.key))];
 }
 
+/**
+ * I tag in albero: `progetto/bizcard` sta sotto `progetto`, che raccoglie le note di tutti i tag
+ * che cominciano così (anche se nessuna nota porta `progetto` da solo).
+ */
+function tagTree(meetings: MeetingSummary[]): Group[] {
+  const map = new Map<string, Group>();
+  for (const m of meetings) {
+    const levels = new Set(m.tags.flatMap((tag) => tagLevels(tag)));
+    for (const raw of levels) {
+      const key = raw.toLowerCase();
+      const parts = raw.split("/");
+      const group = map.get(key) ?? {
+        key,
+        label: raw,
+        short: parts.at(-1),
+        meetings: [],
+        depth: parts.length - 1,
+        parent: parts.length > 1 ? parts.slice(0, -1).join("/").toLowerCase() : undefined,
+      };
+      group.meetings.push(m);
+      map.set(key, group);
+    }
+  }
+  // ognuno seguito da quelli che contiene, in ordine alfabetico a ogni livello
+  const kids = new Map<string | undefined, Group[]>();
+  for (const g of map.values()) kids.set(g.parent, [...(kids.get(g.parent) ?? []), g]);
+  const out: Group[] = [];
+  const walk = (parent: string | undefined) => {
+    for (const g of (kids.get(parent) ?? []).toSorted((a, b) =>
+      a.short!.localeCompare(b.short!, locale(), { sensitivity: "base" }),
+    )) {
+      out.push(g);
+      walk(g.key);
+    }
+  };
+  walk(undefined);
+  return out;
+}
+
 /** Le voci di una dimensione, ognuna con i suoi meeting. */
 function groupsOf(dim: FacetDim, meetings: MeetingSummary[], projects: Project[]): Group[] {
   // persone e tag in ordine alfabetico: filtrando cambiano i numeri, non il posto delle voci
@@ -128,19 +184,41 @@ function groupsOf(dim: FacetDim, meetings: MeetingSummary[], projects: Project[]
     groups.toSorted((a, b) => a.label.localeCompare(b.label, locale(), { sensitivity: "base" }));
   if (dim === "people") return byName(groupBy(meetings, (m) => m.attendees));
   if (dim === "period") return byPeriod(meetings);
-  if (dim === "tags") return byName(groupBy(meetings, (m) => m.tags));
-  // un progetto resta in elenco anche prima di avere meeting
-  return projects
-    .map((p) => ({
+  if (dim === "tags") return tagTree(meetings);
+  // un progetto resta in elenco anche prima di avere meeting; uno che ne contiene altri raccoglie
+  // anche le loro note
+  return projectTree(projects).map(({ project: p, depth }) => {
+    const branch = projectBranch(p.id, projects);
+    return {
       key: p.id,
       label: p.name,
-      meetings: meetings.filter((m) => m.projectId === p.id),
-      archived: p.archived,
+      meetings: meetings.filter((m) => m.projectId !== null && branch.has(m.projectId)),
+      archived: archivedIn(p.id, projects),
       project: p,
-    }))
-    .toSorted(
-      (a, b) => Number(a.archived) - Number(b.archived) || a.project.name.localeCompare(b.project.name),
-    );
+      depth,
+      parent: depth > 0 ? (p.parentId ?? undefined) : undefined,
+    };
+  });
+}
+
+/** Dove la Libreria ricorda i rami aperti, su questo Mac. */
+const OPEN_KEY = "granello.library.open";
+
+function readOpen(): ReadonlySet<string> {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(OPEN_KEY) ?? "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveOpen(open: ReadonlySet<string>) {
+  try {
+    localStorage.setItem(OPEN_KEY, JSON.stringify([...open]));
+  } catch {
+    // senza memoria i rami si riaprono a mano: niente di grave
+  }
 }
 
 const hash = (dim: FacetDim) => (dim === "tags" ? "#" : "");
@@ -236,10 +314,15 @@ export default function LibraryView({
   /** Meeting scelti insieme (Cmd o Maiusc + clic), per dare loro un tag in un colpo. */
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const [newTag, setNewTag] = useState("");
-  /** La finestra del progetto: "new" per crearne uno, un progetto per modificarlo. */
-  const [editing, setEditing] = useState<Project | "new" | null>(null);
-  /** Il progetto di cui si è chiesto di confermare l'eliminazione. */
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /**
+   * La finestra del progetto: "new" per crearne uno, `{ under }` per crearne uno dentro un altro,
+   * un progetto per modificarlo.
+   */
+  const [editing, setEditing] = useState<Project | "new" | { under: string } | null>(null);
+  /** Il menu delle azioni su un progetto (pulsante ⋯ o clic destro), e dove si apre. */
+  const [menu, setMenu] = useState<{ project: Project; at: { x: number; y: number } } | null>(null);
+  /** I rami aperti negli alberi dei progetti e dei tag (`projects:<id>`, `tags:progetto`). */
+  const [open, setOpen] = useState<ReadonlySet<string>>(readOpen);
   const root = useRef<HTMLDivElement>(null);
 
   const reload = useCallback(
@@ -314,7 +397,19 @@ export default function LibraryView({
    * due persone, la colonna dei tag mostra solo i tag dei loro meeting.
    */
   const columns = useMemo(() => {
-    const out = {} as Record<FacetDim, { groups: Group[]; narrowed: boolean; archived: number }>;
+    const out = {} as Record<
+      FacetDim,
+      {
+        /** Le voci da mostrare: quelle dentro un ramo chiuso no. */
+        groups: Group[];
+        /** Quante voci ha la colonna, anche dentro i rami chiusi. */
+        total: number;
+        /** Le voci che ne contengono altre. */
+        parents: Set<string>;
+        narrowed: boolean;
+        archived: number;
+      }
+    >;
     for (const d of FACETS) {
       const keys = chosen(d);
       const narrowed = pinnedOn || facets.some((o) => o !== d && chosen(o).length > 0);
@@ -324,16 +419,34 @@ export default function LibraryView({
         (g) => keys.includes(g.key) || !narrowed || g.meetings.length > 0,
       );
       const archived = candidates.filter((g) => g.archived && !keys.includes(g.key)).length;
-      const groups = candidates.filter((g) => keys.includes(g.key) || showArchived || !g.archived);
+      const all = candidates.filter((g) => keys.includes(g.key) || showArchived || !g.archived);
       // una voce scelta resta in colonna anche quando gli altri filtri le tolgono tutti i meeting
       for (const k of keys) {
-        if (!groups.some((g) => g.key === k))
-          groups.push({ key: k, label: known[d].get(k)!.label, meetings: [] });
+        if (!all.some((g) => g.key === k)) all.push({ key: k, label: known[d].get(k)!.label, meetings: [] });
       }
-      out[d] = { groups, narrowed, archived };
+      // in un albero si vedono le voci i cui rami sopra sono tutti aperti
+      const byKey = new Map(all.map((g) => [g.key, g]));
+      const parents = new Set(all.flatMap((g) => (g.parent && byKey.has(g.parent) ? [g.parent] : [])));
+      const shown = (g: Group): boolean => {
+        const up = g.parent ? byKey.get(g.parent) : undefined;
+        return !up || (open.has(`${d}:${up.key}`) && shown(up));
+      };
+      out[d] = { groups: all.filter(shown), total: all.length, parents, narrowed, archived };
     }
     return out;
-  }, [chosen, pinnedOn, facets, passing, projects, showArchived, known]);
+  }, [chosen, pinnedOn, facets, passing, projects, showArchived, known, open]);
+
+  /** Apre o chiude il ramo di una voce. */
+  const toggleOpen = (d: FacetDim, key: string, to?: boolean) =>
+    setOpen((now) => {
+      const id = `${d}:${key}`;
+      if (to === now.has(id)) return now;
+      const next = new Set(now);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      saveOpen(next);
+      return next;
+    });
 
   const filtered = useMemo(() => passing(), [passing]);
 
@@ -343,7 +456,7 @@ export default function LibraryView({
       ? fileCount
       : d === "pinned"
         ? filtered.filter((m) => m.pinnedAt !== null).length
-        : columns[d].groups.length;
+        : columns[d].total;
 
   /** Le voci scelte, con il loro nome, per il segnaposto del filtro e i messaggi. */
   const chosenLabels = facets.flatMap((d) => chosen(d).map((k) => hash(d) + known[d].get(k)!.label));
@@ -427,13 +540,8 @@ export default function LibraryView({
     }
   };
 
-  /** Il primo clic chiede conferma, il secondo elimina: i meeting restano, senza progetto. */
+  /** Elimina un progetto (il menu ha già chiesto conferma): i meeting restano, senza progetto. */
   const deleteProject = async (p: Project) => {
-    if (confirmDelete !== p.id) {
-      setConfirmDelete(p.id);
-      return;
-    }
-    setConfirmDelete(null);
     try {
       onProjectsChanged(await api.deleteProject(p.id));
       await reload();
@@ -442,6 +550,13 @@ export default function LibraryView({
       toast(errorText(e));
     }
   };
+
+  const openMenu = (project: Project, where: { x: number; y: number }) => setMenu({ project, at: where });
+  // chiuso il menu, le frecce tornano alla Libreria
+  const closeMenu = useCallback(() => {
+    setMenu(null);
+    root.current?.focus();
+  }, []);
 
   /** Mette i meeting selezionati in un progetto, o li toglie dal loro. */
   const moveSelection = async (projectId: string | null) => {
@@ -622,10 +737,20 @@ export default function LibraryView({
       setPicked(new Set(listed.map((m) => m.id)));
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
-      setCol(Math.min(meetingsCol, at + 1));
+      // su una voce con un ramo chiuso, la freccia lo apre; altrimenti passa alla colonna dopo
+      const key = facet ? cursor[facet] : undefined;
+      if (facet && key && columns[facet].parents.has(key) && !open.has(`${facet}:${key}`))
+        toggleOpen(facet, key, true);
+      else setCol(Math.min(meetingsCol, at + 1));
     } else if (e.key === "ArrowLeft") {
       e.preventDefault();
-      setCol(Math.max(0, at - 1));
+      // su un ramo aperto lo chiude, su una voce dentro un altro risale a quella, poi la colonna prima
+      const row = facet ? columns[facet].groups.find((g) => g.key === cursor[facet]) : undefined;
+      if (facet && row && columns[facet].parents.has(row.key) && open.has(`${facet}:${row.key}`))
+        toggleOpen(facet, row.key, false);
+      else if (facet && row?.parent && columns[facet].groups.some((g) => g.key === row.parent))
+        pickValue(facet, row.parent, { metaKey: false, ctrlKey: false, shiftKey: false });
+      else setCol(Math.max(0, at - 1));
     } else if (e.key === "Enter" && mode === "items") {
       if (!currentItem) return;
       e.preventDefault();
@@ -693,8 +818,9 @@ export default function LibraryView({
 
   /** Una colonna di voci: `i` è la sua posizione tra le dimensioni scelte, per le frecce. */
   const facetCol = (d: FacetDim, i: number) => {
-    const { groups, narrowed } = columns[d];
+    const { groups, narrowed, parents } = columns[d];
     const keys = chosen(d);
+    const tree = groups.some((g) => (g.depth ?? 0) > 0) || parents.size > 0;
     return (
       <div
         key={d}
@@ -720,55 +846,74 @@ export default function LibraryView({
               "lib-row" +
               (keys.includes(g.key) ? " on" : "") +
               (g.key === cursor[d] ? " cur" : "") +
-              (g.archived ? " archived" : "")
+              (g.archived ? " archived" : "") +
+              (tree ? " tree" : "")
+            }
+            style={tree ? ({ "--depth": g.depth ?? 0 } as React.CSSProperties) : undefined}
+            // clic destro su un progetto: lo stesso menu del pulsante ⋯, come nel Finder
+            onContextMenu={
+              g.project
+                ? (e) => {
+                    e.preventDefault();
+                    openMenu(g.project!, { x: e.clientX, y: e.clientY });
+                  }
+                : undefined
             }
           >
+            {tree &&
+              (parents.has(g.key) ? (
+                <button
+                  className="lib-twisty"
+                  aria-expanded={open.has(`${d}:${g.key}`)}
+                  aria-label={
+                    open.has(`${d}:${g.key}`)
+                      ? t("Chiudi {name}", { name: g.short ?? g.label })
+                      : t("Apri {name}", { name: g.short ?? g.label })
+                  }
+                  onClick={() => toggleOpen(d, g.key)}
+                >
+                  <svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true">
+                    <path
+                      d="M3.5 2 L7 5 L3.5 8"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              ) : (
+                <span className="lib-twisty" aria-hidden="true" />
+              ))}
             <button
               role="option"
               aria-selected={keys.includes(g.key)}
               className="lib-row-main"
-              title={g.project?.description || undefined}
+              title={g.project?.description || (g.short ? hash(d) + g.label : undefined)}
               onClick={(e) => pickValue(d, g.key, e)}
             >
               {g.project && <ProjectDot project={g.project} />}
               <span className="lib-label">
                 {hash(d)}
-                {g.label}
+                {g.short ?? g.label}
               </span>
               <span className="lib-count">{g.meetings.length}</span>
             </button>
-            {g.project && !narrowed && (
-              <>
-                <button
-                  className="lib-act"
-                  onClick={() => setEditing(g.project!)}
-                  aria-label={t("Modifica il progetto")}
-                  title={t("Cambia nome, colore e descrizione")}
-                >
-                  ✎
-                </button>
-                <button
-                  className="lib-act"
-                  onClick={() => archiveProject(g.project!)}
-                  aria-label={g.archived ? t("Riattiva") : t("Archivia")}
-                  title={
-                    g.archived
-                      ? t("Riporta il progetto tra quelli attivi")
-                      : t("Archivia: il progetto è chiuso, le note restano")
-                  }
-                >
-                  {g.archived ? "⤒" : "⤓"}
-                </button>
-                <button
-                  className={"lib-act" + (confirmDelete === g.key ? " confirm" : "")}
-                  onClick={() => deleteProject(g.project!)}
-                  onBlur={() => setConfirmDelete(null)}
-                  aria-label={t("Elimina il progetto {name}", { name: g.project.name })}
-                  title={t("Elimina il progetto: le sue note restano, senza progetto")}
-                >
-                  {confirmDelete === g.key ? t("Elimina?") : "×"}
-                </button>
-              </>
+            {g.project && (
+              <button
+                className={"lib-act lib-menu-btn" + (menu?.project.id === g.key ? " open" : "")}
+                aria-haspopup="menu"
+                aria-expanded={menu?.project.id === g.key}
+                aria-label={t("Azioni sul progetto {name}", { name: g.project.name })}
+                title={t("Azioni sul progetto")}
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  openMenu(g.project!, { x: r.right, y: r.bottom + 4 });
+                }}
+              >
+                ⋯
+              </button>
             )}
           </div>
         ))}
@@ -1044,13 +1189,11 @@ export default function LibraryView({
               >
                 {selectionProject === "mixed" && <option value="mixed">{t("Progetti diversi")}</option>}
                 <option value="">{t("Nessun progetto")}</option>
-                {projects
-                  .filter((p) => !p.archived || p.id === selectionProject)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
+                {projectOptions(projects, selectionProject).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
               </select>
               <form
                 className="lib-bulk-add"
@@ -1148,7 +1291,7 @@ export default function LibraryView({
               {projectOf(current) && (
                 <p className="small lib-project">
                   <ProjectDot project={projectOf(current)!} />
-                  {projectOf(current)!.name}
+                  {projectTitle(current.projectId, projects)}
                 </p>
               )}
               {current.attendees.length > 0 && <p className="small">{current.attendees.join(", ")}</p>}
@@ -1198,13 +1341,41 @@ export default function LibraryView({
           )}
         </div>
       </div>
+      {menu && (
+        <Menu
+          at={menu.at}
+          label={t("Azioni sul progetto {name}", { name: menu.project.name })}
+          onClose={closeMenu}
+          items={[
+            {
+              label: t("Nuovo progetto dentro…"),
+              onSelect: () => setEditing({ under: menu.project.id }),
+            },
+            { label: t("Modifica…"), onSelect: () => setEditing(menu.project) },
+            {
+              label: menu.project.archived ? t("Riattiva") : t("Archivia"),
+              onSelect: () => void archiveProject(menu.project),
+            },
+            {
+              label: t("Elimina…"),
+              confirm: t("Elimina: le note restano"),
+              danger: true,
+              onSelect: () => void deleteProject(menu.project),
+            },
+          ]}
+        />
+      )}
       {editing && (
         <ProjectDialog
-          project={editing === "new" ? undefined : editing}
+          project={editing === "new" || "under" in editing ? undefined : editing}
           onClose={() => setEditing(null)}
+          projects={projects}
+          parentId={typeof editing === "object" && "under" in editing ? editing.under : undefined}
           onSaved={(saved, all) => {
             setEditing(null);
             onProjectsChanged(all);
+            // il nuovo progetto si vede anche dentro un ramo che era chiuso
+            for (const up of projectPath(saved.id, all).slice(0, -1)) toggleOpen("projects", up.id, true);
             showDims(["projects"]);
             setSel({ projects: [saved.id] });
             setCursor({ projects: saved.id });

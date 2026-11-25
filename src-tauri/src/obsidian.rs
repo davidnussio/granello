@@ -154,10 +154,15 @@ pub fn prepare(root: &Path, already: &HashMap<String, String>, copy: Option<&Pat
         let folders: Vec<&str> = s.rel.split('/').collect();
         let place = Place::of(&folders[..folders.len() - 1]);
         // la proprietà `progetto` vince sulla cartella
-        let project = prop_list(&s.props, PROJECT_KEYS).into_iter().map(|p| person_or_name(&p)).find(|p| !p.is_empty()).or(place.project);
-        if let Some(p) = &project {
-            if !projects.iter().any(|x| x.eq_ignore_ascii_case(p)) {
-                projects.push(p.clone());
+        let project = match prop_list(&s.props, PROJECT_KEYS).into_iter().map(|p| person_or_name(&p)).find(|p| !p.is_empty()) {
+            Some(p) => vec![p],
+            None => place.project,
+        };
+        // ogni livello è un progetto: `dambox` e `dambox › bizcard`
+        for depth in 1..=project.len() {
+            let path = project[..depth].join(PATH_SEPARATOR);
+            if !projects.iter().any(|x| x.eq_ignore_ascii_case(&path)) {
+                projects.push(path);
             }
         }
         let mut cx = Cx { index: &index, files: &mut files, from: s.rel.clone(), tags: Vec::new(), missing_links: 0, missing: Vec::new(), in_table: false };
@@ -428,38 +433,41 @@ const PARA: &[(&str, bool)] = &[
     ("archivio", true),
 ];
 
+/// Come il riepilogo scrive un progetto dentro un altro.
+const PATH_SEPARATOR: &str = " › ";
+
 /// Il progetto e i tag che la cartella dà a una nota.
 struct Place {
-    project: Option<String>,
+    /// Il progetto e quelli sopra, dal primo livello; vuoto = senza progetto.
+    project: Vec<String>,
     tags: Vec<String>,
     /// La nota sta nell'archivio di un vault PARA: il suo progetto nasce archiviato.
     archived: bool,
 }
 
 impl Place {
-    /// La cartella di primo livello è il progetto, le altre un tag. In un vault PARA (Projects,
-    /// Areas, Resources, Archive) il progetto è la cartella sotto e la categoria è un tag. Una
-    /// cartella che comincia con `_` (`_daily`) non diventa mai un progetto, solo un tag.
+    /// Ogni cartella è un progetto dentro quella sopra: `dambox/bizcard` → `bizcard` dentro
+    /// `dambox`. In un vault PARA (Projects, Areas, Resources, Archive) la categoria non conta, e
+    /// quello che sta nell'archivio nasce archiviato. Una cartella che comincia con `_` (`_daily`)
+    /// non è un progetto: da lì in giù le cartelle diventano un tag (`daily`, `fit/daily`).
     fn of(folders: &[&str]) -> Place {
-        let clean = |f: &&str| f.trim().trim_start_matches('_').to_string();
-        let mut tags = Vec::new();
         let mut archived = false;
         let mut rest: &[&str] = folders;
         if let Some(first) = folders.first() {
             if let Some((_, arch)) = PARA.iter().find(|(name, _)| *name == bare(first)) {
-                tags.push(bare(first));
                 archived = *arch;
                 rest = &folders[1..];
             }
         }
-        let project = rest.first().filter(|f| !f.trim().starts_with('_') && !f.trim().is_empty()).map(|f| f.trim().to_string());
-        let deeper: Vec<String> = rest.iter().skip(usize::from(project.is_some())).map(clean).filter(|f| !f.is_empty()).collect();
-        if !deeper.is_empty() {
-            tags.push(deeper.join("/"));
-        }
+        let rest: Vec<&str> = rest.iter().map(|f| f.trim()).filter(|f| !f.is_empty()).collect();
+        let split = rest.iter().position(|f| f.starts_with('_')).unwrap_or(rest.len());
+        let project = rest[..split].iter().map(|f| f.to_string()).collect();
+        let tag: Vec<&str> = rest[split..].iter().map(|f| f.trim_start_matches('_')).filter(|f| !f.is_empty()).collect();
+        let tags = if tag.is_empty() { Vec::new() } else { vec![tag.join("/")] };
         Place { project, tags, archived }
     }
 }
+
 /// Proprietà che diventano altro (titolo, tag, data) o che servono solo alla grafica di Obsidian.
 const USED_KEYS: &[&str] = &["title", "tags", "tag", "cssclass", "cssclasses"];
 
@@ -1093,14 +1101,14 @@ mod tests {
         assert!(s.obsidian);
         assert_eq!(s.notes, 3, "{:?}", p.notes.iter().map(|n| &n.source_path).collect::<Vec<_>>());
         assert_eq!((s.attachments, s.loose), (2, 1));
-        assert_eq!(s.projects, ["Lavoro", "Persone"]);
+        assert_eq!(s.projects, ["Lavoro", "Lavoro › Clienti", "Persone"]);
         assert_eq!(s.missing_links, 1);
         let reasons: Vec<&str> = s.skipped.iter().map(|x| x.path.as_str()).collect();
         assert_eq!(reasons, ["Templates/", "mancante.png", "mappa.canvas"]);
 
         let acme = p.notes.iter().find(|n| n.title == "Acme").unwrap();
-        assert_eq!(acme.project.as_deref(), Some("Lavoro"));
-        assert_eq!(acme.tags, ["obsidian", "clienti", "cliente", "vendite", "progetto/alfa"]);
+        assert_eq!(acme.project, ["Lavoro", "Clienti"]);
+        assert_eq!(acme.tags, ["obsidian", "cliente", "vendite", "progetto/alfa"]);
         assert_eq!(acme.created_at, parse_date("2024-03-05").unwrap());
         let md = &acme.notes_md;
         assert!(md.starts_with("::: details "), "{md}");
@@ -1117,7 +1125,7 @@ mod tests {
         let mario = p.notes.iter().find(|n| n.title == "Mario Rossi").unwrap();
         assert_eq!(mario.notes_md, "Mario lavora da [[Acme]].\n", "l'alias porta alla nota");
         let daily = p.notes.iter().find(|n| n.source_path == "2024-03-07.md").unwrap();
-        assert_eq!(daily.project, None);
+        assert!(daily.project.is_empty());
         assert_eq!(daily.created_at, parse_date("2024-03-07").unwrap());
         assert_eq!(daily.notes_md, "Nota del giorno, *mancante.png*\n");
         assert_eq!(p.files[0].folder, "Archivio");
@@ -1185,8 +1193,8 @@ mod tests {
         assert_eq!((p.summary.notes, p.summary.loose), (6, 0));
 
         let kickoff = note("Projects/EOC/EocForms/Riunione Kickoff 5.7.2025.md");
-        assert_eq!(kickoff.project.as_deref(), Some("EOC"));
-        assert_eq!(kickoff.tags[..3], ["obsidian", "projects", "eocforms"]);
+        assert_eq!(kickoff.project, ["EOC", "EocForms"]);
+        assert_eq!(kickoff.tags, ["obsidian"], "la categoria PARA non è un tag");
         assert_eq!(kickoff.attendees, ["Mario Rossi", "Giulia Ferri"]);
         assert_eq!(kickoff.created_at, parse_date("2025-07-05").unwrap());
         assert!(kickoff.notes_md.contains("| status | aperto |"), "{}", kickoff.notes_md);
@@ -1199,15 +1207,15 @@ mod tests {
         assert_eq!(p.summary.missing_links, 0, "una nota con il punto nel nome non è un file");
 
         let intro = note("Resources/Effect/Intro.md");
-        assert_eq!(intro.project.as_deref(), Some("Formazione"), "la proprietà vince sulla cartella");
+        assert_eq!(intro.project, ["Formazione"], "la proprietà vince sulla cartella");
         assert!(!intro.notes_md.contains("::: details"), "{}", intro.notes_md);
         let old = note("4 - Archive/Vecchio/Chiuso.md");
-        assert_eq!((old.project.as_deref(), old.archived_project), (Some("Vecchio"), true));
-        assert_eq!(old.tags[1], "archive");
+        assert_eq!((old.project.as_slice(), old.archived_project), (&["Vecchio".to_string()][..], true));
+        assert_eq!(old.tags, ["obsidian"]);
         let daily = note("_daily/2026-11-20.md");
-        assert_eq!((daily.project.as_deref(), daily.tags[1].as_str()), (None, "daily"));
+        assert_eq!((daily.project.len(), daily.tags[1].as_str()), (0, "daily"));
         assert_eq!(note("Areas/Dev/Guida.md").notes_md, "> [!NOTE]\n> **Come usarla**\n> Leggi prima\n");
-        assert_eq!(p.summary.projects, ["Dev", "EOC", "Formazione", "Vecchio"]);
+        assert_eq!(p.summary.projects, ["Dev", "EOC", "EOC › EocForms", "Formazione", "Vecchio"]);
         std::fs::remove_dir_all(&root).unwrap();
     }
 
@@ -1221,6 +1229,18 @@ mod tests {
         assert_eq!(props[3], ("nested".into(), Prop::Text("x: 1".into())));
         assert_eq!(frontmatter("---\nsenza chiusura").1, 0);
         assert_eq!(frontmatter("testo").0, vec![]);
+    }
+
+    #[test]
+    fn folders_become_nested_projects() {
+        let place = |path: &str| {
+            let p = Place::of(&path.split('/').collect::<Vec<_>>());
+            (p.project, p.tags, p.archived)
+        };
+        assert_eq!(place("Projects/dambox/bizcard"), (vec!["dambox".into(), "bizcard".into()], vec![], false));
+        assert_eq!(place("Clienti/Acme/_vecchio/2023"), (vec!["Clienti".into(), "Acme".into()], vec!["vecchio/2023".into()], false));
+        assert_eq!(place("_fit/_daily"), (vec![], vec!["fit/daily".into()], false));
+        assert_eq!(place("Archivio/Sito"), (vec!["Sito".into()], vec![], true));
     }
 
     #[test]

@@ -34,6 +34,9 @@ and "Undo import" deletes everything it created.
     Archive, also translated or numbered) the folder below is the project and the category a
     tag; folders starting with `_` give only a tag; a `progetto`/`project` property wins over
     the folder, and `partecipanti`/`attendees` become the participants.
+    Changed again on 2026-11-25: projects can sit inside other projects (`parent_id`, schema
+    v13) and every folder is a project inside the one above (`dambox/bizcard`); the PARA
+    category is no longer a tag; tags with `/` show as a tree in the Library.
   - **Loose files** (no note uses them) go into Library → Files, without a note.
   - **Frontmatter**: `tags` and inline `#tags` become tags, `created`/`date` (or a date in the
     file name, or the file's date) the note's date, `title` the title; every other property

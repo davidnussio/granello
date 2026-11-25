@@ -63,8 +63,8 @@ const ENTITIES: &[Entity] = &[
         name: "project",
         table: "projects",
         key: "id",
-        fields: &["name", "color", "description", "archived", "created_at"],
-        tracked: &["name", "color", "description", "archived"],
+        fields: &["name", "color", "description", "archived", "created_at", "parent_id"],
+        tracked: &["name", "color", "description", "archived", "parent_id"],
     },
     Entity {
         name: "person",
@@ -558,8 +558,8 @@ fn apply_op(db: &Db, op: &Op, touched: &mut HashSet<String>) -> Result<()> {
     Ok(())
 }
 
-/// Adatta un valore ricevuto ai vincoli del database: un progetto che qui non c'è più, o un
-/// nome di progetto già preso.
+/// Adatta un valore ricevuto ai vincoli del database: un progetto che qui non c'è più, un
+/// nome di progetto già preso, un progetto che finirebbe dentro sé stesso.
 fn fit(db: &Db, e: &Entity, key: &str, field: &str, value: Value, touched: &mut HashSet<String>) -> Result<Value> {
     let conn = db.conn();
     match (e.name, field, &value) {
@@ -567,6 +567,12 @@ fn fit(db: &Db, e: &Entity, key: &str, field: &str, value: Value, touched: &mut 
             let exists: bool =
                 conn.query_row("SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?1)", [project], |r| r.get(0))?;
             Ok(if exists { value } else { Value::Null })
+        }
+        ("project", "parent_id", Value::String(parent)) => {
+            // dentro sé stesso o dentro un suo sotto-progetto (spostati insieme su due Mac): resta
+            // di primo livello. Un genitore che qui non c'è ancora va bene: arriverà.
+            let cycle = db.project_branch(key)?.iter().any(|p| p == parent);
+            Ok(if cycle { Value::Null } else { value })
         }
         ("project", "name", Value::String(name)) => {
             let other: Option<String> = conn
@@ -913,7 +919,7 @@ mod tests {
         let a = Mac::new("aaa", &dir);
         // un meeting creato prima di attivare il sync parte con il primo giro
         let before = a.db.create_meeting("Già qui", None, &["Anna Rossi".into()], None).unwrap();
-        let project = a.db.save_project("", "Cliente Nord", "blue", "").unwrap();
+        let project = a.db.save_project("", "Cliente Nord", "blue", "", None).unwrap();
         let m = a.db.create_meeting("Kickoff", None, &[], None).unwrap();
         a.db.set_meetings_project(std::slice::from_ref(&m.id), Some(&project.id)).unwrap();
         a.db.update_meeting(&m.id, None, Some("- decidere il prezzo"), None, None).unwrap();
@@ -1037,8 +1043,8 @@ mod tests {
         let dir = folder();
         let a = Mac::new("aaa", &dir);
         let b = Mac::new("bbb", &dir);
-        let pa = a.db.save_project("", "Lancio", "", "").unwrap();
-        let pb = b.db.save_project("", "Lancio", "", "").unwrap();
+        let pa = a.db.save_project("", "Lancio", "", "", None).unwrap();
+        let pb = b.db.save_project("", "Lancio", "", "", None).unwrap();
         a.sync(&dir);
         b.sync(&dir);
         a.sync(&dir);
@@ -1048,6 +1054,33 @@ mod tests {
                 mac.db.list_projects().unwrap().into_iter().map(|p| (p.id, p.name)).collect();
             assert_eq!(names[first], "Lancio");
             assert_eq!(names[second], "Lancio (2)");
+        }
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn sub_projects_travel_and_never_end_up_inside_themselves() {
+        let dir = folder();
+        let a = Mac::new("aaa", &dir);
+        let b = Mac::new("bbb", &dir);
+        let dambox = a.db.save_project("", "dambox", "", "", None).unwrap();
+        let bizcard = a.db.save_project("", "bizcard", "", "", Some(&dambox.id)).unwrap();
+        a.sync(&dir);
+        b.sync(&dir);
+        let parent = |mac: &Mac, id: &str| mac.db.list_projects().unwrap().into_iter().find(|p| p.id == id).unwrap().parent_id;
+        assert_eq!(parent(&b, &bizcard.id), Some(dambox.id.clone()));
+
+        // su un Mac bizcard esce da dambox e dambox ci entra, sull'altro resta com'era
+        a.db.save_project(&bizcard.id, "bizcard", "", "", None).unwrap();
+        a.db.save_project(&dambox.id, "dambox", "", "", Some(&bizcard.id)).unwrap();
+        b.db.save_project(&dambox.id, "dambox", "", "", None).unwrap();
+        b.db.save_project(&bizcard.id, "bizcard", "", "", Some(&dambox.id)).unwrap();
+        a.sync(&dir);
+        b.sync(&dir);
+        a.sync(&dir);
+        for mac in [&a, &b] {
+            let (d, z) = (parent(mac, &dambox.id), parent(mac, &bizcard.id));
+            assert!(!(d.as_deref() == Some(bizcard.id.as_str()) && z.as_deref() == Some(dambox.id.as_str())), "{d:?} {z:?}");
         }
         let _ = std::fs::remove_dir_all(dir);
     }

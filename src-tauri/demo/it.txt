@@ -1,4 +1,4 @@
-projects: cliente-nord, app-mobile, cliente-lago
+projects: clienti/cliente-nord, app-mobile, clienti/cliente-lago
 archived: sito-2025
 
 === demo-rinnovo

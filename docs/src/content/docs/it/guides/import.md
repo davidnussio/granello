@@ -22,10 +22,9 @@ Ogni nota importata riceve il tag `#obsidian` e la privacy minima del vault aper
 | `[[Nota#Titolo]]`, `![[Nota]]` | Un link alla nota (Granello non ha link a un'intestazione e non incorpora una nota in un'altra) |
 | `![[immagine.png]]`, `![](immagine.png)` | Un'immagine, copiata tra gli allegati del vault |
 | `![[file.pdf]]`, `[testo](file.pdf)` | Un allegato, copiato |
-| Una cartella di primo livello | Il progetto delle note che contiene, creato se non c'è ancora |
-| Le cartelle più interne | Un tag: `Lavoro/Clienti/Acme.md` va nel progetto "Lavoro" con il tag `clienti` |
-| Le cartelle PARA (`Projects`, `Areas`, `Resources`, `Archive`, o `Progetti`, `Aree`, `Risorse`, `Archivio`, anche numerate come `1 - Projects`) | La cartella sotto è il progetto e la categoria un tag: `Projects/Acme/Call.md` va in "Acme" con il tag `projects`. I progetti che arrivano solo da `Archive` nascono archiviati |
-| Le cartelle che cominciano con `_` (`_daily`) | Solo un tag (`daily`), mai un progetto |
+| Una cartella | Un progetto, creato se non c'è ancora. Ogni sottocartella è un progetto dentro quello sopra: `Lavoro/Clienti/Acme.md` va in "Clienti", dentro "Lavoro" |
+| Le cartelle PARA (`Projects`, `Areas`, `Resources`, `Archive`, o `Progetti`, `Aree`, `Risorse`, `Archivio`, anche numerate come `1 - Projects`) | Restano fuori dall'albero: `Projects/dambox/bizcard/Call.md` va in "bizcard", dentro "dambox". I progetti che arrivano solo da `Archive` nascono archiviati |
+| Le cartelle che cominciano con `_` (`_daily`) | Mai un progetto: da lì in giù le cartelle diventano un tag (`_fit/_daily` → `fit/daily`) |
 | La proprietà `progetto` o `project` | Il progetto della nota, al posto della cartella |
 | La proprietà `partecipanti`, `attendees` o `participants` | I partecipanti della nota, aggiunti a [Persone](/it/guides/people/) |
 | `tags` e i `#tag` nel testo | Tag |
@@ -53,4 +52,4 @@ Importando di nuovo la stessa cartella arriva solo quello che è nuovo: le note 
 
 ## Annullare un import
 
-Ogni import resta in elenco sotto **Import fatti**. **Annulla import** elimina le note e i file che ha portato, anche se li hai modificati dopo, e i progetti e le persone che ha creato se restano vuoti. I progetti e le persone che avevi già restano.
+Ogni import resta in elenco sotto **Import fatti**. **Annulla import** elimina le note e i file che ha portato, anche se li hai modificati dopo, e i progetti e le persone che ha creato se restano vuoti (un progetto che ne contiene ancora un altro resta). I progetti e le persone che avevi già restano.

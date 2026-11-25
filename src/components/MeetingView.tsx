@@ -19,6 +19,7 @@ import PrivacyIcon, { privacyHint, privacyLabel } from "./PrivacyIcon";
 import PinIcon from "./PinIcon";
 import ChatPanel from "./ChatPanel";
 import ProjectDialog, { projectColor } from "./ProjectDialog";
+import { projectOptions } from "../tree";
 import { dayLabel, longWhen, mmss, sameDay, shortWhen, time } from "../format";
 import { t } from "../i18n";
 import { thisDevice } from "../platformText";
@@ -873,13 +874,11 @@ export default function MeetingView({
               }}
             >
               <option value="">{t("Nessun progetto")}</option>
-              {projects
-                .filter((p) => !p.archived || p.id === meeting.projectId)
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
+              {projectOptions(projects, meeting.projectId).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
               <option value={NEW_PROJECT}>{t("+ Nuovo progetto")}…</option>
             </select>
           </div>
@@ -1282,6 +1281,7 @@ export default function MeetingView({
       )}
       {creatingProject && (
         <ProjectDialog
+          projects={projects}
           onClose={() => setCreatingProject(false)}
           onSaved={(saved, all) => {
             setCreatingProject(false);

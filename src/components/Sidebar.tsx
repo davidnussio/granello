@@ -68,35 +68,45 @@ export default function Sidebar(p: Props) {
     </button>
   );
 
-  /** Una nota di oggi o di ieri: titolo, poi ora dell'ultima modifica, ✦ se rielaborata e quante persone, poi i tag. */
-  const card = (m: MeetingSummary) => (
-    <button
-      key={m.id}
-      className={"side-item side-card" + (m.id === selectedId ? " active" : "")}
-      onClick={() => p.setView({ kind: "meeting", id: m.id })}
-      title={m.hasEnhanced ? undefined : t("Note non ancora rielaborate")}
-    >
-      <span className={"side-title" + (m.hasEnhanced ? "" : " draft")}>
-        {p.rec.meetingId === m.id && <span className="rec-dot" />}
-        {m.title || t("Senza titolo")}
-      </span>
-      <span className="side-meta">
-        {time(m.updatedAt)}
-        {m.hasEnhanced && sparkle(" · ✦")}
-        {m.attendees.length === 1
-          ? ` · ${t("1 persona")}`
-          : m.attendees.length > 1
-            ? ` · ${t("{n} persone", { n: m.attendees.length })}`
-            : ""}
-      </span>
-      <Tags tags={m.tags} />
-    </button>
-  );
+  /**
+   * Una nota di oggi o di ieri: titolo e, a destra, l'ora dell'ultima modifica, come nelle
+   * settimane; sotto ✦ se rielaborata e quante persone, poi i tag.
+   */
+  const card = (m: MeetingSummary) => {
+    const people =
+      m.attendees.length === 1
+        ? t("1 persona")
+        : m.attendees.length > 1
+          ? t("{n} persone", { n: m.attendees.length })
+          : "";
+    const meta = [m.hasEnhanced ? "✦" : "", people].filter(Boolean).join(" · ");
+    return (
+      <button
+        key={m.id}
+        className={"side-item side-card" + (m.id === selectedId ? " active" : "")}
+        onClick={() => p.setView({ kind: "meeting", id: m.id })}
+        title={m.hasEnhanced ? undefined : t("Note non ancora rielaborate")}
+      >
+        <span className="side-card-head">
+          <span className={"side-title" + (m.hasEnhanced ? "" : " draft")}>
+            {p.rec.meetingId === m.id && <span className="rec-dot" />}
+            {m.title || t("Senza titolo")}
+          </span>
+          <span className="side-time">{time(m.updatedAt)}</span>
+        </span>
+        {meta && <span className="side-meta">{sparkle(meta)}</span>}
+        <Tags tags={m.tags} />
+      </button>
+    );
+  };
 
   const day = (title: string, list: MeetingSummary[]) =>
     list.length > 0 && (
       <section className="side-section" aria-label={title}>
-        <h4>{title}</h4>
+        <h4 className="side-head">
+          <span>{title}</span>
+          <span className="side-count">{list.length}</span>
+        </h4>
         {list.map(card)}
       </section>
     );
@@ -170,7 +180,10 @@ export default function Sidebar(p: Props) {
           <>
             {soon.length > 0 && (
               <section className="side-section">
-                <h4>{t("In arrivo")}</h4>
+                <h4 className="side-head">
+                  <span>{t("In arrivo")}</span>
+                  <span className="side-count">{soon.length}</span>
+                </h4>
                 {soon.map((e) => (
                   <button key={e.id} className="side-item event" onClick={() => p.onOpenEvent(e)}>
                     <span className="side-time">{time(e.start)}</span>

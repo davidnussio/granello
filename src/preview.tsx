@@ -119,7 +119,10 @@ const importSummary = {
   notes: 42,
   attachments: 17,
   loose: 2,
-  projects: lang === "it" ? ["Clienti", "Personale", "Team"] : ["Clients", "Personal", "Team"],
+  projects:
+    lang === "it"
+      ? ["Clienti", "Clienti › Nord", "Personale", "Team"]
+      : ["Clients", "Clients › Nord", "Personal", "Team"],
   already: 0,
   changed: [],
   missingLinks: 3,
@@ -217,7 +220,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   },
   // anche i progetti si scrivono davvero, in memoria: serve a provare la finestra e gli spostamenti
   save_project: (a) => {
-    const all = data.projects as { id: string; name: string; archived: boolean }[];
+    const all = data.projects as { id: string; name: string; archived: boolean; parentId: string | null }[];
     const name = String(a.name).trim();
     if (all.some((p) => p.id !== a.id && p.name.toLowerCase() === name.toLowerCase()))
       throw new Error(`Esiste già un progetto con il nome «${name}». Scegline un altro.`);
@@ -227,6 +230,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
       color: a.color,
       description: a.description,
       archived: all.find((p) => p.id === a.id)?.archived ?? false,
+      parentId: (a.parentId as string | null) ?? null,
     };
     data.projects = [...all.filter((p) => p.id !== saved.id), saved].toSorted((x, y) =>
       x.name.localeCompare(y.name),
@@ -240,7 +244,12 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     return data.projects;
   },
   delete_project: (a) => {
-    data.projects = (data.projects as { id: string }[]).filter((p) => p.id !== a.id);
+    const all = data.projects as { id: string; parentId: string | null }[];
+    const gone = all.find((p) => p.id === a.id);
+    // i sotto-progetti salgono di un livello
+    data.projects = all
+      .filter((p) => p.id !== a.id)
+      .map((p) => (p.parentId === a.id ? { ...p, parentId: gone?.parentId ?? null } : p));
     const clear = (m: { projectId: string | null }) => {
       if (m.projectId === a.id) m.projectId = null;
     };

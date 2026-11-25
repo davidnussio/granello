@@ -44,7 +44,8 @@ function Summary({ summary }: { summary: ImportSummary }) {
       </ul>
       {s.projects.length > 0 && (
         <p className="small">
-          {t("Progetti dalle cartelle di primo livello:")} {s.projects.join(", ")}
+          {t("Progetti dalle cartelle (ogni sottocartella è un progetto dentro quello sopra):")}{" "}
+          {s.projects.join(", ")}
         </p>
       )}
       {s.missingLinks > 0 && (

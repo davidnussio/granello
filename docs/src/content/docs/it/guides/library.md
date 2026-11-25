@@ -24,7 +24,13 @@ Un progetto raccoglie le note che vanno insieme: un cliente, un prodotto, un lav
 
 Una nota sta in un progetto al massimo. Per mettere una nota in un progetto aprila e scegli il progetto in alto a destra nell'intestazione, sopra i pulsanti copia, stampa ed elimina; da lì puoi anche creare un progetto nuovo. Per spostare più note insieme selezionale nella Libreria e scegli il progetto nell'anteprima.
 
-Passando su un progetto puoi modificarlo (✎), archiviarlo quando è chiuso (⤓) o eliminarlo (×). Archiviare ed eliminare tengono le note: un progetto archiviato va sotto **Archiviati**, e le note di un progetto eliminato restano senza progetto.
+Un progetto può stare dentro un altro: un cliente con i suoi progetti, un'area con i suoi argomenti. Scegli **Nuovo progetto dentro…** dal menu di un progetto per crearne uno dentro, oppure scegli **Dentro** quando crei o modifichi un progetto. Nella colonna Progetti il triangolo apre e chiude il ramo di un progetto (→ e ← fanno lo stesso da tastiera), e scegliendo un progetto vedi le sue note insieme a quelle dei progetti che contiene. Nell'intestazione della nota il progetto mostra il percorso intero, come `Clienti › Nord`.
+
+Ogni progetto ha un menu: premi **⋯** su un progetto (compare passandoci sopra o scegliendolo) oppure fai clic destro. Da lì puoi crearne uno dentro, modificarlo, archiviarlo quando è chiuso o eliminarlo; per eliminare serve un secondo clic. Archiviare ed eliminare tengono le note: un progetto archiviato va sotto **Archiviati** insieme ai progetti che contiene, e le note di un progetto eliminato restano senza progetto, mentre i progetti dentro salgono di un livello.
+
+## Tag con `/`
+
+Un tag scritto con `/`, come `team/standup`, sta sotto `team` nella colonna Tag, come in Obsidian. Scegliendo `team` vedi le note di tutti i tag che cominciano con `team/`, e di `team` stesso.
 
 I progetti creati con le versioni precedenti, quando un progetto era un tag promosso, vengono convertiti al primo avvio: ognuno tiene il nome e le sue note, e il tag resta sulle note come tag normale.
 
@@ -36,9 +42,9 @@ La puntina nell'intestazione di una nota, accanto a copia, stampa ed elimina, la
 
 Sotto **Libreria** la barra laterale mostra, in ordine:
 
-- **In arrivo**: gli eventi del calendario delle prossime ore.
+- **In arrivo**: gli eventi del calendario delle prossime ore, con quanti sono.
 - **Fissati**: le note che hai fissato.
-- **Oggi** e **Ieri**: ogni nota con l'ora dell'ultima modifica, ✦ se l'AI l'ha rielaborata, quante persone c'erano e al massimo due tag. Un titolo in corsivo è una nota non ancora rielaborata dall'AI.
+- **Oggi** e **Ieri**, ognuna con quante note ha: ogni nota con l'ora dell'ultima modifica a destra del titolo, come nelle settimane sotto, poi ✦ se l'AI l'ha rielaborata, quante persone c'erano e al massimo due tag. Un titolo in corsivo è una nota non ancora rielaborata dall'AI.
 - **Questa settimana** e **Settimana scorsa**: una riga per nota con il giorno della settimana e l'ora dell'ultima modifica, e quante note ha la settimana. Si vedono le prime quattro; **Altre N** mostra le altre.
 - **Tutte le note**, in fondo, apre la Libreria.
 

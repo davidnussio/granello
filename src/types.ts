@@ -339,6 +339,8 @@ export interface Project {
   color: string;
   description: string;
   archived: boolean;
+  /** Il progetto che lo contiene; null = di primo livello. */
+  parentId: string | null;
 }
 
 /** Un elemento che la Libreria mostra attraverso i meeting, letto dalle note. */
