@@ -679,7 +679,7 @@ fn sync_once(db: &Db, device: &str, dir: &Path) -> Result<Vec<String>> {
 
 /// L'id di questo Mac nel log. Sta nel database dell'app, non nel vault: un vault su un disco
 /// esterno può passare da un Mac all'altro.
-fn device_id(main: &Db) -> Result<String> {
+pub(crate) fn device_id(main: &Db) -> Result<String> {
     if let Some(id) = main.setting("device_id")? {
         return Ok(id);
     }

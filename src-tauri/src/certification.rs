@@ -253,7 +253,7 @@ fn c_vault_01_a_long_job_never_writes_into_another_vault() {
         let mut current = state.db.lock();
         *current = other;
         *state.vault.write() =
-            crate::vaults::Open { id: "altro".into(), dir: other_dir.clone(), min_privacy: Privacy::Open };
+            crate::vaults::Open { id: "altro".into(), dir: other_dir.clone(), min_privacy: Privacy::Open, lock: None };
     }
 
     assert!(work.db().is_err(), "il lavoro ha scritto nel vault sbagliato");

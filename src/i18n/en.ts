@@ -264,6 +264,14 @@ const en: Record<string, string> = {
   Aperto: "Open",
   Apri: "Open",
   "Non disponibile: collega il disco": "Not available: connect the disk",
+  "Aperto su «{name}»": 'Open on "{name}"',
+  "Apri comunque": "Open anyway",
+  "Solo se quel computer non lo sta più usando: aprirlo da due computer insieme può rovinare il vault":
+    "Only if that computer is no longer using it: opening it from two computers at once can damage the vault",
+  "La privacy minima si scrive nel vault: si cambia quando il vault si può aprire":
+    "The minimum privacy is written in the vault: change it when the vault can be opened",
+  "La privacy minima è scritta nel vault e lo segue su ogni computer. Un vault si apre da un computer alla volta: non metterlo in una cartella sincronizzata (iCloud Drive, Dropbox) per usarlo da due computer insieme.":
+    "The minimum privacy is written in the vault and follows it to every computer. A vault opens on one computer at a time: do not put it in a synced folder (iCloud Drive, Dropbox) to use it from two computers at once.",
   "Privacy minima": "Minimum privacy",
   "Privacy minima del vault {name}": "Minimum privacy of the vault {name}",
   "Toglie il vault dall'elenco: la cartella e i suoi dati restano dove sono":
@@ -275,8 +283,8 @@ const en: Record<string, string> = {
   "Es. Clienti riservati": "E.g. Confidential clients",
   "Nessuna cartella scelta": "No folder chosen",
   "Scegli…": "Choose…",
-  "Una cartella vuota per un vault nuovo, oppure quella di un vault che esiste già (anche creato su un altro computer): Granello ritrova le sue note.":
-    "An empty folder for a new vault, or the folder of a vault that already exists (even one created on another computer): Granello finds its notes.",
+  "Una cartella vuota per un vault nuovo, oppure quella di un vault che esiste già (anche creato su un altro computer): Granello ritrova le sue note e la sua privacy minima, che qui puoi solo alzare.":
+    "An empty folder for a new vault, or the folder of a vault that already exists (even one created on another computer): Granello finds its notes and its minimum privacy, which you can only raise here.",
   "Aggiungi il vault": "Add the vault",
   "Vault aperto": "Open vault",
   "Sync tra i tuoi Mac": "Sync between your Macs",

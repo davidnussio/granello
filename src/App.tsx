@@ -347,11 +347,11 @@ export default function App() {
    * vengono salvate nel vault a cui appartengono; poi l'interfaccia riparte da capo, perché
    * tutto quello che mostra (meeting, progetti, persone, chat) è di un vault solo.
    */
-  const openVault = async (id: string) => {
+  const openVault = async (id: string, force = false) => {
     setView({ kind: "home" });
     await new Promise((resolve) => setTimeout(resolve, 200));
     try {
-      await api.openVault(id);
+      await api.openVault(id, force);
       window.location.reload();
     } catch (e) {
       toast(errorText(e));

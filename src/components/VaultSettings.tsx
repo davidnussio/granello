@@ -10,7 +10,7 @@ interface Props {
   vaults: Vault[];
   onChanged: (vaults: Vault[]) => void;
   /** Apre un vault: l'app passa a mostrare i suoi meeting. */
-  onOpen: (id: string) => void;
+  onOpen: (id: string, force?: boolean) => void;
   toast: (text: string) => void;
 }
 
@@ -19,13 +19,26 @@ function MinPrivacy({
   value,
   onChange,
   label,
+  disabled,
 }: {
   value: Privacy;
   onChange: (p: Privacy) => void;
   label: string;
+  /** La privacy minima si scrive nel vault: se non si può aprire, non si può cambiare. */
+  disabled?: boolean;
 }) {
   return (
-    <select value={value} aria-label={label} onChange={(e) => onChange(e.target.value as Privacy)}>
+    <select
+      value={value}
+      aria-label={label}
+      disabled={disabled}
+      title={
+        disabled
+          ? t("La privacy minima si scrive nel vault: si cambia quando il vault si può aprire")
+          : undefined
+      }
+      onChange={(e) => onChange(e.target.value as Privacy)}
+    >
       <option value="open">{t("Nessun minimo")}</option>
       <option value="audio">{t("Almeno audio locale")}</option>
       <option value="hardened">{t("Sempre blindata")}</option>
@@ -42,6 +55,8 @@ export default function VaultSettings({ vaults, onChanged, onOpen, toast }: Prop
   const [error, setError] = useState("");
   /** Il vault di cui si è chiesto di confermare la rimozione dall'elenco. */
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  /** Il vault aperto altrove di cui si è chiesto di confermare l'apertura. */
+  const [confirmForce, setConfirmForce] = useState<string | null>(null);
 
   const run = async (action: () => Promise<Vault[]>) => {
     try {
@@ -112,6 +127,26 @@ export default function VaultSettings({ vaults, onChanged, onOpen, toast }: Prop
                 )}
                 {v.active ? (
                   <span className="chip vault-open">{t("Aperto")}</span>
+                ) : v.heldBy ? (
+                  <>
+                    <span className="warn small">{t("Aperto su «{name}»", { name: v.heldBy })}</span>
+                    <button
+                      className={"btn small ghost" + (confirmForce === v.id ? " danger" : "")}
+                      title={t(
+                        "Solo se quel computer non lo sta più usando: aprirlo da due computer insieme può rovinare il vault",
+                      )}
+                      onBlur={() => setConfirmForce(null)}
+                      onClick={() => {
+                        if (confirmForce !== v.id) setConfirmForce(v.id);
+                        else {
+                          setConfirmForce(null);
+                          onOpen(v.id, true);
+                        }
+                      }}
+                    >
+                      {confirmForce === v.id ? t("Confermi?") : t("Apri comunque")}
+                    </button>
+                  </>
                 ) : v.available ? (
                   <button className="btn small" onClick={() => onOpen(v.id)}>
                     {t("Apri")}
@@ -129,6 +164,7 @@ export default function VaultSettings({ vaults, onChanged, onOpen, toast }: Prop
                   <MinPrivacy
                     value={v.minPrivacy}
                     label={t("Privacy minima del vault {name}", { name: v.name })}
+                    disabled={!v.available || !!v.heldBy}
                     onChange={(p) => void run(() => api.updateVault(v.id, v.name, p))}
                   />
                 </label>
@@ -167,6 +203,11 @@ export default function VaultSettings({ vaults, onChanged, onOpen, toast }: Prop
             { device: thisDevice() },
           )}
         </p>
+        <p className="muted small">
+          {t(
+            "La privacy minima è scritta nel vault e lo segue su ogni computer. Un vault si apre da un computer alla volta: non metterlo in una cartella sincronizzata (iCloud Drive, Dropbox) per usarlo da due computer insieme.",
+          )}
+        </p>
       </section>
 
       <section className="card">
@@ -193,7 +234,7 @@ export default function VaultSettings({ vaults, onChanged, onOpen, toast }: Prop
           </div>
           <small className="muted">
             {t(
-              "Una cartella vuota per un vault nuovo, oppure quella di un vault che esiste già (anche creato su un altro computer): Granello ritrova le sue note.",
+              "Una cartella vuota per un vault nuovo, oppure quella di un vault che esiste già (anche creato su un altro computer): Granello ritrova le sue note e la sua privacy minima, che qui puoi solo alzare.",
             )}
           </small>
         </div>

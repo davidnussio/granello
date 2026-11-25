@@ -227,6 +227,10 @@ pub fn run() {
         if matches!(event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
             finish_recording_before_exit(app);
         }
+        if matches!(event, tauri::RunEvent::Exit) {
+            // libera il vault aperto: senza, gli altri computer lo vedrebbero ancora occupato
+            app.state::<AppState>().vault.write().lock.take();
+        }
     });
 }
 

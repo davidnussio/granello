@@ -92,8 +92,11 @@ export const api = {
     invoke<Vault[]>("update_vault", { id, name, minPrivacy }),
   /** Toglie un vault dall'elenco: la cartella e i suoi dati restano. */
   removeVault: (id: string) => invoke<Vault[]>("remove_vault", { id }),
-  /** Apre un vault: da qui in poi i comandi leggono e scrivono i suoi meeting. */
-  openVault: (id: string) => invoke<Vault[]>("open_vault", { id }),
+  /**
+   * Apre un vault: da qui in poi i comandi leggono e scrivono i suoi meeting. Con `force` lo
+   * apre anche se risulta aperto su un altro computer.
+   */
+  openVault: (id: string, force = false) => invoke<Vault[]>("open_vault", { id, force }),
   /** Il sync del vault aperto (fase 0: anteprima per sviluppatori). */
   syncStatus: () => invoke<SyncStatus>("sync_status"),
   /** Fa scegliere la cartella di sync. null se la scelta viene annullata. */

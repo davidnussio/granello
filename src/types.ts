@@ -44,6 +44,8 @@ export interface Vault {
   available: boolean;
   /** I calendari (configurati una volta nelle impostazioni) che questo vault non mostra. */
   hiddenCalendars: string[];
+  /** Il nome del computer che lo ha aperto, se è un altro: qui non si apre finché non lo chiude. */
+  heldBy: string | null;
 }
 
 /**

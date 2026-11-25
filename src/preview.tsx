@@ -150,6 +150,7 @@ let vaults = [
     active: true,
     available: true,
     hiddenCalendars: [] as string[],
+    heldBy: null as string | null,
   },
 ];
 
@@ -350,7 +351,8 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   },
   // i vault vivono in memoria: serve a provare la sezione delle impostazioni e il selettore
   list_vaults: () => vaults,
-  pick_vault_dir: () => "/Volumes/Cifrato/Granello",
+  // la seconda cartella è di un vault aperto su un altro computer, per provare quello stato
+  pick_vault_dir: () => (vaults.length > 1 ? "/Volumes/Condiviso/Granello" : "/Volumes/Cifrato/Granello"),
   create_vault: (a) => {
     const name = String(a.name).trim();
     if (vaults.some((v) => v.path === a.path))
@@ -366,6 +368,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
         active: false,
         available: true,
         hiddenCalendars: [],
+        heldBy: String(a.path).includes("Condiviso") ? "Portatile di Anna" : null,
       },
     ];
     return vaults;
@@ -398,7 +401,16 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     return vaults;
   },
   open_vault: (a) => {
-    vaults = vaults.map((v) => ({ ...v, active: v.id === a.id }));
+    const held = vaults.find((v) => v.id === a.id)?.heldBy;
+    if (held && !a.force)
+      throw new Error(
+        `Questo vault risulta aperto su «${held}». Chiudi Granello su quel computer e riprova.`,
+      );
+    vaults = vaults.map((v) => ({
+      ...v,
+      active: v.id === a.id,
+      heldBy: v.id === a.id ? null : v.heldBy,
+    }));
     return vaults;
   },
   // il sync vive in memoria: serve a vedere la sezione nelle impostazioni
