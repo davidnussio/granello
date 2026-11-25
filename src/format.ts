@@ -6,6 +6,9 @@ let cached: {
   hour12: boolean | undefined;
   day: Intl.DateTimeFormat;
   time: Intl.DateTimeFormat;
+  weekday: Intl.DateTimeFormat;
+  dayMonth: Intl.DateTimeFormat;
+  dayMonthYear: Intl.DateTimeFormat;
 } | null = null;
 
 /** Ore in formato 12 (AM/PM) o 24; `undefined` lascia decidere la lingua dell'interfaccia. */
@@ -46,6 +49,9 @@ function fmt() {
         minute: "2-digit",
         hourCycle: hour12 === undefined ? undefined : hour12 ? "h12" : "h23",
       }),
+      weekday: new Intl.DateTimeFormat(loc, { weekday: "short" }),
+      dayMonth: new Intl.DateTimeFormat(loc, { day: "numeric", month: "short" }),
+      dayMonthYear: new Intl.DateTimeFormat(loc, { day: "numeric", month: "short", year: "numeric" }),
     };
   }
   return cached;
@@ -64,6 +70,27 @@ export function dayLabel(ts: number): string {
   if (diff === -1) return t("Domani");
   const s = fmt().day.format(new Date(ts));
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Quando, in poco spazio (le righe della barra laterale): l'ora se è oggi, «ieri», il giorno
+ * della settimana nell'ultima settimana, altrimenti giorno e mese (con l'anno se non è questo).
+ */
+export function shortWhen(ts: number): string {
+  const diff = Math.round((startOfDay(Date.now()) - startOfDay(ts)) / 86_400_000);
+  if (diff === 0) return time(ts);
+  if (diff === 1) return t("ieri");
+  const f = fmt();
+  const d = new Date(ts);
+  // senza il punto delle abbreviazioni («ven.», «Sun.»): nella colonna stretta è solo rumore
+  if (diff > 1 && diff < 7) return f.weekday.format(d).replace(/\.$/, "");
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return (sameYear ? f.dayMonth : f.dayMonthYear).format(d).replace(/\.(?=\s|$)/g, "");
+}
+
+/** Giorno della settimana e ora, senza il punto dell'abbreviazione: «dom 17:08». */
+export function weekdayTime(ts: number): string {
+  return `${fmt().weekday.format(new Date(ts)).replace(/\.$/, "")} ${time(ts)}`;
 }
 
 export function time(ts: number): string {

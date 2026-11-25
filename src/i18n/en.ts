@@ -14,9 +14,9 @@ const en: Record<string, string> = {
   "Chiudi notifica": "Dismiss notification",
   "Trascrizione completata": "Transcription complete",
   "● Registrazione in corso": "● Recording in progress",
-  "Apri il meeting in registrazione": "Open the meeting being recorded",
+  "Apri la nota in registrazione": "Open the note being recorded",
   "● Trascrizione del file in corso": "● Transcribing the file",
-  "Apri il meeting in trascrizione": "Open the meeting being transcribed",
+  "Apri la nota in trascrizione": "Open the note being transcribed",
 
   // AI settings
   "{name}: {n} modelli disponibili": "{name}: {n} models available",
@@ -231,13 +231,23 @@ const en: Record<string, string> = {
 
   // sidebar
   "Nuove note (⌘N)": "New notes (⌘N)",
-  "Cerca nei meeting": "Search meetings",
-  "Cerca nei meeting…  ⌘K": "Search meetings…  ⌘K",
-  "✦ Chiedi ai meeting": "✦ Ask your meetings",
+  "Cerca nelle note": "Search notes",
+  "Cerca nelle note…  ⌘K": "Search notes…  ⌘K",
+  "✦ Chiedi alle note": "✦ Ask your notes",
   "In arrivo": "Coming up",
   "In corso": "In progress",
   "Nessun risultato": "No results",
   "Ancora nessun meeting": "No meetings yet",
+  "Settimana scorsa": "Last week",
+  "Altre {n} di questa settimana": "{n} more from this week",
+  "Altre {n} della settimana scorsa": "{n} more from last week",
+  "Mostra meno": "Show less",
+  "1 persona": "1 person",
+  "Ancora nessuna nota": "No notes yet",
+  Risultati: "Results",
+  ieri: "yesterday",
+  "Note non ancora rielaborate": "Notes not enhanced yet",
+  "Tutte le note": "All notes",
   "{n} persone": "{n} people",
   "⚙ Impostazioni": "⚙ Settings",
   "← Torna alle note": "← Back to notes",
@@ -638,16 +648,20 @@ const en: Record<string, string> = {
   Decisioni: "Decisions",
   Azioni: "Actions",
   Citazioni: "Quotes",
-  "Togli il filtro {name}": "Remove the {name} filter",
-  "Incrocia con un'altra dimensione": "Cross with another dimension",
-  "Mostra solo i meeting che hanno anche questo: una persona dentro un progetto, un tag in un mese…":
-    "Show only the meetings that also have this: a person inside a project, a tag in a month…",
-  "+ Incrocia con…": "+ Cross with…",
+  "⌘ clic su un'altra dimensione: la sua colonna si affianca e filtra insieme alle altre":
+    "⌘-click another dimension: its column opens alongside and filters together with the others",
   "Cosa elencare": "What to list",
   Elementi: "Items",
   "Decisioni, azioni e citazioni scritte nelle note di questi meeting":
     "Decisions, actions and quotes written in the notes of these meetings",
-  "Nessun meeting ha anche {name}.": "No meeting also has {name}.",
+  "Come scegliere": "How to pick",
+  Clic: "Click",
+  clic: "click",
+  "sceglie solo questa": "picks only this one",
+  "aggiunge o toglie questa": "adds or removes this one",
+  "aggiunge o toglie tutte fino a qui": "adds or removes all up to here",
+  "Nessuna voce nei meeting scelti dalle altre colonne.":
+    "Nothing here in the meetings chosen in the other columns.",
   "Tipi di elemento": "Item types",
   "Doppio clic o Invio: apre il meeting": "Double-click or Enter: opens the meeting",
   Fatta: "Done",
@@ -710,8 +724,7 @@ const en: Record<string, string> = {
     "No meetings here: add the tag #{tag} to a meeting.",
   "Apri il meeting": "Open the meeting",
   "Scegli un meeting per vederne l'anteprima.": "Pick a meeting to preview it.",
-  "Sfoglia i meeting per progetto, persona, tag e periodo":
-    "Browse meetings by project, person, tag and period",
+  "Sfoglia le note per progetto, persona, tag e periodo": "Browse notes by project, person, tag and period",
   "▤ Libreria": "▤ Library",
   "Carica i dati di esempio": "Load sample data",
   "Toglie solo i meeting di esempio, anche se li hai modificati. I tuoi meeting restano.":
@@ -882,7 +895,6 @@ const en: Record<string, string> = {
   "Fissato nella barra laterale": "Pinned to the sidebar",
   "Fissa tutti nella barra laterale": "Pin all to the sidebar",
   "Togli tutti dai fissati": "Unpin all",
-  "Nessun meeting fissato ha anche {name}.": "No pinned meeting also has {name}.",
   "Nessun meeting fissato: aprine uno e premi la puntina accanto a copia, stampa ed elimina.":
     "No pinned meetings: open one and press the pin next to copy, print and delete.",
   "dalla rubrica": "from contacts",

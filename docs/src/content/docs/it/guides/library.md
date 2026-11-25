@@ -16,7 +16,7 @@ La Libreria sfoglia i meeting a colonne: scegli una dimensione, poi un valore, p
 - **Periodo**: questa settimana, poi un gruppo per mese.
 - **Registrazioni**: l'audio salvato, vedi sotto.
 
-Le frecce muovono tra le colonne e Invio apre il meeting.
+Le frecce muovono tra le colonne e Invio apre il meeting; Maiusc + freccia aggiunge anche la voce o la dimensione successiva.
 
 ## Progetti
 
@@ -30,11 +30,28 @@ I progetti creati con le versioni precedenti, quando un progetto era un tag prom
 
 ## Meeting fissati
 
-La puntina nell'intestazione di un meeting, accanto a copia, stampa ed elimina, lo tiene nella barra laterale subito sotto **Libreria**, nell'ordine in cui li hai fissati. Premila di nuovo per toglierlo. Puoi fissare o togliere anche dall'anteprima della Libreria, o fissare insieme più meeting selezionati. Durante una ricerca la barra laterale mostra solo i risultati; i fissati tornano quando il campo di ricerca è vuoto.
+La puntina nell'intestazione di un meeting, accanto a copia, stampa ed elimina, lo tiene nella barra laterale sotto **Fissati**, nell'ordine in cui li hai fissati. Premila di nuovo per toglierlo. Puoi fissare o togliere anche dall'anteprima della Libreria, o fissare insieme più meeting selezionati.
 
-## Incrociare due dimensioni
+## La barra laterale
 
-**+ Incrocia con…** in cima restringe tutto ai meeting che hanno anche un'altra cosa: una persona dentro un progetto, un tag in un mese.
+Sotto **Libreria** la barra laterale mostra, in ordine:
+
+- **In arrivo**: gli eventi del calendario delle prossime ore.
+- **Fissati**: i meeting che hai fissato.
+- **Oggi** e **Ieri**: ogni nota con l'ora, ✦ se l'AI l'ha rielaborata, quante persone c'erano e al massimo due tag. Un titolo in corsivo è una nota non ancora rielaborata dall'AI.
+- **Questa settimana** e **Settimana scorsa**: una riga per nota con il giorno della settimana e l'ora, e quante note ha la settimana. Si vedono le prime quattro; **Altre N** mostra le altre.
+- **Tutte le note**, in fondo, apre la Libreria.
+
+Durante una ricerca la barra laterale mostra solo i risultati, dal più pertinente, con il testo che corrisponde; le sezioni tornano quando il campo di ricerca è vuoto.
+
+## Più voci, più dimensioni
+
+Le colonne funzionano come nel Finder: un clic sceglie una voce, ⌘ clic ne aggiunge o ne toglie una, Maiusc clic aggiunge tutte le voci fino a lì, o le toglie se quella cliccata era già scelta, ⌘A sceglie tutta la colonna. In fondo alla prima colonna c'è il promemoria dei tasti. Le voci scelte restano verdi in ogni colonna, e persone e tag sono in ordine alfabetico: filtrando cambiano i numeri, non il posto delle voci. Il numero accanto a ogni dimensione dice quante voci ha la sua colonna tra i meeting che stai guardando.
+
+- **Più voci in una colonna.** Due persone mostrano i meeting in cui c'erano entrambe, e lo stesso vale per due tag. Due progetti o due mesi mostrano i meeting dell'uno o dell'altro, perché un meeting ne ha uno solo.
+- **Più dimensioni insieme.** ⌘ clic su una seconda dimensione e la sua colonna si apre accanto alla prima: scegli due persone, ⌘ clic su **Tag**, e la nuova colonna elenca solo i tag dei loro meeting. L'ultima dimensione aggiunta ha sempre la colonna di destra; quelle aggiunte prima stanno una sopra l'altra in quella di sinistra, che si divide in altezza: ⌘ clic anche su **Periodo** e Persone e Tag si dividono la colonna di sinistra, mentre Periodo prende quella di destra. Ogni colonna conta le sue voci sui meeting scelti nelle altre, e l'elenco dei meeting mostra quelli che le passano tutte. ⌘ clic su **Fissati** per vedere solo i meeting fissati.
+
+Una colonna senza voci scelte non filtra. Un clic semplice su una dimensione chiude le altre; Esc toglie le voci scelte nella colonna in cui sei. In una finestra stretta la Libreria scorre di lato, e la colonna in cui sei resta in vista.
 
 ## Più meeting insieme
 

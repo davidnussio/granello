@@ -16,7 +16,7 @@ The Library browses your meetings in columns: pick a dimension, then a value, th
 - **Period**: this week, then one group per month.
 - **Recordings**: the saved audio, see below.
 
-Arrow keys move through the columns and Enter opens the meeting.
+Arrow keys move through the columns and Enter opens the meeting; Shift + arrow also adds the next entry or dimension.
 
 ## Projects
 
@@ -30,11 +30,28 @@ Projects made with earlier versions, when a project was a promoted tag, are conv
 
 ## Pinned meetings
 
-The pin in a meeting's header, next to copy, print and delete, keeps it in the sidebar right under **Library**, in the order you pinned them. Press it again to unpin. You can also pin or unpin from the Library preview, or pin several selected meetings at once. During a search the sidebar shows only the results; the pinned meetings come back when the search field is empty.
+The pin in a meeting's header, next to copy, print and delete, keeps it in the sidebar under **Pinned**, in the order you pinned them. Press it again to unpin. You can also pin or unpin from the Library preview, or pin several selected meetings at once.
 
-## Cross two dimensions
+## The sidebar
 
-**+ Cross with…** at the top narrows everything to the meetings that also have one more thing: a person inside a project, a tag in a month.
+Under **Library** the sidebar shows, in order:
+
+- **Coming up**: the calendar events of the next hours.
+- **Pinned**: the meetings you pinned.
+- **Today** and **Yesterday**: each note with its time, ✦ when the AI has enhanced it, how many people took part and up to two tags. A title in italics is a note not enhanced by the AI yet.
+- **This week** and **Last week**: one line per note with the weekday and time, and how many notes the week has. The first four are shown; **N more** shows the rest.
+- **All notes**, at the bottom, opens the Library.
+
+During a search the sidebar shows only the results, the most relevant first, with the matching text; the sections come back when the search field is empty.
+
+## Several values, several dimensions
+
+The columns work like the Finder: a click picks one entry, ⌘-click adds or removes one, Shift-click adds every entry up to there, or removes them if the one you click was already picked, ⌘A picks the whole column. The key list at the bottom of the first column recalls this. Picked entries stay green in every column, and people and tags are in alphabetical order, so filtering changes the numbers, not where entries sit. The number next to each dimension says how many entries its column has among the meetings you are looking at.
+
+- **Several values in one column.** Two people show the meetings where both took part, and the same goes for two tags. Two projects or two months show the meetings of either one, since a meeting has only one.
+- **Several dimensions together.** ⌘-click a second dimension and its column opens next to the first: pick two people, ⌘-click **Tags**, and the new column lists only the tags of their meetings. The last dimension you added always has the right-hand column; the earlier ones stack in the left-hand column, splitting its height: ⌘-click **Period** too and People and Tags share the left column while Period takes the right one. Each column counts its entries on the meetings chosen in the others, and the meetings list shows the ones that pass them all. ⌘-click **Pinned** to see only pinned meetings.
+
+A column with nothing picked does not filter. A plain click on a dimension closes the others; Esc clears what is picked in the column you are in. In a narrow window the Library scrolls sideways, keeping the column you are in visible.
 
 ## Several meetings at once
 

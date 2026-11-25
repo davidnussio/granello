@@ -135,7 +135,19 @@ function renameAttendee(from: string, to: string) {
 }
 
 const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
-  list_meetings: () => data.meetings,
+  // la ricerca dell'anteprima guarda solo titolo e tag, ma filtra davvero. Come quella vera
+  // mette prima i più pertinenti (qui: chi ha la parola nel titolo), non i più recenti
+  list_meetings: (a) => {
+    const q = String(a.query ?? "")
+      .trim()
+      .toLowerCase();
+    if (!q) return data.meetings;
+    const inTitle = (m: { title: string }) => m.title.toLowerCase().includes(q);
+    return (data.meetings as { title: string; tags: string[] }[])
+      .filter((m) => inTitle(m) || m.tags.some((tag) => tag.includes(q)))
+      .toSorted((x, y) => Number(inTitle(y)) - Number(inTitle(x)))
+      .map((m) => ({ ...m, snippet: `«${m.title}»` }));
+  },
   get_meeting: (a) => data.details[a.id as string],
   list_tags: () => data.tags,
   list_people: () => data.people,

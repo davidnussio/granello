@@ -22,12 +22,20 @@ interface Props {
 type Dim = "pinned" | "projects" | "people" | "tags" | "period" | "recordings";
 /** Le dimensioni che raggruppano i meeting (le registrazioni no). */
 type GroupDim = Exclude<Dim, "recordings">;
+/** Le dimensioni con una colonna di voci da scegliere: i fissati sono un filtro senza voci. */
+type FacetDim = Exclude<GroupDim, "pinned">;
+const FACETS: FacetDim[] = ["projects", "people", "tags", "period"];
+/**
+ * Con più voci scelte nella stessa colonna, in persone e tag un meeting deve averle tutte (Ermanno
+ * e Daniele insieme); in progetti e periodo ne basta una, perché un meeting ne ha una sola.
+ */
+const ALL_OF: ReadonlySet<FacetDim> = new Set(["people", "tags"]);
 
-/** Il filtro in cima: un valore di una dimensione che restringe tutto il resto. */
-interface Cross {
-  dim: GroupDim;
-  key: string;
-  label: string;
+/** I tasti tenuti premuti durante un clic: Cmd aggiunge o toglie, Maiusc prende fino a lì. */
+interface Mods {
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
 }
 
 /** Un elemento con il suo meeting, pronto per l'elenco. */
@@ -63,6 +71,11 @@ const DIMS: { id: Dim; icon: React.ReactNode; label: () => string }[] = [
   // non raggruppa i meeting: mostra l'audio salvato, con il player e il link al meeting
   { id: "recordings", icon: "◉", label: () => t("Registrazioni") },
 ];
+
+/** Maiusc + clic: aggiunge le voci di `range`, o le toglie se la voce cliccata era già scelta. */
+function shiftRange<T>(now: T[], range: T[], remove: boolean): T[] {
+  return remove ? now.filter((x) => !range.includes(x)) : [...new Set([...now, ...range])];
+}
 
 /** Raggruppa i meeting per una chiave multipla (tag, persone), dal gruppo più numeroso. */
 function groupBy(meetings: MeetingSummary[], keys: (m: MeetingSummary) => string[]): Group[] {
@@ -109,13 +122,13 @@ function byPeriod(meetings: MeetingSummary[]): Group[] {
 }
 
 /** Le voci di una dimensione, ognuna con i suoi meeting. */
-function groupsOf(dim: GroupDim, meetings: MeetingSummary[], projects: Project[]): Group[] {
-  if (dim === "pinned") {
-    return [{ key: "pinned", label: t("Fissati"), meetings: meetings.filter((m) => m.pinnedAt !== null) }];
-  }
-  if (dim === "people") return groupBy(meetings, (m) => m.attendees);
+function groupsOf(dim: FacetDim, meetings: MeetingSummary[], projects: Project[]): Group[] {
+  // persone e tag in ordine alfabetico: filtrando cambiano i numeri, non il posto delle voci
+  const byName = (groups: Group[]) =>
+    groups.toSorted((a, b) => a.label.localeCompare(b.label, locale(), { sensitivity: "base" }));
+  if (dim === "people") return byName(groupBy(meetings, (m) => m.attendees));
   if (dim === "period") return byPeriod(meetings);
-  if (dim === "tags") return groupBy(meetings, (m) => m.tags);
+  if (dim === "tags") return byName(groupBy(meetings, (m) => m.tags));
   // un progetto resta in elenco anche prima di avere meeting
   return projects
     .map((p) => ({
@@ -130,7 +143,7 @@ function groupsOf(dim: GroupDim, meetings: MeetingSummary[], projects: Project[]
     );
 }
 
-const hash = (dim: GroupDim) => (dim === "tags" ? "#" : "");
+const hash = (dim: FacetDim) => (dim === "tags" ? "#" : "");
 
 /** Il testo di un elemento senza la sintassi Markdown: menzioni, date, link, evidenziatore. */
 function plain(text: string): string {
@@ -194,17 +207,25 @@ export default function LibraryView({
   person,
 }: Props) {
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
-  const [dim, setDim] = useState<Dim>(person ? "people" : "projects");
-  const [groupKey, setGroupKey] = useState<string | null>(person?.toLowerCase() ?? null);
+  /** Le dimensioni scelte nella prima colonna, nell'ordine in cui sono state aggiunte. */
+  const [active, setActive] = useState<Dim[]>([person ? "people" : "projects"]);
+  /** Le voci scelte in ogni colonna; una colonna senza voci scelte non filtra. */
+  const [sel, setSel] = useState<Partial<Record<FacetDim, string[]>>>(
+    person ? { people: [person.toLowerCase()] } : {},
+  );
+  /** L'ultima voce cliccata o raggiunta con le frecce in ogni colonna: da lì partono Maiusc e le frecce. */
+  const [cursor, setCursor] = useState<Partial<Record<FacetDim, string>>>(
+    person ? { people: person.toLowerCase() } : {},
+  );
   const [meetingId, setMeetingId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [oldestFirst, setOldestFirst] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [detail, setDetail] = useState<Meeting | null>(null);
-  /** Colonna che riceve le frecce: 0 dimensione, 1 valori, 2 meeting. */
+  /** Colonna che riceve le frecce: 0 dimensioni, poi una per dimensione con voci, poi i meeting. */
   const [col, setCol] = useState(person ? 2 : 1);
-  /** Seconda dimensione: restringe le colonne ai meeting che hanno anche questo valore. */
-  const [cross, setCross] = useState<Cross | null>(null);
+  /** Quanti meeting hanno registrazioni salvate, per il numero accanto a Registrazioni. */
+  const [recorded, setRecorded] = useState<number | null>(null);
   /** Cosa elenca la terza colonna: i meeting, oppure i loro elementi. */
   const [mode, setMode] = useState<"meetings" | "items">("meetings");
   const [items, setItems] = useState<LibraryItem[]>([]);
@@ -237,47 +258,123 @@ export default function LibraryView({
       .catch((e) => toast(errorText(e)));
   }, [mode, toast]);
 
-  /** Le voci di ogni dimensione su tutti i meeting: da qui si sceglie il filtro in cima. */
-  const crossOptions = useMemo(
-    () =>
-      DIMS.filter((d): d is (typeof DIMS)[number] & { id: GroupDim } => d.id !== "recordings").map((d) => ({
-        ...d,
-        groups: groupsOf(d.id, meetings, projects).filter((g) => g.meetings.length > 0),
-      })),
-    [meetings, projects],
+  useEffect(() => {
+    api
+      .listRecordings()
+      .then((list) => setRecorded(new Set(list.map((r) => r.meetingId)).size))
+      .catch(() => setRecorded(null));
+  }, []);
+
+  const recordingsView = active[0] === "recordings";
+  const pinnedOn = active.includes("pinned");
+  /** Le colonne di voci, una per dimensione scelta, nell'ordine in cui sono state aggiunte. */
+  const facets = useMemo(
+    () => active.filter((d): d is FacetDim => d !== "pinned" && d !== "recordings"),
+    [active],
+  );
+  const meetingsCol = facets.length + 1;
+  const at = Math.min(col, meetingsCol);
+
+  /** Le voci di ogni dimensione su tutti i meeting: il loro nome e quali meeting ne fanno parte. */
+  const known = useMemo(() => {
+    const out = {} as Record<FacetDim, Map<string, { label: string; ids: Set<string> }>>;
+    for (const d of FACETS) {
+      out[d] = new Map(
+        groupsOf(d, meetings, projects).map((g) => [
+          g.key,
+          { label: g.label, ids: new Set(g.meetings.map((m) => m.id)) },
+        ]),
+      );
+    }
+    return out;
+  }, [meetings, projects]);
+
+  /** Le voci scelte in una colonna che esistono ancora. */
+  const chosen = useCallback((d: FacetDim) => (sel[d] ?? []).filter((k) => known[d].has(k)), [sel, known]);
+
+  /** I meeting che passano i filtri di tutte le colonne scelte, tranne `skip`. */
+  const passing = useCallback(
+    (skip?: FacetDim) =>
+      meetings.filter(
+        (m) =>
+          (!pinnedOn || m.pinnedAt !== null) &&
+          facets.every((d) => {
+            const keys = chosen(d);
+            if (d === skip || keys.length === 0) return true;
+            const has = (k: string) => known[d].get(k)!.ids.has(m.id);
+            return ALL_OF.has(d) ? keys.every(has) : keys.some(has);
+          }),
+      ),
+    [meetings, pinnedOn, facets, chosen, known],
   );
 
-  /** I meeting che passano il filtro in cima. */
-  const base = useMemo(() => {
-    if (!cross) return meetings;
-    const options = crossOptions.find((d) => d.id === cross.dim)?.groups;
-    return options?.find((g) => g.key === cross.key)?.meetings ?? [];
-  }, [cross, crossOptions, meetings]);
+  /**
+   * Le voci di ogni dimensione, contate sui meeting che passano i filtri delle altre colonne: dopo
+   * due persone, la colonna dei tag mostra solo i tag dei loro meeting.
+   */
+  const columns = useMemo(() => {
+    const out = {} as Record<FacetDim, { groups: Group[]; narrowed: boolean }>;
+    for (const d of FACETS) {
+      const keys = chosen(d);
+      const narrowed = pinnedOn || facets.some((o) => o !== d && chosen(o).length > 0);
+      const groups = groupsOf(d, passing(d), projects).filter(
+        (g) =>
+          keys.includes(g.key) ||
+          (narrowed ? g.meetings.length > 0 : d !== "projects" || showArchived || !g.archived),
+      );
+      // una voce scelta resta in colonna anche quando gli altri filtri le tolgono tutti i meeting
+      for (const k of keys) {
+        if (!groups.some((g) => g.key === k))
+          groups.push({ key: k, label: known[d].get(k)!.label, meetings: [] });
+      }
+      out[d] = { groups, narrowed };
+    }
+    return out;
+  }, [chosen, pinnedOn, facets, passing, projects, showArchived, known]);
 
-  const groups = useMemo<Group[]>(() => {
-    if (dim === "recordings") return [];
-    const all = groupsOf(dim, base, projects);
-    // con il filtro in cima restano solo le voci che hanno meeting, tolta quella del filtro stesso
-    // i fissati sono una voce sola: restano anche quando sono il filtro stesso
-    if (dim === "pinned") return all;
-    if (cross) return all.filter((g) => g.meetings.length > 0 && !(dim === cross.dim && g.key === cross.key));
-    if (dim !== "projects") return all;
-    return all.filter((g) => showArchived || !g.archived || g.key === groupKey);
-  }, [dim, base, projects, cross, showArchived, groupKey]);
+  const filtered = useMemo(() => passing(), [passing]);
 
-  const group = groups.find((g) => g.key === groupKey) ?? groups[0] ?? null;
+  /** Il numero accanto a ogni dimensione: quante voci ha la sua colonna, o quanti meeting. */
+  const dimCount = (d: Dim): number | null =>
+    d === "recordings"
+      ? recorded
+      : d === "pinned"
+        ? filtered.filter((m) => m.pinnedAt !== null).length
+        : columns[d].groups.length;
+
+  /** Le voci scelte, con il loro nome, per il segnaposto del filtro e i messaggi. */
+  const chosenLabels = facets.flatMap((d) => chosen(d).map((k) => hash(d) + known[d].get(k)!.label));
+  /** L'unica voce scelta, quando ce n'è una sola in una sola colonna: i messaggi dicono cosa fare. */
+  const only =
+    facets.length === 1 && !pinnedOn && chosen(facets[0]).length === 1
+      ? { dim: facets[0], label: known[facets[0]].get(chosen(facets[0])[0])!.label }
+      : null;
+
+  /**
+   * Le colonne dei filtri (le dimensioni e al più due di voci: l'ultima dimensione aggiunta a destra,
+   * le altre una sopra l'altra a sinistra) sono larghe uguali, poi i meeting e l'anteprima. In una
+   * finestra stretta la Libreria scorre in orizzontale, come il Finder.
+   */
+  const filterCol = "minmax(170px, 220px)";
+  const template = recordingsView
+    ? `${filterCol} 1fr`
+    : facets.length > 1
+      ? `${filterCol} ${filterCol} ${filterCol} minmax(190px, 1fr) minmax(210px, 1.1fr)`
+      : facets.length === 1
+        ? `${filterCol} ${filterCol} minmax(220px, 1fr) minmax(240px, 1.1fr)`
+        : `${filterCol} minmax(220px, 1fr) minmax(240px, 1.1fr)`;
 
   const listed = useMemo(() => {
     const q = filter.trim().toLowerCase();
     // nella vista elementi il testo cercato filtra gli elementi, non i meeting
-    const found = (group?.meetings ?? []).filter(
+    const found = (recordingsView ? [] : filtered).filter(
       (m) =>
         mode === "items" ||
         !q ||
         [m.title, ...m.attendees, ...m.tags].some((s) => s.toLowerCase().includes(q)),
     );
     return found.toSorted((a, b) => (oldestFirst ? a.createdAt - b.createdAt : b.createdAt - a.createdAt));
-  }, [group, filter, oldestFirst, mode]);
+  }, [recordingsView, filtered, filter, oldestFirst, mode]);
 
   const current = listed.find((m) => m.id === meetingId) ?? listed[0] ?? null;
 
@@ -368,13 +465,17 @@ export default function LibraryView({
     }
   };
 
-  /** Clic su un meeting: da solo lo sceglie, con Cmd lo aggiunge alla selezione, con Maiusc fino a lì. */
-  const pick = (m: MeetingSummary, e: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => {
-    setCol(2);
+  /**
+   * Clic su un meeting: da solo lo sceglie, con Cmd lo aggiunge o lo toglie, con Maiusc aggiunge
+   * tutti quelli fino a lì, o li toglie se il meeting cliccato era già selezionato.
+   */
+  const pick = (m: MeetingSummary, e: Mods) => {
+    setCol(meetingsCol);
     setMeetingId(m.id);
     if (e.shiftKey && current) {
       const [from, to] = [listed.indexOf(current), listed.indexOf(m)].toSorted((a, b) => a - b);
-      setPicked(new Set([...picked, ...listed.slice(from, to + 1).map((x) => x.id)]));
+      const range = listed.slice(from, to + 1).map((x) => x.id);
+      setPicked(new Set(shiftRange(picked.size ? [...picked] : [current.id], range, picked.has(m.id))));
     } else if (e.metaKey || e.ctrlKey) {
       // il meeting già in anteprima fa parte della selezione che comincia
       const next = new Set(picked.size || !current ? picked : [current.id]);
@@ -382,6 +483,52 @@ export default function LibraryView({
       else next.add(m.id);
       setPicked(next);
     } else setPicked(new Set());
+  };
+
+  /** Mette `next` al posto delle dimensioni scelte: le colonne tolte smettono di filtrare. */
+  const showDims = (next: Dim[]) => {
+    setActive(next);
+    setSel((s) => Object.fromEntries(Object.entries(s).filter(([d]) => next.includes(d as Dim))));
+  };
+
+  /**
+   * Clic su una dimensione, come nel Finder: da solo la sceglie al posto delle altre, con Cmd la
+   * aggiunge (o la toglie) e la sua colonna si affianca alle altre, con Maiusc aggiunge tutte quelle
+   * fino a lì, o le toglie se la dimensione cliccata era già scelta (ne resta sempre almeno una).
+   * Le registrazioni non filtrano i meeting: stanno sempre da sole.
+   */
+  const pickDim = (d: Dim, e: Mods) => {
+    setCol(0);
+    const groupable = d !== "recordings" && !recordingsView;
+    if (groupable && (e.metaKey || e.ctrlKey)) {
+      if (!active.includes(d)) showDims([...active, d]);
+      else if (active.length > 1) showDims(active.filter((x) => x !== d));
+    } else if (groupable && e.shiftKey) {
+      const ids = DIMS.map((x) => x.id);
+      const [from, to] = [ids.indexOf(active.at(-1)!), ids.indexOf(d)].toSorted((a, b) => a - b);
+      const range = ids.slice(from, to + 1).filter((x) => x !== "recordings");
+      const next = shiftRange(active, range, active.includes(d));
+      if (next.length) showDims(next);
+    } else showDims([d]);
+  };
+
+  /**
+   * Clic su una voce di una colonna: da sola la sceglie, con Cmd la aggiunge o la toglie, con Maiusc
+   * aggiunge tutte quelle fino a lì, o le toglie se la voce cliccata era già scelta.
+   */
+  const pickValue = (d: FacetDim, key: string, e: Mods) => {
+    setCol(facets.indexOf(d) + 1);
+    const now = chosen(d);
+    const keys = columns[d].groups.map((g) => g.key);
+    let next = [key];
+    if (e.shiftKey && cursor[d] && keys.includes(cursor[d])) {
+      const [from, to] = [keys.indexOf(cursor[d]), keys.indexOf(key)].toSorted((a, b) => a - b);
+      next = shiftRange(now, keys.slice(from, to + 1), now.includes(key));
+    } else if (e.metaKey || e.ctrlKey) {
+      next = now.includes(key) ? now.filter((k) => k !== key) : [...now, key];
+    }
+    setSel({ ...sel, [d]: next });
+    setCursor({ ...cursor, [d]: key });
   };
 
   /** Aggiunge o toglie tag a tutti i meeting selezionati. */
@@ -408,24 +555,33 @@ export default function LibraryView({
     const step = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
     const move = <T,>(rows: T[], index: number): T | undefined =>
       rows[Math.min(rows.length - 1, Math.max(0, index + step))];
+    const facet = at > 0 && at < meetingsCol ? facets[at - 1] : null;
     if (step) {
       e.preventDefault();
       if (tag === "INPUT") {
-        setCol(2);
+        setCol(meetingsCol);
         root.current?.focus();
         return;
       }
-      if (col === 0) {
+      if (at === 0) {
+        // Maiusc + freccia aggiunge la dimensione accanto, la freccia da sola passa all'altra
         const next = move(
           DIMS,
-          DIMS.findIndex((d) => d.id === dim),
+          DIMS.findIndex((d) => d.id === active.at(-1)),
         );
-        if (next) {
-          setDim(next.id);
-          setGroupKey(null);
-        }
-      } else if (col === 1) setGroupKey(move(groups, group ? groups.indexOf(group) : -1)?.key ?? null);
-      else if (mode === "items") {
+        if (next) pickDim(next.id, { metaKey: false, ctrlKey: false, shiftKey: e.shiftKey });
+      } else if (facet) {
+        const rows = columns[facet].groups;
+        const next = move(
+          rows,
+          rows.findIndex((g) => g.key === cursor[facet]),
+        );
+        // Maiusc + freccia allarga la scelta, la freccia da sola sceglie solo la voce raggiunta
+        if (next && e.shiftKey) {
+          setSel({ ...sel, [facet]: [...new Set([...chosen(facet), next.key])] });
+          setCursor({ ...cursor, [facet]: next.key });
+        } else if (next) pickValue(facet, next.key, { metaKey: false, ctrlKey: false, shiftKey: false });
+      } else if (mode === "items") {
         setItemId(move(shown, currentItem ? shown.indexOf(currentItem) : -1)?.id ?? null);
       } else {
         const next = move(listed, current ? listed.indexOf(current) : -1);
@@ -434,16 +590,19 @@ export default function LibraryView({
         if (e.shiftKey && current && next) setPicked(new Set([...picked, current.id, next.id]));
         else setPicked(new Set());
       }
-    } else if (e.key === "a" && (e.metaKey || e.ctrlKey) && col === 2 && mode === "meetings") {
+    } else if (e.key === "a" && (e.metaKey || e.ctrlKey) && facet) {
+      // Cmd A in una colonna di voci le sceglie tutte
+      e.preventDefault();
+      setSel({ ...sel, [facet]: columns[facet].groups.map((g) => g.key) });
+    } else if (e.key === "a" && (e.metaKey || e.ctrlKey) && at === meetingsCol && mode === "meetings") {
       e.preventDefault();
       setPicked(new Set(listed.map((m) => m.id)));
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
-      // i fissati non hanno la colonna dei valori: si salta
-      setCol((c) => Math.min(2, c + (dim === "pinned" && c === 0 ? 2 : 1)));
+      setCol(Math.min(meetingsCol, at + 1));
     } else if (e.key === "ArrowLeft") {
       e.preventDefault();
-      setCol((c) => Math.max(0, c - (dim === "pinned" && c === 2 ? 2 : 1)));
+      setCol(Math.max(0, at - 1));
     } else if (e.key === "Enter" && mode === "items") {
       if (!currentItem) return;
       e.preventDefault();
@@ -452,19 +611,31 @@ export default function LibraryView({
       e.preventDefault();
       onOpen(current.id);
     } else if (e.key === "Escape") {
+      // Esc scioglie la selezione dei meeting; in una colonna di voci toglie le voci scelte
+      if (facet && !picked.size) setSel({ ...sel, [facet]: [] });
       setPicked(new Set());
       root.current?.focus();
     }
   };
 
-  // la riga selezionata resta in vista mentre si scorre con le frecce
+  // la riga raggiunta resta in vista mentre si scorre con le frecce
   useEffect(() => {
     root.current
-      ?.querySelectorAll(".lib-row.on, .lib-meeting.on, .lib-item.on")
+      ?.querySelectorAll(".lib-row.cur, .lib-meeting.on, .lib-item.on")
       .forEach((el) => el.scrollIntoView({ block: "nearest" }));
-  }, [dim, group?.key, current?.id, currentItem?.id]);
+  }, [active, cursor, current?.id, currentItem?.id]);
 
   useEffect(() => root.current?.focus(), []);
+
+  // con molte colonne affiancate la Libreria scorre di lato: la colonna attiva resta in vista, e
+  // scegliendo un meeting si vede anche l'anteprima, come nel Finder
+  const cols = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = cols.current;
+    if (!box || box.scrollWidth <= box.clientWidth) return;
+    if (at === meetingsCol) box.scrollTo({ left: box.scrollWidth, behavior: "smooth" });
+    else box.querySelector(".lib-col.focus")?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [at, meetingsCol]);
 
   /** I tag dei meeting selezionati, con quanti di loro li hanno. */
   const selectionTags = useMemo(() => groupBy(selection, (m) => m.tags), [selection]);
@@ -498,6 +669,109 @@ export default function LibraryView({
       ].filter((f): f is string => !!f)
     : [];
 
+  /** Una colonna di voci: `i` è la sua posizione tra le dimensioni scelte, per le frecce. */
+  const facetCol = (d: FacetDim, i: number) => {
+    const { groups, narrowed } = columns[d];
+    const keys = chosen(d);
+    return (
+      <div
+        key={d}
+        className={"lib-col" + (at === i + 1 ? " focus" : "")}
+        role="listbox"
+        aria-multiselectable="true"
+        aria-label={DIMS.find((x) => x.id === d)!.label()}
+      >
+        {facets.length > 1 && (
+          <div className="lib-facet-head" aria-hidden="true">
+            {DIMS.find((x) => x.id === d)!.label()}
+          </div>
+        )}
+        {d === "projects" && !narrowed && (
+          <button className="lib-new" onClick={() => setEditing("new")}>
+            {t("+ Nuovo progetto")}
+          </button>
+        )}
+        {groups.map((g) => (
+          <div
+            key={g.key}
+            className={
+              "lib-row" +
+              (keys.includes(g.key) ? " on" : "") +
+              (g.key === cursor[d] ? " cur" : "") +
+              (g.archived ? " archived" : "")
+            }
+          >
+            <button
+              role="option"
+              aria-selected={keys.includes(g.key)}
+              className="lib-row-main"
+              title={g.project?.description || undefined}
+              onClick={(e) => pickValue(d, g.key, e)}
+            >
+              {g.project && <ProjectDot project={g.project} />}
+              <span className="lib-label">
+                {hash(d)}
+                {g.label}
+              </span>
+              <span className="lib-count">{g.meetings.length}</span>
+            </button>
+            {g.project && !narrowed && (
+              <>
+                <button
+                  className="lib-act"
+                  onClick={() => setEditing(g.project!)}
+                  aria-label={t("Modifica il progetto")}
+                  title={t("Cambia nome, colore e descrizione")}
+                >
+                  ✎
+                </button>
+                <button
+                  className="lib-act"
+                  onClick={() => archiveProject(g.project!)}
+                  aria-label={g.archived ? t("Riattiva") : t("Archivia")}
+                  title={
+                    g.archived
+                      ? t("Riporta il progetto tra quelli attivi")
+                      : t("Archivia: il progetto è chiuso, i meeting restano")
+                  }
+                >
+                  {g.archived ? "⤒" : "⤓"}
+                </button>
+                <button
+                  className={"lib-act" + (confirmDelete === g.key ? " confirm" : "")}
+                  onClick={() => deleteProject(g.project!)}
+                  onBlur={() => setConfirmDelete(null)}
+                  aria-label={t("Elimina il progetto {name}", { name: g.project.name })}
+                  title={t("Elimina il progetto: i suoi meeting restano, senza progetto")}
+                >
+                  {confirmDelete === g.key ? t("Elimina?") : "×"}
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+        {groups.length === 0 && (
+          <p className="muted small lib-empty">
+            {narrowed
+              ? t("Nessuna voce nei meeting scelti dalle altre colonne.")
+              : d === "projects"
+                ? t("Nessun progetto: creane uno con + Nuovo progetto.")
+                : d === "tags"
+                  ? t("Nessun tag: aggiungine uno a un meeting, sotto il titolo.")
+                  : d === "people"
+                    ? t("Nessun partecipante nei meeting.")
+                    : t("Ancora nessun meeting")}
+          </p>
+        )}
+        {d === "projects" && !narrowed && archivedCount > 0 && (
+          <button className="lib-more" onClick={() => setShowArchived((v) => !v)}>
+            {showArchived ? t("Nascondi archiviati") : t("Archiviati ({n})", { n: archivedCount })}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="library" ref={root} tabIndex={-1} onKeyDown={onKeyDown}>
       <header className="lib-top">
@@ -508,49 +782,12 @@ export default function LibraryView({
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           aria-label={t("Filtra i meeting elencati")}
-          placeholder={group ? t("Filtra in {name}", { name: group.label }) : t("Filtra i meeting elencati")}
+          placeholder={
+            chosenLabels.length > 0 && chosenLabels.length <= 2
+              ? t("Filtra in {name}", { name: chosenLabels.join(" + ") })
+              : t("Filtra i meeting elencati")
+          }
         />
-        {dim === "recordings" ? null : cross ? (
-          <span className="chip lib-cross">
-            {DIMS.find((d) => d.id === cross.dim)!.icon} {hash(cross.dim)}
-            {cross.label}
-            <button
-              type="button"
-              className="chip-x"
-              aria-label={t("Togli il filtro {name}", { name: cross.label })}
-              title={t("Togli il filtro {name}", { name: cross.label })}
-              onClick={() => setCross(null)}
-            >
-              ×
-            </button>
-          </span>
-        ) : (
-          <select
-            className="chip select lib-cross"
-            value=""
-            aria-label={t("Incrocia con un'altra dimensione")}
-            title={t(
-              "Mostra solo i meeting che hanno anche questo: una persona dentro un progetto, un tag in un mese…",
-            )}
-            onChange={(e) => {
-              const [id, key] = e.target.value.split(/:(.*)/s);
-              const found = crossOptions.find((d) => d.id === id)?.groups.find((g) => g.key === key);
-              if (found) setCross({ dim: id as GroupDim, key, label: found.label });
-            }}
-          >
-            <option value="">{t("+ Incrocia con…")}</option>
-            {crossOptions.map((d) => (
-              <optgroup key={d.id} label={d.label()}>
-                {d.groups.map((g) => (
-                  <option key={g.key} value={`${d.id}:${g.key}`}>
-                    {hash(d.id)}
-                    {g.label} ({g.meetings.length})
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        )}
         <button
           className="btn small ghost"
           onClick={() => setOldestFirst((v) => !v)}
@@ -558,7 +795,7 @@ export default function LibraryView({
         >
           {oldestFirst ? t("↑ Più vecchi") : t("↓ Più recenti")}
         </button>
-        {dim !== "recordings" && (
+        {!recordingsView && (
           <div className="seg lib-mode" role="group" aria-label={t("Cosa elencare")}>
             <button
               className={mode === "meetings" ? "on" : ""}
@@ -579,128 +816,61 @@ export default function LibraryView({
         )}
       </header>
 
-      <div className="lib-cols">
+      <div className="lib-cols" ref={cols} style={{ gridTemplateColumns: template }}>
         <div
-          className={"lib-col" + (col === 0 ? " focus" : "")}
+          className={"lib-col" + (at === 0 ? " focus" : "")}
           role="listbox"
+          aria-multiselectable="true"
           aria-label={t("Raggruppa per")}
+          title={t("⌘ clic su un'altra dimensione: la sua colonna si affianca e filtra insieme alle altre")}
         >
           {DIMS.map((d) => (
             <button
               key={d.id}
               role="option"
-              aria-selected={d.id === dim}
-              className={"lib-row" + (d.id === dim ? " on" : "")}
-              onClick={() => {
-                setDim(d.id);
-                setGroupKey(null);
-                setCol(0);
-              }}
+              aria-selected={active.includes(d.id)}
+              className={
+                "lib-row" + (active.includes(d.id) ? " on" : "") + (d.id === active.at(-1) ? " cur" : "")
+              }
+              onClick={(e) => pickDim(d.id, e)}
             >
               <span className="lib-icon" aria-hidden="true">
                 {d.icon}
               </span>
-              {d.label()}
+              <span className="lib-label">{d.label()}</span>
+              <span className="lib-count">{dimCount(d.id)}</span>
             </button>
           ))}
+          <ul className="lib-keys" aria-label={t("Come scegliere")}>
+            <li>
+              <kbd>{t("Clic")}</kbd> {t("sceglie solo questa")}
+            </li>
+            <li>
+              <kbd>⌘ {t("clic")}</kbd> {t("aggiunge o toglie questa")}
+            </li>
+            <li>
+              <kbd>⇧ {t("clic")}</kbd> {t("aggiunge o toglie tutte fino a qui")}
+            </li>
+          </ul>
         </div>
 
-        {dim === "recordings" && (
+        {recordingsView && (
           <div className="lib-col lib-recordings">
             <Recordings onOpen={onOpen} toast={toast} />
           </div>
         )}
 
-        <div
-          hidden={dim === "recordings" || dim === "pinned"}
-          className={"lib-col" + (col === 1 ? " focus" : "")}
-          role="listbox"
-          aria-label={DIMS.find((d) => d.id === dim)!.label()}
-        >
-          {dim === "projects" && !cross && (
-            <button className="lib-new" onClick={() => setEditing("new")}>
-              {t("+ Nuovo progetto")}
-            </button>
-          )}
-          {groups.map((g) => (
-            <div
-              key={g.key}
-              className={"lib-row" + (g.key === group?.key ? " on" : "") + (g.archived ? " archived" : "")}
-            >
-              <button
-                role="option"
-                aria-selected={g.key === group?.key}
-                className="lib-row-main"
-                title={g.project?.description || undefined}
-                onClick={() => {
-                  setGroupKey(g.key);
-                  setCol(1);
-                }}
-              >
-                {g.project && <ProjectDot project={g.project} />}
-                <span className="lib-label">
-                  {dim !== "recordings" && hash(dim)}
-                  {g.label}
-                </span>
-                <span className="lib-count">{g.meetings.length}</span>
-              </button>
-              {g.project && !cross && (
-                <>
-                  <button
-                    className="lib-act"
-                    onClick={() => setEditing(g.project!)}
-                    aria-label={t("Modifica il progetto")}
-                    title={t("Cambia nome, colore e descrizione")}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="lib-act"
-                    onClick={() => archiveProject(g.project!)}
-                    aria-label={g.archived ? t("Riattiva") : t("Archivia")}
-                    title={
-                      g.archived
-                        ? t("Riporta il progetto tra quelli attivi")
-                        : t("Archivia: il progetto è chiuso, i meeting restano")
-                    }
-                  >
-                    {g.archived ? "⤒" : "⤓"}
-                  </button>
-                  <button
-                    className={"lib-act" + (confirmDelete === g.key ? " confirm" : "")}
-                    onClick={() => deleteProject(g.project!)}
-                    onBlur={() => setConfirmDelete(null)}
-                    aria-label={t("Elimina il progetto {name}", { name: g.project.name })}
-                    title={t("Elimina il progetto: i suoi meeting restano, senza progetto")}
-                  >
-                    {confirmDelete === g.key ? t("Elimina?") : "×"}
-                  </button>
-                </>
-              )}
-            </div>
-          ))}
-          {groups.length === 0 && (
-            <p className="muted small lib-empty">
-              {cross
-                ? t("Nessun meeting ha anche {name}.", { name: hash(cross.dim) + cross.label })
-                : dim === "projects"
-                  ? t("Nessun progetto: creane uno con + Nuovo progetto.")
-                  : dim === "tags"
-                    ? t("Nessun tag: aggiungine uno a un meeting, sotto il titolo.")
-                    : dim === "people"
-                      ? t("Nessun partecipante nei meeting.")
-                      : t("Ancora nessun meeting")}
-            </p>
-          )}
-          {dim === "projects" && !cross && archivedCount > 0 && (
-            <button className="lib-more" onClick={() => setShowArchived((v) => !v)}>
-              {showArchived ? t("Nascondi archiviati") : t("Archiviati ({n})", { n: archivedCount })}
-            </button>
-          )}
-        </div>
+        {facets.length === 1 && <div className="lib-facets">{facetCol(facets[0], 0)}</div>}
+        {facets.length > 1 && (
+          // l'ultima dimensione aggiunta ha la seconda colonna; le altre si dividono la prima in altezza
+          <div className="lib-facets">
+            <div className="lib-stack">{facets.slice(0, -1).map((d, i) => facetCol(d, i))}</div>
+            {facetCol(facets.at(-1)!, facets.length - 1)}
+          </div>
+        )}
 
-        {mode === "items" && dim !== "recordings" && (
-          <div className={"lib-col lib-items" + (col === 2 ? " focus" : "")}>
+        {mode === "items" && !recordingsView && (
+          <div className={"lib-col lib-items" + (at === meetingsCol ? " focus" : "")}>
             <div className="lib-kinds" role="group" aria-label={t("Tipi di elemento")}>
               {KINDS.map((k) => (
                 <button
@@ -733,7 +903,7 @@ export default function LibraryView({
                   title={t("Doppio clic o Invio: apre il meeting")}
                   onClick={() => {
                     setItemId(s.id);
-                    setCol(2);
+                    setCol(meetingsCol);
                   }}
                   onDoubleClick={() => onOpen(s.meeting.id)}
                 >
@@ -771,8 +941,8 @@ export default function LibraryView({
         )}
 
         <div
-          hidden={dim === "recordings" || mode === "items"}
-          className={"lib-col lib-meetings" + (col === 2 ? " focus" : "")}
+          hidden={recordingsView || mode === "items"}
+          className={"lib-col lib-meetings" + (at === meetingsCol ? " focus" : "")}
           role="listbox"
           aria-multiselectable="true"
           aria-label={t("Meeting")}
@@ -791,7 +961,7 @@ export default function LibraryView({
               onDoubleClick={() => onOpen(m.id)}
             >
               <span className="lib-meeting-title">
-                {m.pinnedAt !== null && dim !== "pinned" && (
+                {m.pinnedAt !== null && !pinnedOn && (
                   <span className="lib-pinned" title={t("Fissato nella barra laterale")}>
                     <PinIcon filled />
                   </span>
@@ -807,26 +977,26 @@ export default function LibraryView({
               </span>
             </button>
           ))}
-          {group && listed.length === 0 && (
+          {!recordingsView && listed.length === 0 && (
             <p className="muted small lib-empty">
               {filter
                 ? t("Nessun risultato")
-                : dim === "pinned"
-                  ? cross
-                    ? t("Nessun meeting fissato ha anche {name}.", { name: hash(cross.dim) + cross.label })
-                    : t(
+                : meetings.length === 0
+                  ? t("Ancora nessun meeting")
+                  : pinnedOn && chosenLabels.length === 0
+                    ? t(
                         "Nessun meeting fissato: aprine uno e premi la puntina accanto a copia, stampa ed elimina.",
                       )
-                  : cross || (dim !== "tags" && dim !== "projects")
-                    ? t("Nessun meeting qui.")
-                    : dim === "projects"
+                    : only?.dim === "projects"
                       ? t("Nessun meeting qui: apri un meeting e scegli questo progetto, in alto a destra.")
-                      : t("Nessun meeting qui: aggiungi il tag #{tag} a un meeting.", { tag: group.label })}
+                      : only?.dim === "tags"
+                        ? t("Nessun meeting qui: aggiungi il tag #{tag} a un meeting.", { tag: only.label })
+                        : t("Nessun meeting qui.")}
             </p>
           )}
         </div>
 
-        <div hidden={dim === "recordings" || mode === "items"} className="lib-col lib-preview">
+        <div hidden={recordingsView || mode === "items"} className="lib-col lib-preview">
           {bulk ? (
             <>
               <h2>{t("{n} meeting selezionati", { n: selection.length })}</h2>
@@ -1002,8 +1172,9 @@ export default function LibraryView({
           onSaved={(saved, all) => {
             setEditing(null);
             onProjectsChanged(all);
-            setDim("projects");
-            setGroupKey(saved.id);
+            showDims(["projects"]);
+            setSel({ projects: [saved.id] });
+            setCursor({ projects: saved.id });
           }}
         />
       )}

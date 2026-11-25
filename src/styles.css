@@ -319,17 +319,26 @@ input.vault-name:focus {
   color: var(--muted);
   font-weight: 600;
 }
-.sidebar > .side-section {
-  padding: 0 8px;
-}
-/* i fissati restano compatti: tanti non spingono via l'elenco dei meeting */
-.side-pinned {
-  max-height: 30vh;
-  overflow-y: auto;
-  flex: none;
-}
 .side-item.pinned {
   padding: 5px 10px;
+}
+/* intestazione di una settimana: il titolo e, a destra, quante note ha */
+.side-section h4.side-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.side-head .side-count {
+  letter-spacing: 0;
+}
+/* una nota di oggi o di ieri: titolo, poi ora e persone, poi i tag */
+.side-item.side-card {
+  gap: 3px;
+  padding: 8px 10px;
+}
+.side-card .side-tags {
+  margin-top: 2px;
 }
 .side-item {
   width: 100%;
@@ -369,6 +378,76 @@ input.vault-name:focus {
 }
 .side-item.event .side-title {
   flex: 1;
+}
+/* una riga sola: titolo che si tronca, a destra quando o quanti (che non si tronca mai) */
+.side-item.side-row {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 10px;
+}
+.side-row .side-title {
+  flex: 1;
+}
+.side-row > .side-time,
+.side-count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 12px;
+}
+/* un risultato della ricerca: titolo e, a destra, quando */
+.side-result-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.side-result-head .side-title {
+  flex: 1;
+}
+.side-result-head .side-time {
+  flex: none;
+}
+/* note non ancora rielaborate */
+.side-title.draft {
+  font-style: italic;
+  font-weight: 400;
+}
+.side-item.side-more {
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.side-item.side-more:hover {
+  color: var(--text);
+}
+.side-all {
+  margin: 12px 2px 4px;
+  width: calc(100% - 4px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  text-align: left;
+}
+.side-all .side-count {
+  display: flex;
+  gap: 6px;
+}
+.side-all > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.side-all:hover {
+  border-color: var(--muted);
 }
 .side-time {
   font-variant-numeric: tabular-nums;
@@ -3888,8 +3967,47 @@ h4.sub {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 150px minmax(170px, 230px) minmax(220px, 1fr) minmax(240px, 1.1fr);
+  grid-template-columns: minmax(170px, 220px) minmax(170px, 220px) minmax(220px, 1fr) minmax(240px, 1.1fr);
   border-top: 1px solid var(--line);
+  /* in una finestra stretta la Libreria scorre di lato, come il Finder */
+  overflow-x: auto;
+}
+/* le colonne di voci stanno direttamente nella griglia, larghe quanto la colonna delle dimensioni */
+.lib-facets {
+  display: contents;
+}
+/* l'ultima colonna di voci non è l'ultima della Libreria: i meeting vengono dopo */
+.lib-facets > .lib-col:last-child {
+  border-right: 1px solid var(--line);
+}
+/* le dimensioni aggiunte prima dell'ultima: una sopra l'altra, alte uguali, ognuna scorre per conto suo */
+.lib-stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+}
+.lib-stack > .lib-col {
+  flex: 1 1 0;
+  min-height: 0;
+  border-right: none;
+  border-bottom: 1px solid var(--line);
+}
+.lib-stack > .lib-col:last-child {
+  border-bottom: none;
+}
+.lib-facet-head {
+  flex: none;
+  padding: 4px 9px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .lib-col {
   min-width: 0;
@@ -3933,9 +4051,31 @@ button.lib-row {
 .lib-row:hover {
   background: var(--panel);
 }
+/* le voci scelte restano verdi anche quando si lavora in un'altra colonna */
 .lib-row.on {
-  background: var(--panel);
+  background: var(--accent-soft);
+  color: var(--accent);
   font-weight: 550;
+}
+/* nella colonna attiva, la riga dove sono le frecce */
+.lib-col.focus .lib-row.cur {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.lib-keys {
+  list-style: none;
+  margin: auto 0 0;
+  padding: 12px 9px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.lib-keys kbd {
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
 }
 .lib-col.focus .lib-row.on,
 .lib-col.focus .lib-meeting.on {
@@ -3959,6 +4099,7 @@ button.lib-row {
   white-space: nowrap;
 }
 .lib-count {
+  flex: none;
   color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -4094,26 +4235,12 @@ button.lib-row {
   line-height: 1.45;
 }
 
-/* libreria: filtro incrociato, vista elementi, selezione multipla */
-.lib-cross {
-  flex: none;
-  max-width: 220px;
-  gap: 4px;
-  color: var(--text);
-  font-size: 12.5px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-span.lib-cross {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
+/* libreria: vista elementi, selezione multipla */
 .lib-mode {
   margin-left: auto;
 }
 .lib-items {
-  grid-column: 3 / -1;
+  grid-column: span 2;
   padding: 0;
   gap: 0;
 }

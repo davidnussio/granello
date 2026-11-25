@@ -40,7 +40,12 @@ export default function App() {
   const beforeSettings = useRef<View>({ kind: "home" });
   if (view.kind !== "settings") beforeSettings.current = view;
   const [query, setQuery] = useState("");
+  // tutti i meeting (le sezioni della barra laterale) e, a parte, i risultati della ricerca:
+  // con un elenco solo, una risposta di ricerca in ritardo prendeva il posto di quello intero
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
+  const [results, setResults] = useState<MeetingSummary[]>([]);
+  /** Numero dell'ultima ricerca partita: le risposte di quelle prima si scartano. */
+  const searchSeq = useRef(0);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [calendars, setCalendars] = useState<CalendarInfo[]>([]);
   const [rec, setRec] = useState<RecordingStatus>({
@@ -119,12 +124,31 @@ export default function App() {
   /** Cresce quando un altro dispositivo cambia il meeting aperto: lo fa ricaricare. */
   const [syncRev, setSyncRev] = useState(0);
 
-  const refreshMeetings = useCallback(() => {
+  const refreshList = useCallback(() => {
     api
-      .listMeetings(query)
+      .listMeetings()
       .then(setMeetings)
       .catch((e) => toast(errorText(e)));
+  }, [toast]);
+
+  const runSearch = useCallback(() => {
+    const seq = ++searchSeq.current;
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    api
+      .listMeetings(query)
+      .then((found) => {
+        if (seq === searchSeq.current) setResults(found);
+      })
+      .catch((e) => toast(errorText(e)));
   }, [query, toast]);
+
+  const refreshMeetings = useCallback(() => {
+    refreshList();
+    runSearch();
+  }, [refreshList, runSearch]);
 
   const refreshEvents = useCallback(
     (force = false) => {
@@ -187,10 +211,15 @@ export default function App() {
     if (view.kind === "home") refreshSetup();
   }, [view.kind, refreshSetup]);
 
+  useEffect(() => void refreshList(), [refreshList]);
+
+  // a campo vuoto la ricerca si chiude subito (e scarta le risposte ancora in arrivo); mentre
+  // si scrive aspetta una pausa
   useEffect(() => {
-    const timer = setTimeout(refreshMeetings, 150);
+    if (!query.trim()) return void runSearch();
+    const timer = setTimeout(runSearch, 150);
     return () => clearTimeout(timer);
-  }, [refreshMeetings]);
+  }, [query, runSearch]);
 
   // modifiche arrivate da un altro dispositivo: elenco, progetti e, se è tra quelli toccati,
   // il meeting aperto
@@ -365,6 +394,7 @@ export default function App() {
           query={query}
           setQuery={setQuery}
           meetings={meetings}
+          results={results}
           events={events}
           rec={rec}
           onNew={newMeeting}
