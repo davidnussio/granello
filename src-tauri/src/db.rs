@@ -274,8 +274,8 @@ impl Db {
         let current: usize = self.conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if current > MIGRATIONS.len() {
             return Err(crate::tra!(
-                "Il database è stato creato da una versione più recente di Granello (schema {current}). Aggiorna l'app.",
-                "This database was created by a newer version of Granello (schema {current}). Update the app."
+                "Il database è stato creato da una versione più recente di Granello (schema {current}). Installa l'ultima versione: i dati restano come sono.",
+                "This database was created by a newer version of Granello (schema {current}). Install the latest version: your data stays as it is."
             ));
         }
         for (i, sql) in MIGRATIONS.iter().enumerate().skip(current) {

@@ -56,7 +56,7 @@ with its check, in the same change.
 
 | Id | Requirement | Checked by |
 | --- | --- | --- |
-| C-DATA-01 | A database from any released schema opens and reaches the latest one with no integrity errors. A database from a newer version is not opened and stays as it is. | `certification::c_data_01_…` |
+| C-DATA-01 | A database from any released schema opens and reaches the latest one with no integrity errors. A database from a newer version is not opened and stays as it is: Granello says so in a window and quits, instead of closing without a message. | `certification::c_data_01_…`, `certify.mjs` |
 | C-DATA-02 | Migrations are versioned and run once; earlier data survives them. | `db::migrations_are_versioned_and_idempotent` and the other `db::…_on_migration` tests |
 | C-DATA-03 | Meetings left recording after a crash are closed and reindexed. | `db::recovers_meetings_left_recording` |
 | C-DATA-04 | Sample data is valid in both languages, every meeting is tagged `#faker`, and removing it never touches real meetings. | `demo::shipped_demo_data_is_valid`, `db::demo_data_comes_and_goes_without_touching_real_meetings` |

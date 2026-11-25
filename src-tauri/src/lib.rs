@@ -44,6 +44,10 @@ pub fn run() {
         // deve essere il primo plugin: una seconda istanza aprirebbe lo stesso database
         // e contenderebbe il microfono
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // se l'avvio non è riuscito la finestra resta nascosta: c'è già il messaggio
+            if app.try_state::<AppState>().is_none() {
+                return;
+            }
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.unminimize();
                 let _ = w.show();
@@ -72,46 +76,11 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            let data_dir = app.path().app_data_dir()?;
-            let models_dir = data_dir.join("models");
-            std::fs::create_dir_all(&models_dir)?;
-            let db = db::Db::open(&data_dir.join("granello.sqlite"))?;
-            match db.recover_interrupted() {
-                Ok(0) => {}
-                Ok(n) => log::warn!("{n} meeting erano rimasti in registrazione: chiusi e reindicizzati"),
-                Err(e) => log::error!("recupero dei meeting interrotti: {e}"),
+            // prima del database: se non si apre, il messaggio segue la lingua del sistema
+            i18n::set(i18n::resolve("system"));
+            if let Err(e) = setup(app) {
+                startup_failed(app.handle(), &e.to_string());
             }
-            // lingua dell'interfaccia: dalle impostazioni, altrimenti quella del sistema
-            let ui_language = db.get_settings().map(|s| s.ui_language).unwrap_or_default();
-            i18n::set(i18n::resolve(&ui_language));
-            db.seed_templates()?;
-            log::info!("Granello {} avviato (lingua {:?})", env!("CARGO_PKG_VERSION"), i18n::lang());
-            // il vault che era aperto l'ultima volta, o il principale
-            let (vault_db, vault) = vaults::startup(&db, &data_dir)?;
-            app.manage(AppState {
-                db: Arc::new(Mutex::new(vault_db)),
-                main: Arc::new(Mutex::new(db)),
-                vault: parking_lot::RwLock::new(vault),
-                data_dir,
-                models_dir,
-                transcribers: Arc::new(Default::default()),
-                session: Mutex::new(None),
-                dictation: Mutex::new(None),
-                calendar: tokio::sync::Mutex::new(Default::default()),
-                downloading: Mutex::new(Default::default()),
-                http: commands::http_client(Duration::from_secs(120)),
-                llm_http: commands::http_client(Duration::from_secs(600)),
-                streams: Mutex::new(Default::default()),
-                working: Arc::new(Default::default()),
-            });
-{
-                let state = app.state::<AppState>();
-                let settings = state.main.lock().get_settings().unwrap_or_default();
-                commands::allow_recordings_dir(app.handle(), &state.vault_dir(), state.chosen_recordings(&settings));
-            }
-            spawn_calendar_watcher(app.handle().clone());
-            updater::spawn_check(app.handle().clone());
-            sync::spawn(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -229,9 +198,75 @@ pub fn run() {
         }
         if matches!(event, tauri::RunEvent::Exit) {
             // libera il vault aperto: senza, gli altri computer lo vedrebbero ancora occupato
-            app.state::<AppState>().vault.write().lock.take();
+            if let Some(state) = app.try_state::<AppState>() {
+                state.vault.write().lock.take();
+            }
         }
     });
+}
+
+/// Apre il database principale e il vault, prepara lo stato e avvia i lavori in sottofondo.
+fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    let data_dir = app.path().app_data_dir()?;
+    let models_dir = data_dir.join("models");
+    std::fs::create_dir_all(&models_dir)?;
+    let db = db::Db::open(&data_dir.join("granello.sqlite"))?;
+    match db.recover_interrupted() {
+        Ok(0) => {}
+        Ok(n) => log::warn!("{n} meeting erano rimasti in registrazione: chiusi e reindicizzati"),
+        Err(e) => log::error!("recupero dei meeting interrotti: {e}"),
+    }
+    // lingua dell'interfaccia: dalle impostazioni, altrimenti quella del sistema
+    let ui_language = db.get_settings().map(|s| s.ui_language).unwrap_or_default();
+    i18n::set(i18n::resolve(&ui_language));
+    db.seed_templates()?;
+    log::info!("Granello {} avviato (lingua {:?})", env!("CARGO_PKG_VERSION"), i18n::lang());
+    // il vault che era aperto l'ultima volta, o il principale
+    let (vault_db, vault) = vaults::startup(&db, &data_dir)?;
+    app.manage(AppState {
+        db: Arc::new(Mutex::new(vault_db)),
+        main: Arc::new(Mutex::new(db)),
+        vault: parking_lot::RwLock::new(vault),
+        data_dir,
+        models_dir,
+        transcribers: Arc::new(Default::default()),
+        session: Mutex::new(None),
+        dictation: Mutex::new(None),
+        calendar: tokio::sync::Mutex::new(Default::default()),
+        downloading: Mutex::new(Default::default()),
+        http: commands::http_client(Duration::from_secs(120)),
+        llm_http: commands::http_client(Duration::from_secs(600)),
+        streams: Mutex::new(Default::default()),
+        working: Arc::new(Default::default()),
+    });
+    {
+        let state = app.state::<AppState>();
+        let settings = state.main.lock().get_settings().unwrap_or_default();
+        commands::allow_recordings_dir(app.handle(), &state.vault_dir(), state.chosen_recordings(&settings));
+    }
+    spawn_calendar_watcher(app.handle().clone());
+    updater::spawn_check(app.handle().clone());
+    sync::spawn(app.handle().clone());
+    Ok(())
+}
+
+/// Granello non può partire (per esempio il database viene da una versione più recente): lo
+/// dice in una finestra ed esce. Un errore restituito dal setup chiuderebbe l'app di colpo,
+/// senza messaggio.
+fn startup_failed(app: &tauri::AppHandle, error: &str) {
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+    log::error!("avvio non riuscito: {error}");
+    // senza stato l'interfaccia non funzionerebbe: la finestra resta nascosta
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.hide();
+    }
+    let handle = app.clone();
+    app.dialog()
+        .message(error)
+        .title(i18n::tr("Granello non si è avviato", "Granello could not start"))
+        .kind(MessageDialogKind::Error)
+        .buttons(MessageDialogButtons::OkCustom(i18n::tr("Esci", "Quit").to_string()))
+        .show(move |_| handle.exit(1));
 }
 
 /// Se si esce a registrazione in corso, ferma la cattura e finisce di trascrivere

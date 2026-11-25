@@ -301,6 +301,24 @@ req("C-PRIV-08", "L'audio va a Gladia solo quando l'utente sceglie Affina online
 const pages = (dir) =>
   files(dir, (p) => /\.mdx?$/.test(p)).map((p) => relative(dir, p).replace(/\.mdx?$/, ""));
 
+req(
+  "C-DATA-01",
+  "Se il database non si apre (per esempio è di una versione più recente) l'app lo dice ed esce",
+  () => {
+    const lib = read("src-tauri/src/lib.rs");
+    const setup = lib.match(/\.setup\(\|app\| \{([\s\S]*?)\n        \}\)/);
+    if (!setup) return ["lib.rs: setup non trovato"];
+    const problems = [];
+    if (!/startup_failed\(/.test(setup[1]))
+      problems.push("lib.rs: un errore del setup non passa da startup_failed");
+    if (/\?;/.test(setup[1]))
+      problems.push("lib.rs: il setup propaga un errore con ?, che chiude l'app senza messaggio");
+    if (!/fn startup_failed[\s\S]*?\.dialog\(\)/.test(lib))
+      problems.push("lib.rs: startup_failed non mostra una finestra");
+    return problems;
+  },
+);
+
 req("C-DOC-01", "Ogni pagina della documentazione esiste in inglese e in italiano", () => {
   const root = "docs/src/content/docs";
   const en = pages(root).filter((p) => !p.startsWith("it/"));
