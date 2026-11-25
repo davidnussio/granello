@@ -17,6 +17,7 @@ export interface MdState {
   text(text: string, escape?: boolean): void;
   ensureNewLine(): void;
   closeBlock(node: PMNode): void;
+  flushClose(size?: number): void;
   renderContent(node: PMNode): void;
   renderInline(node: PMNode): void;
   render(node: PMNode, parent: PMNode, index: number): void;

@@ -163,6 +163,14 @@ code block, divider, links and snippets.
 form (see the table in the README). Blocks made of data rather than text share one
 base, `src/editor/dataBlock.ts`: the transcript-linked blocks can build on it.
 
+**Markdown that changes on every save** (found while making bare URLs and images in list
+items stable; both were already there):
+
+- [ ] An empty checklist item followed by a plain list (`- [ ] ` then `- Chi riceve…`, in the
+  demo note "Flusso di una consegna") gains a `- \[ \]` line at every save.
+- [ ] An image as the first thing in a list item (`- ![](attachments/x.png)`) is moved out of
+  the list when the note is read: the item stays empty and the list is split in two.
+
 **Where to go next:** decision and action item with an owner. They
 build on data Granello already has (timestamped segments, people directory,
 attendees), and a generic editor can't copy them.

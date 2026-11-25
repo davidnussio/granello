@@ -161,12 +161,21 @@ const Image = Node.create({
   addStorage() {
     return {
       markdown: {
-        serialize(state: MdState, node: PMNode) {
+        serialize(state: MdState & { inTightList?: boolean }, node: PMNode, parent: PMNode, index: number) {
           const alt = String(node.attrs.alt)
             .replace(/[[\]\n]/g, " ")
             .trim();
+          // `- testo` e sotto `  ![](…)`: in un elenco compatto l'immagine sta a capo, senza righe
+          // vuote prima o dopo il testo (o le altre immagini) dello stesso elemento. Con una riga
+          // vuota l'elenco si rileggerebbe largo, e al salvataggio dopo si aggiungerebbe una riga
+          // vuota tra gli elementi. Riletta, l'immagine torna comunque un blocco a sé.
+          const tight = state.inTightList && parent.type.name === "listItem";
+          const isText = (i: number) =>
+            i >= 0 && i < parent.childCount && ["paragraph", "image"].includes(parent.child(i).type.name);
+          if (tight && isText(index - 1)) state.flushClose(1);
           state.write(`![${alt}](${node.attrs.src})`);
-          state.closeBlock(node);
+          if (tight && isText(index + 1)) state.ensureNewLine();
+          else state.closeBlock(node);
         },
       },
     };
