@@ -70,6 +70,8 @@ with its check, in the same change.
 | C-VAULT-01 | A long job (online refinement, AI, recordings) keeps the vault busy, and never writes into another vault if the vault changes anyway. | `certification::c_vault_01_…` |
 | C-VAULT-02 | A vault shows only its own meetings; one that cannot be reached falls back to the main vault without being forgotten. | `vaults::a_vault_keeps_its_own_meetings_and_minimum_privacy` |
 | C-VAULT-03 | A sync folder belongs to one vault. | `sync::a_folder_belongs_to_one_vault` |
+| C-VAULT-04 | A vault is open on one computer at a time: another computer sees who has it and opens it only with "Open anyway", and closing the vault frees it. | `vaults::a_vault_is_open_on_one_computer_at_a_time`, `vaults::a_vault_keeps_its_own_meetings_and_minimum_privacy` |
+| C-VAULT-05 | A vault's identity and minimum privacy are written in the vault: adding it again, on this or another computer, can raise its minimum but never lower it. | `vaults::identity_and_minimum_privacy_travel_with_the_vault` |
 
 ## Interface
 
