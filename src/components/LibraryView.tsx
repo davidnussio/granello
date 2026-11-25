@@ -224,6 +224,8 @@ export default function LibraryView({
   const [detail, setDetail] = useState<Meeting | null>(null);
   /** Colonna che riceve le frecce: 0 dimensioni, poi una per dimensione con voci, poi i meeting. */
   const [col, setCol] = useState(person ? 2 : 1);
+  /** Si sta usando la tastiera: solo allora si vede la riga dove sono le frecce. Un clic la nasconde. */
+  const [usingKeys, setUsingKeys] = useState(false);
   /** Quanti meeting hanno registrazioni salvate, per il numero accanto a Registrazioni. */
   const [recorded, setRecorded] = useState<number | null>(null);
   /** Cosa elenca la terza colonna: i meeting, oppure i loro elementi. */
@@ -313,21 +315,23 @@ export default function LibraryView({
    * due persone, la colonna dei tag mostra solo i tag dei loro meeting.
    */
   const columns = useMemo(() => {
-    const out = {} as Record<FacetDim, { groups: Group[]; narrowed: boolean }>;
+    const out = {} as Record<FacetDim, { groups: Group[]; narrowed: boolean; archived: number }>;
     for (const d of FACETS) {
       const keys = chosen(d);
       const narrowed = pinnedOn || facets.some((o) => o !== d && chosen(o).length > 0);
-      const groups = groupsOf(d, passing(d), projects).filter(
-        (g) =>
-          keys.includes(g.key) ||
-          (narrowed ? g.meetings.length > 0 : d !== "projects" || showArchived || !g.archived),
+      // filtrando da altre colonne restano le voci con meeting; i progetti archiviati restano
+      // nascosti (salvo quelli scelti) finché non si apre «Archiviati»
+      const candidates = groupsOf(d, passing(d), projects).filter(
+        (g) => keys.includes(g.key) || !narrowed || g.meetings.length > 0,
       );
+      const archived = candidates.filter((g) => g.archived && !keys.includes(g.key)).length;
+      const groups = candidates.filter((g) => keys.includes(g.key) || showArchived || !g.archived);
       // una voce scelta resta in colonna anche quando gli altri filtri le tolgono tutti i meeting
       for (const k of keys) {
         if (!groups.some((g) => g.key === k))
           groups.push({ key: k, label: known[d].get(k)!.label, meetings: [] });
       }
-      out[d] = { groups, narrowed };
+      out[d] = { groups, narrowed, archived };
     }
     return out;
   }, [chosen, pinnedOn, facets, passing, projects, showArchived, known]);
@@ -553,9 +557,26 @@ export default function LibraryView({
     if (tag === "SELECT") return;
     if (tag === "INPUT" && e.key !== "ArrowDown" && e.key !== "Escape") return;
     const step = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+    if (step || e.key === "ArrowLeft" || e.key === "ArrowRight") setUsingKeys(true);
     const move = <T,>(rows: T[], index: number): T | undefined =>
       rows[Math.min(rows.length - 1, Math.max(0, index + step))];
     const facet = at > 0 && at < meetingsCol ? facets[at - 1] : null;
+    // ⌘ + freccia sposta solo il cursore, senza cambiare cosa è scelto: poi Spazio sceglie o toglie
+    const onlyMove = e.metaKey || e.ctrlKey;
+    if (e.key === " " && tag !== "INPUT") {
+      e.preventDefault();
+      setUsingKeys(true);
+      if (facet && cursor[facet]) {
+        const now = chosen(facet);
+        const key = cursor[facet];
+        setSel({ ...sel, [facet]: now.includes(key) ? now.filter((k) => k !== key) : [...now, key] });
+      } else if (at === meetingsCol && mode === "meetings" && current) {
+        const next = new Set(picked);
+        if (!next.delete(current.id)) next.add(current.id);
+        setPicked(next);
+      }
+      return;
+    }
     if (step) {
       e.preventDefault();
       if (tag === "INPUT") {
@@ -576,8 +597,10 @@ export default function LibraryView({
           rows,
           rows.findIndex((g) => g.key === cursor[facet]),
         );
-        // Maiusc + freccia allarga la scelta, la freccia da sola sceglie solo la voce raggiunta
-        if (next && e.shiftKey) {
+        // Maiusc + freccia allarga la scelta, ⌘ + freccia sposta solo il cursore, la freccia da sola
+        // sceglie solo la voce raggiunta
+        if (next && onlyMove) setCursor({ ...cursor, [facet]: next.key });
+        else if (next && e.shiftKey) {
           setSel({ ...sel, [facet]: [...new Set([...chosen(facet), next.key])] });
           setCursor({ ...cursor, [facet]: next.key });
         } else if (next) pickValue(facet, next.key, { metaKey: false, ctrlKey: false, shiftKey: false });
@@ -586,9 +609,10 @@ export default function LibraryView({
       } else {
         const next = move(listed, current ? listed.indexOf(current) : -1);
         setMeetingId(next?.id ?? null);
-        // Maiusc + freccia allarga la selezione, la freccia da sola la scioglie
+        // Maiusc + freccia allarga la selezione, ⌘ + freccia la lascia com'è, la freccia da sola
+        // la scioglie
         if (e.shiftKey && current && next) setPicked(new Set([...picked, current.id, next.id]));
-        else setPicked(new Set());
+        else if (!onlyMove) setPicked(new Set());
       }
     } else if (e.key === "a" && (e.metaKey || e.ctrlKey) && facet) {
       // Cmd A in una colonna di voci le sceglie tutte
@@ -646,7 +670,6 @@ export default function LibraryView({
     .toLowerCase()
     .replace(/[\s,]+/g, "-");
 
-  const archivedCount = projects.filter((p) => p.archived).length;
   const projectOf = (m: MeetingSummary) => projects.find((p) => p.id === m.projectId);
   /** Il progetto comune a tutti i meeting selezionati, se è lo stesso per tutti. */
   const selectionProject = selection.every((m) => m.projectId === selection[0]?.projectId)
@@ -763,9 +786,11 @@ export default function LibraryView({
                     : t("Ancora nessun meeting")}
           </p>
         )}
-        {d === "projects" && !narrowed && archivedCount > 0 && (
+        {d === "projects" && columns.projects.archived > 0 && (
           <button className="lib-more" onClick={() => setShowArchived((v) => !v)}>
-            {showArchived ? t("Nascondi archiviati") : t("Archiviati ({n})", { n: archivedCount })}
+            {showArchived
+              ? t("Nascondi archiviati")
+              : t("Archiviati ({n})", { n: columns.projects.archived })}
           </button>
         )}
       </div>
@@ -773,7 +798,13 @@ export default function LibraryView({
   };
 
   return (
-    <div className="library" ref={root} tabIndex={-1} onKeyDown={onKeyDown}>
+    <div
+      className={"library" + (usingKeys ? " keys" : "")}
+      ref={root}
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
+      onMouseDown={() => setUsingKeys(false)}
+    >
       <header className="lib-top">
         <h1 className="lib-title">{t("Libreria")}</h1>
         <input
@@ -850,6 +881,9 @@ export default function LibraryView({
             </li>
             <li>
               <kbd>⇧ {t("clic")}</kbd> {t("aggiunge o toglie tutte fino a qui")}
+            </li>
+            <li>
+              <kbd>⌘ ↑↓</kbd> {t("sposta senza scegliere")}, <kbd>{t("Spazio")}</kbd> {t("aggiunge o toglie")}
             </li>
           </ul>
         </div>

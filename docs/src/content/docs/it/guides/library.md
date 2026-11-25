@@ -16,7 +16,7 @@ La Libreria sfoglia i meeting a colonne: scegli una dimensione, poi un valore, p
 - **Periodo**: questa settimana, poi un gruppo per mese.
 - **Registrazioni**: l'audio salvato, vedi sotto.
 
-Le frecce muovono tra le colonne e Invio apre il meeting; Maiusc + freccia aggiunge anche la voce o la dimensione successiva.
+Le frecce muovono tra le colonne e Invio apre il meeting; Maiusc + freccia aggiunge anche la voce o la dimensione successiva. ⌘ + ↑↓ si sposta senza cambiare cosa è scelto, e Spazio sceglie o toglie la voce dove sei (nell'elenco dei meeting, lo aggiunge o lo toglie dalla selezione).
 
 ## Progetti
 

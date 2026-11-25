@@ -16,7 +16,7 @@ The Library browses your meetings in columns: pick a dimension, then a value, th
 - **Period**: this week, then one group per month.
 - **Recordings**: the saved audio, see below.
 
-Arrow keys move through the columns and Enter opens the meeting; Shift + arrow also adds the next entry or dimension.
+Arrow keys move through the columns and Enter opens the meeting; Shift + arrow also adds the next entry or dimension. ⌘ + ↑↓ moves without changing what is picked, and Space then picks or removes the entry under the cursor (in the meetings list, it adds or removes the meeting from the selection).
 
 ## Projects
 

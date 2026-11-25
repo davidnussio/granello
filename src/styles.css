@@ -4057,8 +4057,8 @@ button.lib-row {
   color: var(--accent);
   font-weight: 550;
 }
-/* nella colonna attiva, la riga dove sono le frecce */
-.lib-col.focus .lib-row.cur {
+/* nella colonna attiva, la riga dove sono le frecce: solo mentre si usa la tastiera */
+.library.keys .lib-col.focus .lib-row.cur {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 .lib-keys {

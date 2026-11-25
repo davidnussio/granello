@@ -660,6 +660,9 @@ const en: Record<string, string> = {
   "sceglie solo questa": "picks only this one",
   "aggiunge o toglie questa": "adds or removes this one",
   "aggiunge o toglie tutte fino a qui": "adds or removes all up to here",
+  "sposta senza scegliere": "moves without picking",
+  Spazio: "Space",
+  "aggiunge o toglie": "adds or removes",
   "Nessuna voce nei meeting scelti dalle altre colonne.":
     "Nothing here in the meetings chosen in the other columns.",
   "Tipi di elemento": "Item types",
