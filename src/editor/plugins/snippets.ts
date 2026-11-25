@@ -16,7 +16,7 @@ export const snippets: EditorPlugin = {
       },
       icon: "✓",
       get group() {
-        return t("Meeting");
+        return t("Note");
       },
       keywords: ["decisione", "deciso", "decision"],
       run: (e) => e.chain().focus().insertContent(t("**Decisione:** ")).run(),
@@ -31,7 +31,7 @@ export const snippets: EditorPlugin = {
       },
       icon: "?",
       get group() {
-        return t("Meeting");
+        return t("Note");
       },
       keywords: ["domanda", "dubbio", "question", "aperta"],
       run: (e) => e.chain().focus().insertContent(t("**Da chiarire:** ")).run(),
@@ -46,7 +46,7 @@ export const snippets: EditorPlugin = {
       },
       icon: "◷",
       get group() {
-        return t("Meeting");
+        return t("Note");
       },
       keywords: ["ora", "orario", "time", "adesso"],
       run: (e) =>

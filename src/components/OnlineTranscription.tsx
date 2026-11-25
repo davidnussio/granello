@@ -43,13 +43,13 @@ export default function OnlineTranscription({
       <h3>{t("Trascrizione online con i parlanti")}</h3>
       <p className="muted small">
         {t(
-          'A fine riunione l\'audio viene tenuto su {device} e il meeting propone "Affina online": solo se lo scegli l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla, e la trascrizione locale viene sostituita. Dopo il caricamento l\'audio viene cancellato; puoi anche eliminarlo senza caricarlo. Non vale per i meeting con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.',
+          'A fine registrazione l\'audio viene tenuto su {device} e la nota propone "Affina online": solo se lo scegli l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla, e la trascrizione locale viene sostituita. Dopo il caricamento l\'audio viene cancellato; puoi anche eliminarlo senza caricarlo. Non vale per le note con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.',
           { device: thisDevice() },
         )}
       </p>
       <label className="row gap check">
         <input type="checkbox" checked={enabled} onChange={(e) => onChange(e.target.checked)} />
-        <span>{t("Proponi l'affinamento online dopo la riunione")}</span>
+        <span>{t("Proponi l'affinamento online dopo la registrazione")}</span>
       </label>
       {enabled && !hasKey && (
         <p className="warn small">

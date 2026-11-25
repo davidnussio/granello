@@ -17,7 +17,7 @@ interface Props {
 type Sort = "name" | "meetings" | "recent";
 
 /** "1 meeting", "3 meeting": il plurale giusto in tutte e due le lingue. */
-const meetingCount = (n: number) => (n === 1 ? t("1 meeting") : t("{n} meeting", { n }));
+const meetingCount = (n: number) => (n === 1 ? t("1 nota") : t("{n} note", { n }));
 
 /**
  * Impostazioni → Persone: la rubrica di Granello a tutta pagina. Si cerca, si ordina, si
@@ -155,7 +155,7 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
       <section className="card roster-card">
         <p className="muted small">
           {t(
-            "Chi ha partecipato ai tuoi meeting: Granello le propone quando aggiungi i partecipanti. Correggi un nome e cambia in tutti i meeting; unisci due voci che sono la stessa persona. Toglierne una non modifica i meeting.",
+            "Chi compare come partecipante nelle tue note: Granello le propone quando aggiungi i partecipanti. Correggi un nome e cambia in tutte le note; unisci due voci che sono la stessa persona. Toglierne una non modifica le note.",
           )}
         </p>
         <div className="roster-tools">
@@ -174,7 +174,7 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
             aria-label={t("Ordina le persone")}
           >
             <option value="name">{t("Per nome")}</option>
-            <option value="meetings">{t("Più meeting")}</option>
+            <option value="meetings">{t("Più note")}</option>
             <option value="recent">{t("Viste di recente")}</option>
           </select>
           <div className="spacer" />
@@ -190,7 +190,7 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
         {people === null ? null : people.length === 0 ? (
           <p className="muted small">
             {t(
-              "Ancora nessuna persona: si aggiungono da sole con i partecipanti dei meeting, o importale da un file vCard.",
+              "Ancora nessuna persona: si aggiungono da sole con i partecipanti delle note, o importale da un file vCard.",
             )}
           </p>
         ) : (
@@ -199,9 +199,9 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
               <span role="columnheader">{t("Nome")}</span>
               <span role="columnheader">{t("Email")}</span>
               <span role="columnheader" className="num">
-                {t("Meeting")}
+                {t("Note")}
               </span>
-              <span role="columnheader">{t("Ultimo meeting")}</span>
+              <span role="columnheader">{t("Ultima nota")}</span>
               <span role="columnheader" aria-label={t("Azioni")} />
             </div>
             {shown.map((p) =>
@@ -226,7 +226,7 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
                         <button
                           className="link-button"
                           onClick={() => onOpenPerson(p.name)}
-                          title={t("Apri i meeting di {name} nella Libreria", { name: p.name })}
+                          title={t("Apri le note di {name} nella Libreria", { name: p.name })}
                         >
                           {p.name}
                         </button>
@@ -252,7 +252,7 @@ export default function PeopleSettings({ contacts, onContactsChanged, onOpenPers
                           setEditing({ id: p.id, name: p.name, email: p.email ?? "" });
                         }}
                         aria-label={t("Modifica {name}", { name: p.name })}
-                        title={t("Cambia nome o email: il nome nuovo arriva in tutti i meeting")}
+                        title={t("Cambia nome o email: il nome nuovo arriva in tutte le note")}
                       >
                         ✎
                       </button>
@@ -449,11 +449,11 @@ function MergeRow({
       {target && (
         <span className="muted small">
           {from.meetings === 1
-            ? t("1 meeting passa a {into}; {from} sparisce dalla rubrica.", {
+            ? t("1 nota passa a {into}; {from} sparisce dalla rubrica.", {
                 into: target.name,
                 from: from.name,
               })
-            : t("{n} meeting passano a {into}; {from} sparisce dalla rubrica.", {
+            : t("{n} note passano a {into}; {from} sparisce dalla rubrica.", {
                 n: from.meetings,
                 into: target.name,
                 from: from.name,

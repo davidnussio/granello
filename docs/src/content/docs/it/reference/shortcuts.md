@@ -7,8 +7,8 @@ description: Le scorciatoie di Granello, nell'app, in una nota e nella Libreria.
 
 | Scorciatoia | Cosa fa |
 | --- | --- |
-| ⌘N | Nuove note |
-| ⌘K | Cerca nei meeting |
+| ⌘N | Nuova nota |
+| ⌘K | Cerca nelle note |
 | ⌘, | Impostazioni |
 
 ## In una nota
@@ -39,7 +39,7 @@ description: Le scorciatoie di Granello, nell'app, in una nota e nella Libreria.
 | --- | --- |
 | ↑ ↓ | Muove nella colonna |
 | ← → | Cambia colonna |
-| Invio | Apre il meeting |
-| ⌘ clic, Maiusc clic | Seleziona più meeting |
-| ⌘A | Seleziona tutti i meeting elencati |
+| Invio | Apre la nota |
+| ⌘ clic, Maiusc clic | Seleziona più note |
+| ⌘A | Seleziona tutte le note elencate |
 | Esc | Annulla la selezione |

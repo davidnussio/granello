@@ -1,23 +1,23 @@
 ---
 title: Persone
-description: "Le persone dei tuoi meeting: correggi un nome ovunque, unisci i doppioni, importa un file vCard e usa la rubrica del Mac."
+description: "Le persone delle tue note: correggi un nome ovunque, unisci i doppioni, importa un file vCard e usa la rubrica del Mac."
 ---
 
-**Impostazioni → Persone** elenca chi ha partecipato ai tuoi meeting. Granello le propone quando aggiungi i partecipanti a un meeting, e aggiunge da solo quelle nuove.
+**Impostazioni → Persone** elenca chi compare come partecipante nelle tue note. Granello le propone quando aggiungi i partecipanti a una nota, e aggiunge da solo quelle nuove.
 
 ## L'elenco
 
-Cerca per nome o email, e ordina per nome, per numero di meeting o per chi hai visto di recente. Ogni riga mostra l'email, in quanti meeting compare la persona e la data dell'ultimo. Un clic sul nome apre i suoi meeting nella [Libreria](/it/guides/library/).
+Cerca per nome o email, e ordina per nome, per numero di note o per chi hai visto di recente. Ogni riga mostra l'email, in quante note compare la persona e la data dell'ultima. Un clic sul nome apre le sue note nella [Libreria](/it/guides/library/).
 
 ## Correggere un nome
 
-Passa su una persona e premi ✎ per cambiare il nome o l'email. Il nome nuovo arriva in tutti i meeting: tra i partecipanti, nelle @menzioni delle note e delle note AI, e in chi parla nelle citazioni della trascrizione. Un nome che è già di qualcun altro non si prende: unisci le due persone.
+Passa su una persona e premi ✎ per cambiare il nome o l'email. Il nome nuovo arriva in tutte le note: tra i partecipanti, nelle @menzioni delle note e delle note AI, e in chi parla nelle citazioni della trascrizione. Un nome che è già di qualcun altro non si prende: unisci le due persone.
 
 ## Unire due persone
 
-La stessa persona finisce spesso scritta in due modi ("Marco" e "Marco Bianchi"). Passa su quella da togliere, premi ⇢ e scegli chi è davvero. I suoi meeting passano all'altra, senza doppioni, e l'email passa anche lei se l'altra non ne aveva una.
+La stessa persona finisce spesso scritta in due modi ("Marco" e "Marco Bianchi"). Passa su quella da togliere, premi ⇢ e scegli chi è davvero. Le sue note passano all'altra, senza doppioni, e l'email passa anche lei se l'altra non ne aveva una.
 
-Rimuovere una persona (×) la toglie solo dall'elenco: i meeting restano come sono.
+Rimuovere una persona (×) la toglie solo dall'elenco: le note restano come sono.
 
 ## Importare da un file vCard
 

@@ -34,11 +34,11 @@ Dalla 0.2.7 i rilasci di Granello sono firmati e notarizzati da Apple, e macOS l
 
 ## Le note AI si fermano con un errore sulla dimensione
 
-Il meeting è più lungo di quello che il modello locale accetta. Usa un modello con un contesto più grande, alza il contesto nel server locale e indica il valore vero nel campo **Contesto (token)** del provider. Vedi [modelli locali](/it/privacy/local-models/).
+La registrazione è più lunga di quello che il modello locale accetta. Usa un modello con un contesto più grande, alza il contesto nel server locale e indica il valore vero nel campo **Contesto (token)** del provider. Vedi [modelli locali](/it/privacy/local-models/).
 
-## Le funzioni AI non sono disponibili su un meeting
+## Le funzioni AI non sono disponibili su una nota
 
-Il meeting è **blindato** e non c'è un provider locale configurato, oppure ha parti **da verificare**. Vedi [livelli di privacy](/it/privacy/levels/) e [oscura e verifica](/it/privacy/redaction/).
+La nota è **blindata** e non c'è un provider locale configurato, oppure ha parti **da verificare**. Vedi [livelli di privacy](/it/privacy/levels/) e [oscura e verifica](/it/privacy/redaction/).
 
 ## Mancano Togli le pause e Unisci
 

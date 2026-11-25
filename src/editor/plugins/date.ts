@@ -143,7 +143,7 @@ export const date: EditorPlugin = {
       },
       icon: "▦",
       get group() {
-        return t("Meeting");
+        return t("Note");
       },
       keywords: ["data", "oggi", "date", "today", "scadenza"],
       run: insert(0),
@@ -158,7 +158,7 @@ export const date: EditorPlugin = {
       },
       icon: "▦",
       get group() {
-        return t("Meeting");
+        return t("Note");
       },
       keywords: ["data", "domani", "date", "tomorrow", "scadenza"],
       run: insert(1),

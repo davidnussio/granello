@@ -56,4 +56,4 @@ pnpm preview        # http://localhost:1430/preview.html?lang=it
 
 L'app controlla all'avvio se c'è una versione nuova e chiede prima di installarla. Si riavvia solo se non sta registrando.
 
-Poi: [il primo meeting](/it/start/first-meeting/).
+Poi: [la prima nota](/it/start/first-meeting/).

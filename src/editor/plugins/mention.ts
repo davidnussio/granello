@@ -149,7 +149,7 @@ export const mention: EditorPlugin = {
       },
       icon: "@",
       get group() {
-        return t("Meeting");
+        return t("Note");
       },
       keywords: ["persona", "menzione", "mention", "person", "chi"],
       run: (e) => e.chain().focus().insertContent("@").run(),

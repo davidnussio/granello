@@ -3,7 +3,7 @@ title: Slash commands
 description: Every command of the / menu in a note, what it inserts, its shortcut and how it is written in Markdown.
 ---
 
-Type `/` in a note to open the command menu. Keep typing to filter it (it understands English and Italian words, so `/table` and `/tabella` both work), move with the arrows, insert with Enter, close with Esc. The menu does not open inside code. The name of a group shows the whole group: `/meeting` lists every block of the Meeting group, `/tools` every tool.
+Type `/` in a note to open the command menu. Keep typing to filter it (it understands English and Italian words, so `/table` and `/tabella` both work), move with the arrows, insert with Enter, close with Esc. The menu does not open inside code. The name of a group shows the whole group: `/notes` lists every block of the Notes group, `/tools` every tool.
 
 ![The / menu open in an empty note: Structure and Lists at the top](../../../assets/shots/en/commands/menu.webp)
 
@@ -67,7 +67,7 @@ Shortcut: `1.` + space. Markdown: `1. item`.
 
 ### Action item
 
-A checkbox to tick when the thing is done. Action items from every meeting are listed together in the [Library](/guides/library/#items-across-meetings), and [progress](#progress) counts them.
+A checkbox to tick when the thing is done. Action items from every note are listed together in the [Library](/guides/library/#items-across-notes), and [progress](#progress) counts them.
 
 Shortcut: `[ ]` + space. Markdown: `- [ ] to do`, `- [x] done`.
 
@@ -77,7 +77,7 @@ Shortcut: `[ ]` + space. Markdown: `- [ ] to do`, `- [x] done`.
 
 ### Quote
 
-A quote that is not from the transcript, for example from an email. For something said in the meeting use a [transcript quote](#transcript-quote).
+A quote that is not from the transcript, for example from an email. For something said in the recording use a [transcript quote](#transcript-quote).
 
 Shortcut: `>` + space. Markdown: `> text`.
 
@@ -173,7 +173,7 @@ Markdown: `> [!WARNING]`.
 
 ### Decision callout
 
-A box for a decision. Decision callouts from every meeting are listed together in the [Library](/guides/library/#items-across-meetings).
+A box for a decision. Decision callouts from every note are listed together in the [Library](/guides/library/#items-across-notes).
 
 Markdown: `> [!DECISION]`.
 
@@ -183,7 +183,7 @@ Markdown: `> [!DECISION]`.
 
 ### Image
 
-Choose an image file; it is copied into the meeting's attachments. You can also paste a screenshot or drop an image into the note.
+Choose an image file; it is copied into the note's attachments. You can also paste a screenshot or drop an image into the note.
 
 Markdown: `![description](attachments/…)`.
 
@@ -191,7 +191,7 @@ Markdown: `![description](attachments/…)`.
 
 ### Attachment
 
-Choose any file, up to 25 MB; it is copied into the meeting's attachments and shown with its name and size.
+Choose any file, up to 25 MB; it is copied into the note's attachments and shown with its name and size.
 
 Markdown: `[📎 name (size)](attachments/…)`.
 
@@ -213,7 +213,7 @@ Markdown: `[Title](https://… "embed")`.
 
 ![An embedded YouTube video, waiting for a click before it loads](../../../assets/shots/en/commands/embed.webp)
 
-## Meeting
+## Notes
 
 ### Decision
 
@@ -239,7 +239,7 @@ Writes the time of day, such as `10:42`, as plain text.
 
 ### Mark the moment
 
-Marks the recording time, like ⇧⌘M while recording. When the meeting ends, the AI writes what was being said at that minute; you can also write it yourself. ↗ opens the transcript at that point.
+Marks the recording time, like ⇧⌘M while recording. When the recording ends, the AI writes what was being said at that minute; you can also write it yourself. ↗ opens the transcript at that point.
 
 Markdown: `::: moment 12:34` … `:::`.
 
@@ -247,7 +247,7 @@ Markdown: `::: moment 12:34` … `:::`.
 
 ### Transcript quote
 
-A sentence said in the meeting, with who said it and the minute. The quickest way to make one is to select text in the Transcript panel and press **❝ Quote** (while recording, the same button at the bottom of the panel quotes the last sentence); the command inserts an empty one to fill in, at the current minute of the recording. Quotes are listed in the [Library](/guides/library/#items-across-meetings).
+A sentence said in the recording, with who said it and the minute. The quickest way to make one is to select text in the Transcript panel and press **❝ Quote** (while recording, the same button at the bottom of the panel quotes the last sentence); the command inserts an empty one to fill in, at the current minute of the recording. Quotes are listed in the [Library](/guides/library/#items-across-notes).
 
 Markdown: `::: quote 12:34 Name` … `:::`.
 
@@ -255,7 +255,7 @@ Markdown: `::: quote 12:34 Name` … `:::`.
 
 ### Ask the AI
 
-A request about the meeting, such as "What are the client's objections?", with its answer under it. The answer is recomputed while you record and once more when the transcription ends; ↻ asks again. It sends the notes and the transcript to the AI provider you configured: see [privacy levels](/privacy/levels/) for meetings where that must not happen.
+A request about the note, such as "What are the client's objections?", with its answer under it. The answer is recomputed while you record and once more when the transcription ends; ↻ asks again. It sends the notes and the transcript to the AI provider you configured: see [privacy levels](/privacy/levels/) for notes where that must not happen.
 
 Markdown: `::: ai Request` … `:::`.
 
@@ -267,7 +267,7 @@ Polls, kanban boards, timelines, pros and cons, decision matrices and diagrams h
 
 ### Poll
 
-A question with options and votes, for a quick count in the meeting. − and + change the votes; the leading option is highlighted.
+A question with options and votes, for a quick count during the call. − and + change the votes; the leading option is highlighted.
 
 Markdown: `::: poll Question`, then `- [votes] option` for each option, then `:::`.
 

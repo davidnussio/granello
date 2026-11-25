@@ -24,6 +24,9 @@ pub struct Meeting {
     /// Quando è stato fissato in cima alla barra laterale; assente se non è fissato.
     #[serde(default)]
     pub pinned_at: Option<i64>,
+    /// Ultima modifica di titolo, note, note AI, partecipanti o tag.
+    #[serde(default)]
+    pub updated_at: i64,
 }
 
 /// Quanto di un meeting può uscire da questo Mac.
@@ -70,6 +73,8 @@ pub struct MeetingSummary {
     pub project_id: Option<String>,
     /// Quando è stato fissato; assente se non è fissato.
     pub pinned_at: Option<i64>,
+    /// Ultima modifica di titolo, note, note AI, partecipanti o tag.
+    pub updated_at: i64,
     pub snippet: Option<String>,
 }
 

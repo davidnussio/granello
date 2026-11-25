@@ -9,6 +9,8 @@ let cached: {
   weekday: Intl.DateTimeFormat;
   dayMonth: Intl.DateTimeFormat;
   dayMonthYear: Intl.DateTimeFormat;
+  long: Intl.DateTimeFormat;
+  longYear: Intl.DateTimeFormat;
 } | null = null;
 
 /** Ore in formato 12 (AM/PM) o 24; `undefined` lascia decidere la lingua dell'interfaccia. */
@@ -52,9 +54,31 @@ function fmt() {
       weekday: new Intl.DateTimeFormat(loc, { weekday: "short" }),
       dayMonth: new Intl.DateTimeFormat(loc, { day: "numeric", month: "short" }),
       dayMonthYear: new Intl.DateTimeFormat(loc, { day: "numeric", month: "short", year: "numeric" }),
+      long: new Intl.DateTimeFormat(loc, { weekday: "long", day: "numeric", month: "long" }),
+      longYear: new Intl.DateTimeFormat(loc, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
     };
   }
   return cached;
+}
+
+/**
+ * Giorno e ora per intero, da usare dentro una frase: «lunedì 26 ottobre, 09:30» (con l'anno se
+ * non è questo), senza «oggi» o «ieri» e con le maiuscole della lingua.
+ */
+export function longWhen(ts: number): string {
+  const d = new Date(ts);
+  const f = fmt();
+  return `${(d.getFullYear() === new Date().getFullYear() ? f.long : f.longYear).format(d)}, ${time(ts)}`;
+}
+
+/** true se i due istanti cadono nello stesso giorno, nell'ora di questo Mac. */
+export function sameDay(a: number, b: number): boolean {
+  return startOfDay(a) === startOfDay(b);
 }
 
 function startOfDay(ts: number) {

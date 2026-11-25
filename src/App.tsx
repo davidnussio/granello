@@ -293,7 +293,7 @@ export default function App() {
         setProjects(await api.listProjects());
         refreshMeetings();
         toast(
-          t("{n} meeting di esempio caricati. Sfogliali dalla Libreria o dall'elenco a sinistra.", {
+          t("{n} note di esempio caricate. Sfogliale dalla Libreria o dall'elenco a sinistra.", {
             n: count,
           }),
         );
@@ -310,7 +310,7 @@ export default function App() {
         refreshMeetings();
         // il meeting aperto potrebbe essere uno di quelli appena tolti
         setView((v) => (v.kind === "meeting" && v.id.startsWith("demo-") ? { kind: "home" } : v));
-        toast(t("{n} meeting di esempio tolti", { n: removed }));
+        toast(t("{n} note di esempio tolte", { n: removed }));
       } catch (e) {
         toast(errorText(e));
       }
@@ -454,13 +454,13 @@ export default function App() {
             scope="global"
             toast={toast}
             big
-            title={t("Chiedi a tutti i tuoi meeting")}
+            title={t("Chiedi a tutte le tue note")}
             subtitle={t(
-              "Granello cerca i meeting più pertinenti alla domanda e risponde citando titolo e data.",
+              "Granello cerca le note più pertinenti alla domanda e risponde citando titolo e data.",
             )}
             suggestions={[
               t("Quali azioni sono rimaste aperte questa settimana?"),
-              t("Cosa abbiamo deciso nell'ultimo meeting con il cliente?"),
+              t("Cosa abbiamo deciso nell'ultimo incontro con il cliente?"),
               t("Riassumi i temi ricorrenti degli standup"),
             ]}
           />

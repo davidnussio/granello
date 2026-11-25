@@ -1,6 +1,6 @@
 ---
 title: Dati e file
-description: Dove Granello tiene meeting, modelli, registrazioni, chiavi e log, e come farne una copia.
+description: Dove Granello tiene note, modelli, registrazioni, chiavi e log, e come farne una copia.
 ---
 
 Tutto quello che Granello salva è sul tuo Mac.
@@ -11,9 +11,9 @@ Tutto quello che Granello salva è sul tuo Mac.
 
 | Voce | Cos'è |
 | --- | --- |
-| `granello.sqlite` | Il database: meeting, note, note AI, trascrizioni, tag, persone, template, impostazioni e indirizzi del calendario |
+| `granello.sqlite` | Il database: note, note AI, trascrizioni, tag, persone, template, impostazioni e indirizzi del calendario |
 | `models/` | I modelli whisper che hai scaricato |
-| `attachments/` | Le immagini incollate e i file allegati. Vengono tolti quando si elimina l'ultimo meeting che li usa |
+| `attachments/` | Le immagini incollate e i file allegati. Vengono tolti quando si elimina l'ultima nota che li usa |
 | `recordings/` | Le registrazioni salvate, se non hai scelto un'altra cartella |
 | `audio/` | L'audio in attesa della trascrizione online, solo con quell'opzione attiva, finché non lo affini o lo elimini. Cancellato dopo il caricamento |
 | `waveforms/` | Le forme d'onda mostrate nei player, calcolate dalle registrazioni |
@@ -29,15 +29,15 @@ Chiudi Granello e copia la cartella dei dati. Time Machine la include di default
 
 ## Vault
 
-Un vault è una cartella con il suo database, i suoi allegati e le sue registrazioni: i meeting di un vault esistono solo lì. Mettine uno su un disco cifrato o esterno per tenere i meeting riservati separati dagli altri. La cartella dei dati qui sopra è il vault **Principale** e c'è sempre.
+Un vault è una cartella con il suo database, i suoi allegati e le sue registrazioni: le note di un vault esistono solo lì. Mettine uno su un disco cifrato o esterno per tenere le note riservate separate dalle altre. La cartella dei dati qui sopra è il vault **Principale** e c'è sempre.
 
-**Impostazioni → Vault** aggiunge un vault: dagli un nome, scegli la sua cartella e un livello minimo di privacy. Una cartella vuota diventa un vault nuovo; la cartella di un vault che esiste già, anche creato su un altro Mac, viene ritrovata con i suoi meeting.
+**Impostazioni → Vault** aggiunge un vault: dagli un nome, scegli la sua cartella e un livello minimo di privacy. Una cartella vuota diventa un vault nuovo; la cartella di un vault che esiste già, anche creato su un altro Mac, viene ritrovata con le sue note.
 
-- **Se ne apre uno alla volta.** Con più di un vault, un'icona accanto a Impostazioni, in fondo alla barra laterale, ne apre un altro. Elenco dei meeting, Libreria, ricerca e chat mostrano solo il vault aperto. Non si può cambiare vault mentre è in corso una registrazione o una generazione dell'AI.
-- **Cosa contiene un vault**: `granello.sqlite` (meeting, note, note AI, trascrizioni, tag, progetti, persone, chat), `attachments/`, `recordings/`, `audio/` e `waveforms/`.
+- **Se ne apre uno alla volta.** Con più di un vault, un'icona accanto a Impostazioni, in fondo alla barra laterale, ne apre un altro. Elenco delle note, Libreria, ricerca e chat mostrano solo il vault aperto. Non si può cambiare vault mentre è in corso una registrazione o una generazione dell'AI.
+- **Cosa contiene un vault**: `granello.sqlite` (note, note AI, trascrizioni, tag, progetti, persone, chat), `attachments/`, `recordings/`, `audio/` e `waveforms/`.
 - **Cosa resta su questo Mac per tutti i vault**: impostazioni, template, indirizzi dei calendari, l'elenco dei vault, i modelli whisper e le API key.
-- **Calendari**: ogni calendario si configura una volta sola, e ogni vault sceglie quali mostrare nella Home e nelle notifiche: in **Impostazioni → Calendario** ("Mostrato in"), oppure con i nomi dei calendari sopra i prossimi meeting, che valgono per il vault aperto. Un calendario nuovo compare in tutti i vault finché non lo togli da uno.
-- **Privacy minima**: nessuna, almeno audio locale, o sempre blindata. I meeting nuovi del vault partono da quel livello e non possono scendere sotto. Alzare il minimo alza subito i meeting del vault che stavano sotto. Vedi i [livelli di privacy](/it/privacy/levels/).
+- **Calendari**: ogni calendario si configura una volta sola, e ogni vault sceglie quali mostrare nella Home e nelle notifiche: in **Impostazioni → Calendario** ("Mostrato in"), oppure con i nomi dei calendari sopra i prossimi eventi, che valgono per il vault aperto. Un calendario nuovo compare in tutti i vault finché non lo togli da uno.
+- **Privacy minima**: nessuna, almeno audio locale, o sempre blindata. Le note nuove del vault partono da quel livello e non possono scendere sotto. Alzare il minimo alza subito le note del vault che stavano sotto. Vedi i [livelli di privacy](/it/privacy/levels/).
 - **Un vault su un disco non collegato** compare come non disponibile. Se era quello aperto, Granello parte dal vault Principale.
 - **Togli dall'elenco** dimentica soltanto il vault: la cartella e i suoi dati restano dove sono. Per eliminare un vault, elimina la sua cartella.
 
@@ -57,18 +57,18 @@ Per ora c'è un'anteprima: il sync di un vault tra i tuoi Mac attraverso una car
 
 - **Si sincronizza solo il vault aperto**, non tutti. La cartella di sync non è un vault: il vault resta dov'è, e nella cartella ogni Mac scrive le sue modifiche, che gli altri Mac leggono e applicano.
 - **Conflitti**: per ogni campo vince la modifica più recente. Se la stessa nota cambia su due Mac insieme, la versione rimasta indietro viene tenuta da parte.
-- **Viaggiano**: meeting con note, note AI, partecipanti e tag, trascrizioni, progetti e persone.
+- **Viaggiano**: note con il loro testo, note AI, partecipanti e tag, trascrizioni, progetti e persone.
 - **Non viaggiano**: audio, registrazioni e allegati (per ora), impostazioni, template, calendari e API key.
-- **Non viaggiano mai**: i meeting blindati. Un vault con privacy minima blindata non si sincronizza.
+- **Non viaggiano mai**: le note blindate. Un vault con privacy minima blindata non si sincronizza.
 
-Per aggiungere un altro Mac, accendi lì le anteprime per sviluppatori, apri il vault che deve ricevere i dati (per esempio il Principale) e, in **Impostazioni → Vault**, scegli la stessa cartella di sync. Quel vault si unisce al primo: riceve i suoi meeting e manda i propri. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.
+Per aggiungere un altro Mac, accendi lì le anteprime per sviluppatori, apri il vault che deve ricevere i dati (per esempio il Principale) e, in **Impostazioni → Vault**, scegli la stessa cartella di sync. Quel vault si unisce al primo: riceve le sue note e manda le proprie. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.
 
 Ogni cartella di sync appartiene a un solo vault. Per sincronizzare un altro vault, aprilo e scegli un'altra cartella vuota, per esempio `Granello-Clienti` accanto alla prima.
 
 ## Eliminare
 
-- Eliminare un meeting toglie le sue note, la sua trascrizione e le sue registrazioni salvate.
-- **Togli i dati di esempio** toglie solo i meeting di esempio.
+- Eliminare una nota toglie il suo testo, la sua trascrizione e le sue registrazioni salvate.
+- **Togli i dati di esempio** toglie solo le note di esempio.
 - Per togliere tutto, chiudi Granello ed elimina la cartella dei dati e quella dei log.
 
 ## Versioni del database

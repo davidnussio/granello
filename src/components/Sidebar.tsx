@@ -41,16 +41,19 @@ export default function Sidebar(p: Props) {
   /** Le settimane aperte con «Altre N»: tornano chiuse alla prossima apertura dell'app. */
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
 
-  // le note per giorno e settimana: oggi e ieri non tornano nelle settimane
+  // le note per giorno e settimana dell'ultima modifica, dalla più recente: chi ha appena
+  // ritoccato una nota vecchia la ritrova in cima. Oggi e ieri non tornano nelle settimane
   const b = bounds(now);
-  const today = p.meetings.filter((m) => m.createdAt >= b.today);
-  const yesterday = p.meetings.filter((m) => m.createdAt >= b.yesterday && m.createdAt < b.today);
-  const thisWeek = p.meetings.filter((m) => m.createdAt >= b.monday && m.createdAt < b.yesterday);
-  const lastWeek = p.meetings.filter(
-    (m) => m.createdAt >= b.lastMonday && m.createdAt < Math.min(b.monday, b.yesterday),
+  const changed = p.meetings.toSorted((x, y) => y.updatedAt - x.updatedAt);
+  const today = changed.filter((m) => m.updatedAt >= b.today);
+  const yesterday = changed.filter((m) => m.updatedAt >= b.yesterday && m.updatedAt < b.today);
+  const thisWeek = changed.filter((m) => m.updatedAt >= b.monday && m.updatedAt < b.yesterday);
+  const lastWeek = changed.filter(
+    (m) => m.updatedAt >= b.lastMonday && m.updatedAt < Math.min(b.monday, b.yesterday),
   );
 
-  const row = (m: MeetingSummary, when: (ts: number) => string = shortWhen) => (
+  /** Una nota di una settimana: titolo e, a destra, giorno e ora dell'ultima modifica. */
+  const row = (m: MeetingSummary) => (
     <button
       key={m.id}
       className={"side-item side-row" + (m.id === selectedId ? " active" : "")}
@@ -61,11 +64,11 @@ export default function Sidebar(p: Props) {
         {p.rec.meetingId === m.id && <span className="rec-dot" />}
         {m.title || t("Senza titolo")}
       </span>
-      <span className="side-time">{when(m.createdAt)}</span>
+      <span className="side-time">{weekdayTime(m.updatedAt)}</span>
     </button>
   );
 
-  /** Una nota di oggi o di ieri: titolo, poi ora, ✦ se rielaborata e quante persone, poi i tag. */
+  /** Una nota di oggi o di ieri: titolo, poi ora dell'ultima modifica, ✦ se rielaborata e quante persone, poi i tag. */
   const card = (m: MeetingSummary) => (
     <button
       key={m.id}
@@ -78,7 +81,7 @@ export default function Sidebar(p: Props) {
         {m.title || t("Senza titolo")}
       </span>
       <span className="side-meta">
-        {time(m.createdAt)}
+        {time(m.updatedAt)}
         {m.hasEnhanced && sparkle(" · ✦")}
         {m.attendees.length === 1
           ? ` · ${t("1 persona")}`
@@ -108,7 +111,7 @@ export default function Sidebar(p: Props) {
           <span>{title}</span>
           <span className="side-count">{list.length}</span>
         </h4>
-        {(all ? list : list.slice(0, PER_WEEK)).map((m) => row(m, weekdayTime))}
+        {(all ? list : list.slice(0, PER_WEEK)).map(row)}
         {list.length > PER_WEEK && (
           <button
             className="side-item side-more"
@@ -129,8 +132,8 @@ export default function Sidebar(p: Props) {
   return (
     <aside className="sidebar">
       <div className="sidebar-top">
-        <button className="btn primary wide" onClick={p.onNew} title={t("Nuove note (⌘N)")}>
-          {t("+ Nuove note")}
+        <button className="btn primary wide" onClick={p.onNew} title={t("Nuova nota (⌘N)")}>
+          {t("+ Nuova nota")}
         </button>
         <input
           className="search"

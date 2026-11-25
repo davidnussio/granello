@@ -52,7 +52,7 @@ Seleziona una frase nel pannello Trascrizione e premi **❝ Cita**. Nella nota c
 
 ## Copiare, stampare, eliminare
 
-Le tre icone in alto a destra di un meeting copiano la nota come Markdown, la stampano (o la salvano in PDF) ed eliminano il meeting.
+Le tre icone in alto a destra di una nota la copiano come Markdown, la stampano (o la salvano in PDF) e la eliminano.
 
 ## L'AI nell'editor
 
@@ -61,4 +61,4 @@ Le tre icone in alto a destra di un meeting copiano la nota come Markdown, la st
 - **✦** sul testo selezionato lo riscrive: accorcia, traduci, espandi.
 - **✦** accanto al titolo propone un titolo da note e trascrizione.
 
-Ognuna di queste funzioni invia le note e la trascrizione al provider AI che hai configurato. Vedi [livelli di privacy](/it/privacy/levels/) per i meeting in cui questo non deve succedere.
+Ognuna di queste funzioni invia le note e la trascrizione al provider AI che hai configurato. Vedi [livelli di privacy](/it/privacy/levels/) per le note in cui questo non deve succedere.

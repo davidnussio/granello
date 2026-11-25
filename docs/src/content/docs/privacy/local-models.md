@@ -19,11 +19,11 @@ Granello does not have its own AI service. In **Settings → AI models** you cho
 
 Add a local provider (a server on `localhost`) and select it for both **AI notes** and **Chat**. From then on, no text leaves your Mac.
 
-To make sure of it for one meeting whatever the settings say, set that meeting to [hardened](/privacy/levels/): it only ever uses a provider on `localhost`.
+To make sure of it for one note whatever the settings say, set that note to [hardened](/privacy/levels/): it only ever uses a provider on `localhost`.
 
 ## The context of local models
 
-An hour of meeting is tens of thousands of tokens. Local servers silently cut what does not fit, and some start with a small context. Enter it in the provider's **Context (tokens)** field: Granello then estimates the size of each request and stops with a clear error, instead of writing notes from half a transcript.
+An hour of recording is tens of thousands of tokens. Local servers silently cut what does not fit, and some start with a small context. Enter it in the provider's **Context (tokens)** field: Granello then estimates the size of each request and stops with a clear error, instead of writing notes from half a transcript.
 
 The reasoning that some local models print before answering is removed from the notes.
 

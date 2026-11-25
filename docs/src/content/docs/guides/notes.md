@@ -52,7 +52,7 @@ Select a sentence in the Transcript panel and press **❝ Quote**. The note gets
 
 ## Copy, print, delete
 
-The three icons at the top right of a meeting copy the note as Markdown, print it (or save it as PDF) and delete the meeting.
+The three icons at the top right of a note copy it as Markdown, print it (or save it as PDF) and delete it.
 
 ## AI inside the editor
 
@@ -61,4 +61,4 @@ The three icons at the top right of a meeting copy the note as Markdown, print i
 - **✦** on selected text rewrites it: shorten, translate, expand.
 - **✦** next to the title proposes a title from notes and transcript.
 
-Each of these sends the notes and the transcript to the AI provider you configured. See [privacy levels](/privacy/levels/) for meetings where that must not happen.
+Each of these sends the notes and the transcript to the AI provider you configured. See [privacy levels](/privacy/levels/) for notes where that must not happen.

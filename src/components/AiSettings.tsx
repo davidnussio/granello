@@ -168,7 +168,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
       {picker(
         t("Chat"),
         "chatModel",
-        t("Risponde alle domande sui meeting: può essere un modello più piccolo o locale."),
+        t("Risponde alle domande sulle note: può essere un modello più piccolo o locale."),
       )}
 
       <h4 className="sub">{t("Provider")}</h4>
@@ -249,7 +249,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
             {p.kind === "openai" && isLocal(p.baseUrl) && (
               <small className="muted">
                 {t(
-                  "Resta tutto su {device}. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare un meeting che non ci sta.",
+                  "Resta tutto su {device}. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare una nota che non ci sta.",
                   { device: thisDevice() },
                 )}
               </small>

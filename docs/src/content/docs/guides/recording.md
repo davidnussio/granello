@@ -24,11 +24,11 @@ On older systems, see [troubleshooting](/reference/troubleshooting/) for the loo
 - **❝ Quote**, next to it, puts the last transcribed sentence in your note, with who said it and the minute.
 - **At the mic** says who is speaking when several people share one microphone. From that moment the transcript credits that person.
 
-You can stop and resume on the same meeting: the transcript continues.
+You can stop and resume on the same note: the transcript continues.
 
 ## How transcription works
 
-The audio is cut on pauses, into pieces of 6 to 20 seconds, and each piece is transcribed on your Mac by whisper.cpp. The meeting's title and attendees are given to the model as a hint for names and terms. Phrases that speech models invent on silence are filtered out.
+The audio is cut on pauses, into pieces of 6 to 20 seconds, and each piece is transcribed on your Mac by whisper.cpp. The note's title and attendees are given to the model as a hint for names and terms. Phrases that speech models invent on silence are filtered out.
 
 ## Upload a file
 
@@ -40,7 +40,7 @@ Select any part of the transcript and use **Who's speaking…** to assign it to 
 
 ## Saved recordings
 
-With **Save recordings** on (Settings, off by default), each meeting's audio stays in a folder on your Mac. Listen to it next to the transcript, or in the Library under **Recordings**. See [the Library](/guides/library/).
+With **Save recordings** on (Settings, off by default), the audio you record stays in a folder on your Mac. Listen to it next to the transcript, or in the Library under **Recordings**. See [the Library](/guides/library/).
 
 ## If something goes wrong
 

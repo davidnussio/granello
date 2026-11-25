@@ -1,6 +1,6 @@
 ---
 title: Data and files
-description: Where Granello keeps your meetings, models, recordings, keys and logs, and how to back them up.
+description: Where Granello keeps your notes, models, recordings, keys and logs, and how to back them up.
 ---
 
 Everything Granello stores is on your Mac.
@@ -11,9 +11,9 @@ Everything Granello stores is on your Mac.
 
 | Item | What it is |
 | --- | --- |
-| `granello.sqlite` | The database: meetings, notes, AI notes, transcripts, tags, people, templates, settings and the calendar addresses |
+| `granello.sqlite` | The database: notes, AI notes, transcripts, tags, people, templates, settings and the calendar addresses |
 | `models/` | The whisper models you downloaded |
-| `attachments/` | Images you pasted and files you attached. Removed when the last meeting that uses them is deleted |
+| `attachments/` | Images you pasted and files you attached. Removed when the last note that uses them is deleted |
 | `recordings/` | Saved recordings, unless you chose another folder |
 | `audio/` | Audio waiting for online transcription, only with that option on, until you refine or delete it. Deleted after the upload |
 | `waveforms/` | The waveforms shown in the players, computed from the recordings |
@@ -29,15 +29,15 @@ Quit Granello and copy the data folder. Time Machine includes it by default. To 
 
 ## Vaults
 
-A vault is a folder with its own database, attachments and recordings: the meetings of a vault exist only there. Put one on an encrypted or external disk to keep confidential meetings apart from the rest. The data folder above is the **Main** vault and is always there.
+A vault is a folder with its own database, attachments and recordings: the notes of a vault exist only there. Put one on an encrypted or external disk to keep confidential notes apart from the rest. The data folder above is the **Main** vault and is always there.
 
-**Settings → Vaults** adds a vault: give it a name, choose its folder and a minimum privacy level. An empty folder becomes a new vault; the folder of a vault that already exists, even one made on another Mac, is found again with its meetings.
+**Settings → Vaults** adds a vault: give it a name, choose its folder and a minimum privacy level. An empty folder becomes a new vault; the folder of a vault that already exists, even one made on another Mac, is found again with its notes.
 
-- **One vault is open at a time.** With more than one vault, an icon next to Settings, at the bottom of the sidebar, opens another. The meeting list, the Library, search and chat show only the open vault. You cannot switch while a recording or an AI generation is running.
-- **What a vault holds**: `granello.sqlite` (meetings, notes, AI notes, transcripts, tags, projects, people, chat), `attachments/`, `recordings/`, `audio/` and `waveforms/`.
+- **One vault is open at a time.** With more than one vault, an icon next to Settings, at the bottom of the sidebar, opens another. The list of notes, the Library, search and chat show only the open vault. You cannot switch while a recording or an AI generation is running.
+- **What a vault holds**: `granello.sqlite` (notes, AI notes, transcripts, tags, projects, people, chat), `attachments/`, `recordings/`, `audio/` and `waveforms/`.
 - **What stays on this Mac for every vault**: settings, templates, calendar addresses, the list of vaults, the whisper models and the API keys.
-- **Calendars**: each calendar is set up once, and each vault chooses which ones it shows on the Home screen and in notifications: in **Settings → Calendar** ("Shown in"), or with the calendar names above the upcoming meetings, which apply to the open vault. A new calendar appears in every vault until you remove it from one.
-- **Minimum privacy**: none, at least local audio, or always hardened. New meetings in the vault start at that level and cannot go below it. Raising the minimum raises the vault's meetings that were below it right away. See [privacy levels](/privacy/levels/).
+- **Calendars**: each calendar is set up once, and each vault chooses which ones it shows on the Home screen and in notifications: in **Settings → Calendar** ("Shown in"), or with the calendar names above the upcoming events, which apply to the open vault. A new calendar appears in every vault until you remove it from one.
+- **Minimum privacy**: none, at least local audio, or always hardened. New notes in the vault start at that level and cannot go below it. Raising the minimum raises the vault's notes that were below it right away. See [privacy levels](/privacy/levels/).
 - **A vault on a disk that is not connected** is shown as not available. If it was the open one, Granello starts on the Main vault.
 - **Remove from the list** only forgets the vault: its folder and its data stay where they are. To delete a vault, delete its folder.
 
@@ -57,18 +57,18 @@ For now there is one preview: syncing a vault between your Macs through a folder
 
 - **Only the open vault syncs**, not all of them. The sync folder is not a vault: the vault stays where it is, and in the folder each Mac writes its changes, which the other Macs read and apply.
 - **Conflicts**: for each field the latest change wins. If the same note changes on two Macs at once, the version left behind is kept aside.
-- **Synced**: meetings with their notes, AI notes, attendees and tags, transcripts, projects and people.
+- **Synced**: notes with their text, AI notes, attendees and tags, transcripts, projects and people.
 - **Not synced**: audio, recordings and attachments (for now), settings, templates, calendars and API keys.
-- **Never synced**: hardened meetings. A vault whose minimum privacy is hardened does not sync.
+- **Never synced**: hardened notes. A vault whose minimum privacy is hardened does not sync.
 
-To add another Mac, turn on the developer previews there, open the vault that should receive the data (for example Main) and, in **Settings → Vaults**, choose the same sync folder. That vault joins the first one: it receives its meetings and sends its own. To keep them apart, use a new, empty vault on the other Mac.
+To add another Mac, turn on the developer previews there, open the vault that should receive the data (for example Main) and, in **Settings → Vaults**, choose the same sync folder. That vault joins the first one: it receives its notes and sends its own. To keep them apart, use a new, empty vault on the other Mac.
 
 Each sync folder belongs to one vault. To sync another vault, open it and choose another empty folder, for example `Granello-Clients` next to the first one.
 
 ## Deleting
 
-- Deleting a meeting removes its notes, its transcript and its saved recordings.
-- **Remove sample data** removes only the sample meetings.
+- Deleting a note removes its text, its transcript and its saved recordings.
+- **Remove sample data** removes only the sample notes.
 - To remove everything, quit Granello and delete the data folder and the log folder.
 
 ## Database versions

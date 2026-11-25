@@ -14,7 +14,7 @@ pub fn builtin_templates() -> Vec<Template> {
             t(
                 "generale",
                 "General",
-                "For any meeting",
+                "For any note",
                 "Structure the notes in sections with headings (###) that follow the topics actually discussed, \
 in the order they came up. End with a \"### Next steps\" section listing the agreed actions \
 (owner and due date when mentioned).",
@@ -43,7 +43,7 @@ Report facts and quotes, not judgements the transcript doesn't support.",
             ),
             t(
                 "cliente",
-                "Client meeting",
+                "Client",
                 "Sales call or client call",
                 "Use these sections:\n### Client context\n### Needs and problems\n### Objections\n\
 ### Budget, timeline and decision makers\n### What we proposed\n### Next steps\nQuote numbers and dates exactly as stated.",
@@ -54,7 +54,7 @@ Report facts and quotes, not judgements the transcript doesn't support.",
         t(
             "generale",
             "Generale",
-            "Per qualsiasi meeting",
+            "Per qualsiasi nota",
             "Struttura le note in sezioni con titoli (###) che seguono gli argomenti realmente discussi, \
 nell'ordine in cui sono emersi. Chiudi con una sezione \"### Prossimi passi\" con le azioni concordate \
 (responsabile e scadenza se menzionati).",
@@ -83,7 +83,7 @@ Riporta fatti e citazioni, non giudizi non supportati dalla trascrizione.",
         ),
         t(
             "cliente",
-            "Meeting cliente",
+            "Cliente",
             "Call commerciale o con un cliente",
             "Usa queste sezioni:\n### Contesto del cliente\n### Bisogni e problemi\n### Obiezioni\n\
 ### Budget, tempi e decisori\n### Cosa abbiamo proposto\n### Prossimi passi\nCita numeri e date esattamente come detti.",

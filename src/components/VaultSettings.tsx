@@ -84,7 +84,7 @@ export default function VaultSettings({ vaults, onChanged, onOpen, toast }: Prop
       <section className="card">
         <p className="muted small">
           {t(
-            "Un vault è una cartella con il suo database, i suoi allegati e le sue registrazioni: i meeting di un vault esistono solo lì. Mettilo su un disco cifrato o esterno per tenere separati i meeting riservati. Se ne apre uno alla volta: elenco, Libreria, ricerca e chat mostrano solo quello aperto. Impostazioni, template e chiavi restano su {device} e valgono per tutti.",
+            "Un vault è una cartella con il suo database, i suoi allegati e le sue registrazioni: le note di un vault esistono solo lì. Mettilo su un disco cifrato o esterno per tenere separate le note riservate. Se ne apre uno alla volta: elenco, Libreria, ricerca e chat mostrano solo quello aperto. Impostazioni, template e chiavi restano su {device} e valgono per tutti.",
             { device: thisDevice() },
           )}
         </p>
@@ -163,7 +163,7 @@ export default function VaultSettings({ vaults, onChanged, onOpen, toast }: Prop
         </div>
         <p className="muted small">
           {t(
-            "Alzare la privacy minima alza subito i meeting del vault che stavano sotto, e non si possono più riabbassare finché il minimo resta. Blindata: niente esce da {device}, ogni funzione AI usa solo un modello locale.",
+            "Alzare la privacy minima alza subito le note del vault che stavano sotto, e non si possono più riabbassare finché il minimo resta. Blindata: niente esce da {device}, ogni funzione AI usa solo un modello locale.",
             { device: thisDevice() },
           )}
         </p>
@@ -193,7 +193,7 @@ export default function VaultSettings({ vaults, onChanged, onOpen, toast }: Prop
           </div>
           <small className="muted">
             {t(
-              "Una cartella vuota per un vault nuovo, oppure quella di un vault che esiste già (anche creato su un altro computer): Granello ritrova i suoi meeting.",
+              "Una cartella vuota per un vault nuovo, oppure quella di un vault che esiste già (anche creato su un altro computer): Granello ritrova le sue note.",
             )}
           </small>
         </div>

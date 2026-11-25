@@ -121,7 +121,7 @@ function SyncHelp() {
       <ul>
         <li>
           <strong>{t("Viaggiano:")}</strong>{" "}
-          {t("meeting con note, note AI, partecipanti e tag, trascrizioni, progetti e persone.")}
+          {t("note con il loro testo, note AI, partecipanti e tag, trascrizioni, progetti e persone.")}
         </li>
         <li>
           <strong>{t("Non viaggiano:")}</strong>{" "}
@@ -129,7 +129,7 @@ function SyncHelp() {
         </li>
         <li>
           <strong>{t("Mai:")}</strong>{" "}
-          {t("i meeting blindati. Un vault con privacy minima blindata non si sincronizza.")}
+          {t("le note blindate. Un vault con privacy minima blindata non si sincronizza.")}
         </li>
       </ul>
       <p>
@@ -142,7 +142,7 @@ function SyncHelp() {
       </ol>
       <p>
         {t(
-          "Il vault di quel Mac si unisce a questo: riceve i suoi meeting e manda i propri. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.",
+          "Il vault di quel Mac si unisce a questo: riceve le sue note e manda le proprie. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.",
         )}
       </p>
       <p>

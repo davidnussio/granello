@@ -56,4 +56,4 @@ pnpm preview        # http://localhost:1430/preview.html?lang=en
 
 The app checks for a new version when it starts and asks before installing it. It restarts only when it is not recording.
 
-Next: [your first meeting](/start/first-meeting/).
+Next: [your first note](/start/first-meeting/).

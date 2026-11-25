@@ -337,6 +337,10 @@ input.vault-name:focus {
   gap: 3px;
   padding: 8px 10px;
 }
+/* nella pillola della data di una nota: quando ci si è lavorato l'ultima volta */
+.chip-edited {
+  color: var(--muted);
+}
 .side-card .side-tags {
   margin-top: 2px;
 }

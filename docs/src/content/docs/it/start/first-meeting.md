@@ -1,6 +1,6 @@
 ---
-title: Il primo meeting
-description: Scegli un modello di trascrizione e un provider AI, registra un meeting e ottieni le note AI.
+title: La prima nota
+description: Scegli un modello di trascrizione e un provider AI, registra una conversazione e ottieni le note AI.
 ---
 
 Dopo il primo avvio la Home mostra cosa manca. Le cose da impostare sono tre, tutte nelle **Impostazioni**.
@@ -11,14 +11,14 @@ Dopo il primo avvio la Home mostra cosa manca. Le cose da impostare sono tre, tu
 2. **Modelli AI**: incolla l'API key del tuo provider, oppure aggiungi un provider locale. La chiave va nel Portachiavi di macOS. Vedi [modelli locali](/it/privacy/local-models/) per tenere tutto sul Mac.
 3. **Calendario** (facoltativo): aggiungi un calendario incollando il suo indirizzo iCal segreto. I prossimi eventi compaiono in Home, con un clic per aprire le loro note. Ogni calendario si configura una volta sola; con più [vault](/it/reference/data/#vault), ognuno mostra i calendari che scegli per lui.
 
-Per dare prima un'occhiata, **Carica i dati di esempio** in Home riempie l'app con 50 meeting inventati. Si tolgono con un clic e non toccano mai i tuoi meeting. Se la scheda non ti serve, chiudila con la ×: i dati di esempio restano in Impostazioni → Dati e privacy.
+Per dare prima un'occhiata, **Carica i dati di esempio** in Home riempie l'app con 50 note inventate. Si tolgono con un clic e non toccano mai le tue note. Se la scheda non ti serve, chiudila con la ×: i dati di esempio restano in Impostazioni → Dati e privacy.
 
 ![La Home con i prossimi eventi del calendario](../../../../assets/shots/it/home.webp)
 
 ## Registrare
 
-1. Premi **Nuove note** (⌘N), oppure **Prendi note** su un evento del calendario.
-2. Scegli il livello di **Privacy** del meeting nell'intestazione, se non deve essere quello standard. Vedi [livelli di privacy](/it/privacy/levels/).
+1. Premi **Nuova nota** (⌘N), oppure **Prendi note** su un evento del calendario.
+2. Scegli il livello di **Privacy** della nota nell'intestazione, se non deve essere quello standard. Vedi [livelli di privacy](/it/privacy/levels/).
 3. Premi **Registra**. La prima volta macOS chiede il permesso di usare il microfono.
 4. Scrivi le poche cose che contano per te. Premi **⚑ Segna** (⇧⌘M) quando si dice qualcosa di importante: la nota tiene il minuto.
 5. Premi **Stop**.
@@ -27,7 +27,7 @@ Per dare prima un'occhiata, **Carica i dati di esempio** in Home riempie l'app c
 
 ## Ottenere le note
 
-Il pannello **Trascrizione** a destra mostra quello che è stato detto, con chi parla e il minuto. Poi premi **Genera note AI**: il modello unisce i tuoi appunti e la trascrizione in note complete, seguendo il template del meeting. Le note AI restano modificabili, e le tue note restano nella loro scheda.
+Il pannello **Trascrizione** a destra mostra quello che è stato detto, con chi parla e il minuto. Poi premi **Genera note AI**: il modello unisce i tuoi appunti e la trascrizione in note complete, seguendo il template della nota. Le note AI restano modificabili, e le tue note restano nella loro scheda.
 
 ![Le note AI accanto alla trascrizione](../../../../assets/shots/it/transcript.webp)
 

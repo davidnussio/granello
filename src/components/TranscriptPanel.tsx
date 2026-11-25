@@ -204,7 +204,7 @@ export default function TranscriptPanel({
           </strong>
           <span>
             {t(
-              "Finché ce ne sono, questo meeting non viene inviato a modelli online. Per ognuna scegli Oscura oppure Va bene.",
+              "Finché ce ne sono, questa nota non viene inviata a modelli online. Per ognuna scegli Oscura oppure Va bene.",
             )}
           </span>
         </div>
@@ -380,7 +380,7 @@ export default function TranscriptPanel({
           {onReview && !asking && (
             <button
               className="btn small"
-              title={t("Resta leggibile, ma il meeting non va a modelli online finché non decidi")}
+              title={t("Resta leggibile, ma la nota non va a modelli online finché non decidi")}
               onClick={() => {
                 onReview(
                   picked.parts.map((p) => p.id),

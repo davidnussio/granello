@@ -3,7 +3,7 @@ title: How privacy works
 description: What stays on your Mac, what can leave it, and when. The short version, with a table.
 ---
 
-Granello is built so that what is said in a meeting stays yours. This page says exactly what stays on your Mac and what can leave it.
+Granello is built so that what is said in a conversation stays yours. This page says exactly what stays on your Mac and what can leave it.
 
 ## The short version
 
@@ -16,9 +16,9 @@ Granello is built so that what is said in a meeting stays yours. This page says 
 
 | What | When | How to prevent it |
 | --- | --- | --- |
-| Notes and transcript, as text | You generate AI notes, ask the chat or use ✦ in the editor, with an online AI provider | Use a [local provider](/privacy/local-models/), or set the meeting to [hardened](/privacy/levels/) |
+| Notes and transcript, as text | You generate AI notes, ask the chat or use ✦ in the editor, with an online AI provider | Use a [local provider](/privacy/local-models/), or set the note to [hardened](/privacy/levels/) |
 | A template you describe to the AI, with its current fields | You use **Set up with AI** in a template, with an online AI provider | Use a [local provider](/privacy/local-models/) for AI notes |
-| The meeting's audio | Only with **online transcription** turned on, and only when you press *Refine online* on that meeting | Leave the option off (the default), or set the meeting to local audio or hardened |
+| The recorded audio | Only with **online transcription** turned on, and only when you press *Refine online* on that note | Leave the option off (the default), or set the note to local audio or hardened |
 | The address of a link | You create a link preview: the linked page is asked for its title, once | Do not create link previews |
 | A request for embedded content | You press **Load** on an embed (video, design, map) | Do not press Load |
 | A request for your calendar | Granello downloads the iCal addresses you added | Do not add a calendar |
@@ -33,8 +33,8 @@ Your Mac's contacts are read only if you turn on **Suggest people from your cont
 
 Both are **off by default**.
 
-- **Save recordings** keeps each meeting's audio in a folder on your Mac, to listen to it again. It is never uploaded.
-- **Online transcription** keeps a meeting's audio when it ends, and the meeting offers *Refine online*: only if you press it is the audio uploaded to an online transcription service, to get a transcript that tells speakers apart. The audio stays in the data folder until you upload or delete it, and is deleted after the upload. It never runs for a meeting with local audio or hardened privacy, or with parts still to review.
+- **Save recordings** keeps the audio of every recording in a folder on your Mac, to listen to it again. It is never uploaded.
+- **Online transcription** keeps the audio when a recording ends, and the note offers *Refine online*: only if you press it is the audio uploaded to an online transcription service, to get a transcript that tells speakers apart. The audio stays in the data folder until you upload or delete it, and is deleted after the upload. It never runs for a note with local audio or hardened privacy, or with parts still to review.
 
 ## Where things are stored
 
@@ -44,7 +44,7 @@ Both are **off by default**.
 
 More in [data and files](/reference/data/).
 
-## What you control per meeting
+## What you control per note
 
-- The [privacy level](/privacy/levels/) decides whether anything of that meeting may leave the Mac.
-- [Redact and review](/privacy/redaction/) remove a sentence for good, or hold a meeting back until you have looked at it.
+- The [privacy level](/privacy/levels/) decides whether anything of that note may leave the Mac.
+- [Redact and review](/privacy/redaction/) remove a sentence for good, or hold a note back until you have looked at it.

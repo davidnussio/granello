@@ -7,9 +7,10 @@ const en: Record<string, string> = {
     "Recording stopped: {error}. What was already recorded is being transcribed.",
   "Sta per iniziare: {title}": "Starting soon: {title}",
   "Prendi note": "Take notes",
-  "Chiedi a tutti i tuoi meeting": "Ask all your meetings",
+  "Chiedi a tutte le tue note": "Ask all your notes",
   "Quali azioni sono rimaste aperte questa settimana?": "Which action items are still open this week?",
-  "Cosa abbiamo deciso nell'ultimo meeting con il cliente?": "What did we decide in the last client meeting?",
+  "Cosa abbiamo deciso nell'ultimo incontro con il cliente?":
+    "What did we decide in the last call with the client?",
   "Riassumi i temi ricorrenti degli standup": "Summarize the recurring themes of the standups",
   "Chiudi notifica": "Dismiss notification",
   "Trascrizione completata": "Transcription complete",
@@ -32,8 +33,8 @@ const en: Record<string, string> = {
   "Scrive le note arricchite: conta la qualità, conviene il modello migliore che hai.":
     "Writes the enhanced notes: quality matters here, so use the best model you have.",
   Chat: "Chat",
-  "Risponde alle domande sui meeting: può essere un modello più piccolo o locale.":
-    "Answers questions about your meetings: a smaller or local model is fine.",
+  "Risponde alle domande sulle note: può essere un modello più piccolo o locale.":
+    "Answers questions about your notes: a smaller or local model is fine.",
   Provider: "Providers",
   "Nome del provider": "Provider name",
   "Compatibile OpenAI": "OpenAI-compatible",
@@ -47,8 +48,8 @@ const en: Record<string, string> = {
   "•••••••••• salvata {where}": "•••••••••• saved {where}",
   "Non serve per i server locali": "Not needed for local servers",
   Salva: "Save",
-  "Resta tutto su {device}. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare un meeting che non ci sta.":
-    "Everything stays on {device}. Local servers silently truncate text longer than the model's context (Ollama starts with a small one): enter the context configured on the server and Granello will warn you before sending a meeting that doesn't fit.",
+  "Resta tutto su {device}. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare una nota che non ci sta.":
+    "Everything stays on {device}. Local servers silently truncate text longer than the model's context (Ollama starts with a small one): enter the context configured on the server and Granello will warn you before sending a note that doesn't fit.",
   "Indirizzo non cifrato (http) verso un altro computer: note e trascrizioni viaggiano in chiaro sulla rete.":
     "Unencrypted address (http) to another computer: notes and transcripts travel over the network in clear text.",
   "Aggiungi:": "Add:",
@@ -66,8 +67,8 @@ const en: Record<string, string> = {
   "Risposta copiata negli appunti": "Answer copied to the clipboard",
   "↵ invia · ⇧↵ a capo": "↵ send · ⇧↵ new line",
   "Interrompi la risposta": "Stop the answer",
-  "Granello cerca i meeting più pertinenti alla domanda e risponde citando titolo e data.":
-    "Granello finds the meetings most relevant to your question and answers citing their title and date.",
+  "Granello cerca le note più pertinenti alla domanda e risponde citando titolo e data.":
+    "Granello finds the notes most relevant to your question and answers citing their title and date.",
 
   // error boundary
   "Qualcosa è andato storto": "Something went wrong",
@@ -77,9 +78,9 @@ const en: Record<string, string> = {
 
   // home
   "Ciao 👋": "Hi 👋",
-  "Apri un meeting dal calendario o crea note nuove. Scrivi quello che ti sembra importante: Granello trascrive in locale e alla fine l'AI arricchisce le tue note con la trascrizione.":
-    "Open a meeting from your calendar or start new notes. Jot down what matters to you: Granello transcribes locally, and afterwards the AI enriches your notes with the transcript.",
-  "+ Nuove note": "+ New notes",
+  "Apri un evento dal calendario o crea una nota nuova. Scrivi quello che ti sembra importante: Granello trascrive in locale e alla fine l'AI arricchisce le tue note con la trascrizione.":
+    "Open an event from your calendar or start a new note. Jot down what matters to you: Granello transcribes locally, and afterwards the AI enriches your notes with the transcript.",
+  "+ Nuova nota": "+ New note",
   "↻ Aggiorna calendario": "↻ Refresh calendar",
   "Completa la configurazione": "Finish setting up",
   "Modello di trascrizione": "Transcription model",
@@ -92,9 +93,9 @@ const en: Record<string, string> = {
     "Needed for AI notes and chat: a Claude API key or a local model.",
   Calendario: "Calendar",
   Collegato: "Connected",
-  "Facoltativo: mostra qui i prossimi meeting.": "Optional: shows your upcoming meetings here.",
+  "Facoltativo: mostra qui i prossimi eventi.": "Optional: shows your upcoming events here.",
   "Apri le impostazioni": "Open settings",
-  "Prossimi meeting": "Upcoming meetings",
+  "Prossimi eventi": "Upcoming events",
   Calendari: "Calendars",
   "Aggiornamento non riuscito: {error}": "Update failed: {error}",
   "Nascondi gli eventi di questo calendario in questo vault": "Hide this calendar's events in this vault",
@@ -107,14 +108,14 @@ const en: Record<string, string> = {
   "Ogni vault mostra i calendari scelti per lui, nella home e nelle notifiche. Un calendario nuovo compare in tutti i vault finché non lo togli da uno.":
     "Each vault shows the calendars chosen for it, on the home page and in notifications. A new calendar appears in every vault until you remove it from one.",
   "Nessun evento nei prossimi giorni.": "No events in the next few days.",
-  "Nessun evento. Aggiungi l'URL iCal del tuo calendario nelle Impostazioni per vedere qui i meeting.":
-    "No events. Add your calendar's iCal URL in Settings to see your meetings here.",
+  "Nessun evento. Aggiungi l'URL iCal del tuo calendario nelle Impostazioni per vedere qui i tuoi eventi.":
+    "No events. Add your calendar's iCal URL in Settings to see your events here.",
   "Apri note": "Open notes",
 
   // meeting
   "Note copiate negli appunti": "Notes copied to the clipboard",
   "Caricamento…": "Loading…",
-  "Titolo del meeting": "Meeting title",
+  "Titolo della nota": "Note title",
   "Template usato per le note AI": "Template used for the AI notes",
   "Le mie note": "My notes",
   "✦ Note AI": "✦ AI notes",
@@ -130,7 +131,7 @@ const en: Record<string, string> = {
     "Regenerating replaces the current AI notes, including your edits",
   "Scrivi i punti importanti, al resto pensa la trascrizione. Digita / per i comandi.":
     "Jot down the key points, the transcript takes care of the rest. Type / for commands.",
-  "C'è già una registrazione in corso su un altro meeting": "Another meeting is already being recorded",
+  "C'è già una registrazione in corso su un'altra nota": "Another note is already being recorded",
   Riprendi: "Resume",
   Registra: "Record",
   Tu: "You",
@@ -153,16 +154,16 @@ const en: Record<string, string> = {
     "Transcribes an audio or video file instead of recording live",
   "Trascrivo il file… {pct}%": "Transcribing the file… {pct}%",
   "Trascrivo il file… {time}": "Transcribing the file… {time}",
-  "Annulla la trascrizione del file prima di eliminare il meeting":
-    "Cancel the file transcription before deleting the meeting",
+  "Annulla la trascrizione del file prima di eliminare la nota":
+    "Cancel the file transcription before deleting the note",
   "Attendi la fine della trascrizione per generare le note":
     "Wait for the transcription to finish to generate the notes",
   Trascrizione: "Transcript",
   "✦ Chiedi": "✦ Ask",
   "Confermi?": "Confirm?",
   Elimina: "Delete",
-  "Ferma la registrazione prima di eliminare il meeting": "Stop the recording before deleting the meeting",
-  "Chiedi su questo meeting": "Ask about this meeting",
+  "Ferma la registrazione prima di eliminare la nota": "Stop the recording before deleting the note",
+  "Chiedi su questa nota": "Ask about this note",
   "Chiudi pannello": "Close panel",
   "Mostra la trascrizione": "Show the transcript",
   "Trascrizione ({n})": "Transcript ({n})",
@@ -177,7 +178,7 @@ const en: Record<string, string> = {
   "+ Tag": "+ Tag",
   "Nome del tag": "Tag name",
   "dal calendario": "from calendar",
-  "{n} meeting": "{n} meetings",
+  "{n} note": "{n} notes",
   "Importa {n} da «{title}»": "Import {n} from “{title}”",
   Persone: "People",
 
@@ -194,9 +195,9 @@ const en: Record<string, string> = {
   "Trascrizione locale": "Local transcription",
   "Il modello selezionato non è ancora scaricato: senza non si può registrare.":
     "The selected model isn't downloaded yet: you can't record without it.",
-  "Lingua del meeting": "Meeting language",
-  "La lingua parlata nei meeting: guida la trascrizione e la lingua delle note AI.":
-    "The language spoken in your meetings: it drives transcription and the language of the AI notes.",
+  "Lingua parlata": "Spoken language",
+  "La lingua parlata nelle registrazioni: guida la trascrizione e la lingua delle note AI.":
+    "The language spoken in your recordings: it drives transcription and the language of the AI notes.",
   Italiano: "Italian",
   Tedesco: "German",
   Francese: "French",
@@ -230,20 +231,22 @@ const en: Record<string, string> = {
   "Mostra i log": "Show logs",
 
   // sidebar
-  "Nuove note (⌘N)": "New notes (⌘N)",
+  "Nuova nota (⌘N)": "New note (⌘N)",
   "Cerca nelle note": "Search notes",
   "Cerca nelle note…  ⌘K": "Search notes…  ⌘K",
   "✦ Chiedi alle note": "✦ Ask your notes",
   "In arrivo": "Coming up",
   "In corso": "In progress",
   "Nessun risultato": "No results",
-  "Ancora nessun meeting": "No meetings yet",
+  "Ancora nessuna nota": "No notes yet",
   "Settimana scorsa": "Last week",
   "Altre {n} di questa settimana": "{n} more from this week",
   "Altre {n} della settimana scorsa": "{n} more from last week",
   "Mostra meno": "Show less",
   "1 persona": "1 person",
-  "Ancora nessuna nota": "No notes yet",
+  "Creata {created} · ultima modifica {changed}": "Created {created} · last edited {changed}",
+  "ultima modifica alle {time}": "last edited at {time}",
+  "ultima modifica {when}": "last edited {when}",
   Risultati: "Results",
   ieri: "yesterday",
   "Note non ancora rielaborate": "Notes not enhanced yet",
@@ -255,8 +258,8 @@ const en: Record<string, string> = {
   "Nessun minimo": "No minimum",
   "Almeno audio locale": "At least local audio",
   "Sempre blindata": "Always hardened",
-  "Un vault è una cartella con il suo database, i suoi allegati e le sue registrazioni: i meeting di un vault esistono solo lì. Mettilo su un disco cifrato o esterno per tenere separati i meeting riservati. Se ne apre uno alla volta: elenco, Libreria, ricerca e chat mostrano solo quello aperto. Impostazioni, template e chiavi restano su {device} e valgono per tutti.":
-    "A vault is a folder with its own database, attachments and recordings: a vault's meetings exist only there. Put it on an encrypted or external disk to keep confidential meetings apart. One vault is open at a time: the list, the Library, search and chat show only the open one. Settings, templates and keys stay on {device} and apply to all of them.",
+  "Un vault è una cartella con il suo database, i suoi allegati e le sue registrazioni: le note di un vault esistono solo lì. Mettilo su un disco cifrato o esterno per tenere separate le note riservate. Se ne apre uno alla volta: elenco, Libreria, ricerca e chat mostrano solo quello aperto. Impostazioni, template e chiavi restano su {device} e valgono per tutti.":
+    "A vault is a folder with its own database, attachments and recordings: a vault's notes exist only there. Put it on an encrypted or external disk to keep confidential notes apart. One vault is open at a time: the list, the Library, search and chat show only the open one. Settings, templates and keys stay on {device} and apply to all of them.",
   "Nome del vault": "Vault name",
   Aperto: "Open",
   Apri: "Open",
@@ -266,14 +269,14 @@ const en: Record<string, string> = {
   "Toglie il vault dall'elenco: la cartella e i suoi dati restano dove sono":
     "Removes the vault from the list: the folder and its data stay where they are",
   "Togli dall'elenco": "Remove from the list",
-  "Alzare la privacy minima alza subito i meeting del vault che stavano sotto, e non si possono più riabbassare finché il minimo resta. Blindata: niente esce da {device}, ogni funzione AI usa solo un modello locale.":
-    "Raising the minimum privacy immediately raises the vault's meetings that were below it, and they cannot be lowered again while the minimum stays. Hardened: nothing leaves {device}, every AI feature uses only a local model.",
+  "Alzare la privacy minima alza subito le note del vault che stavano sotto, e non si possono più riabbassare finché il minimo resta. Blindata: niente esce da {device}, ogni funzione AI usa solo un modello locale.":
+    "Raising the minimum privacy immediately raises the vault's notes that were below it, and they cannot be lowered again while the minimum stays. Hardened: nothing leaves {device}, every AI feature uses only a local model.",
   "Nuovo vault": "New vault",
   "Es. Clienti riservati": "E.g. Confidential clients",
   "Nessuna cartella scelta": "No folder chosen",
   "Scegli…": "Choose…",
-  "Una cartella vuota per un vault nuovo, oppure quella di un vault che esiste già (anche creato su un altro computer): Granello ritrova i suoi meeting.":
-    "An empty folder for a new vault, or the folder of a vault that already exists (even one created on another computer): Granello finds its meetings.",
+  "Una cartella vuota per un vault nuovo, oppure quella di un vault che esiste già (anche creato su un altro computer): Granello ritrova le sue note.":
+    "An empty folder for a new vault, or the folder of a vault that already exists (even one created on another computer): Granello finds its notes.",
   "Aggiungi il vault": "Add the vault",
   "Vault aperto": "Open vault",
   "Sync tra i tuoi Mac": "Sync between your Macs",
@@ -302,22 +305,22 @@ const en: Record<string, string> = {
   "Si sincronizza solo il vault aperto, non tutti. La cartella non è un vault: il vault resta dov'è, e nella cartella ogni Mac scrive le sue modifiche, che gli altri leggono e applicano. Per ogni campo vince la modifica più recente; se la stessa nota cambia su due Mac insieme, la versione rimasta indietro viene tenuta da parte.":
     "Only the open vault syncs, not all of them. The folder is not a vault: the vault stays where it is, and in the folder each Mac writes its changes, which the others read and apply. For each field the latest change wins; if the same note changes on two Macs at once, the version left behind is kept aside.",
   "Viaggiano:": "Synced:",
-  "meeting con note, note AI, partecipanti e tag, trascrizioni, progetti e persone.":
-    "meetings with notes, AI notes, attendees and tags, transcripts, projects and people.",
+  "note con il loro testo, note AI, partecipanti e tag, trascrizioni, progetti e persone.":
+    "notes with their text, AI notes, attendees and tags, transcripts, projects and people.",
   "Non viaggiano:": "Not synced:",
   "audio, registrazioni e allegati (per ora), impostazioni, template, calendari e API key.":
     "audio, recordings and attachments (for now), settings, templates, calendars and API keys.",
   "Mai:": "Never:",
-  "i meeting blindati. Un vault con privacy minima blindata non si sincronizza.":
-    "hardened meetings. A vault whose minimum privacy is hardened does not sync.",
+  "le note blindate. Un vault con privacy minima blindata non si sincronizza.":
+    "hardened notes. A vault whose minimum privacy is hardened does not sync.",
   "Su un altro Mac": "On another Mac",
   "Accendi Impostazioni → Dati e privacy → Anteprime per sviluppatori.":
     "Turn on Settings → Data and privacy → Developer previews.",
   "Apri il vault che deve ricevere i dati, per esempio il Principale.":
     "Open the vault that should receive the data, for example Main.",
   "Qui, scegli la stessa cartella di sync.": "Here, choose the same sync folder.",
-  "Il vault di quel Mac si unisce a questo: riceve i suoi meeting e manda i propri. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.":
-    "That Mac's vault joins this one: it receives these meetings and sends its own. To keep them apart, use a new, empty vault on the other Mac.",
+  "Il vault di quel Mac si unisce a questo: riceve le sue note e manda le proprie. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.":
+    "That Mac's vault joins this one: it receives these notes and sends its own. To keep them apart, use a new, empty vault on the other Mac.",
   "Ogni cartella appartiene a un solo vault. Per sincronizzare un altro vault, aprilo e scegli un'altra cartella vuota, per esempio Granello-Clienti accanto a questa.":
     "Each folder belongs to one vault. To sync another vault, open it and choose another empty folder, for example Granello-Clients next to this one.",
   "Scegli la cartella di sync…": "Choose the sync folder…",
@@ -332,8 +335,8 @@ const en: Record<string, string> = {
   "Template salvato": "Template saved",
   Template: "Templates",
   "+ Nuovo template": "+ New template",
-  "Il template dice all'AI come strutturare le note AI e può dare alle tue note un punto di partenza. Si sceglie per ogni meeting dall'intestazione.":
-    "The template tells the AI how to structure the AI notes, and can give your own notes a starting point. Pick it per meeting from the header.",
+  "Il template dice all'AI come strutturare le note AI e può dare alle tue note un punto di partenza. Si sceglie per ogni nota dall'intestazione.":
+    "The template tells the AI how to structure the AI notes, and can give your own notes a starting point. Pick it per note from the header.",
   "di sistema": "built-in",
   "{name} (modifica = copia)": "{name} (editing creates a copy)",
   "Modifica template": "Edit template",
@@ -392,7 +395,7 @@ const en: Record<string, string> = {
   "Evidenzia una decisione presa": "Highlight a decision that was made",
   "**Decisione:** ": "**Decision:** ",
   "**Da chiarire:** ": "**To clarify:** ",
-  Meeting: "Meeting",
+  Note: "Notes",
   "Domanda aperta": "Open question",
   "Qualcosa da chiarire dopo": "Something to clarify later",
   "Ora attuale": "Current time",
@@ -566,11 +569,11 @@ const en: Record<string, string> = {
   "Carica {provider}": "Load {provider}",
   Incorpora: "Embed",
   "YouTube, Loom, Figma, Vimeo, una mappa": "YouTube, Loom, Figma, Vimeo, a map",
-  "Cosa si stava dicendo? A fine riunione lo scrive l'AI":
-    "What was being said? The AI writes it when the meeting ends",
+  "Cosa si stava dicendo? A fine registrazione lo scrive l'AI":
+    "What was being said? The AI writes it when the recording ends",
   "Cosa si stava dicendo in quel momento": "What was being said at that moment",
-  "Minuto del meeting (minuti:secondi)": "Meeting time (minutes:seconds)",
-  "Minuto del meeting": "Meeting time",
+  "Minuto della registrazione (minuti:secondi)": "Recording time (minutes:seconds)",
+  "Minuto della registrazione": "Recording time",
   "Fai scrivere all'AI cosa si stava dicendo": "Have the AI write what was being said",
   "Apri la trascrizione a questo punto": "Open the transcript at this point",
   "Segna il momento": "Mark the moment",
@@ -581,10 +584,10 @@ const en: Record<string, string> = {
   "La trascrizione non dice niente attorno a quei momenti": "The transcript has nothing around those moments",
   "Un momento segnato è stato riempito": "One marked moment was filled in",
   "{n} momenti segnati sono stati riempiti": "{n} marked moments were filled in",
-  "Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)":
-    "Mark this moment in the notes: when the meeting ends the AI writes what was being said (⇧⌘M)",
+  "Segna questo momento nelle note: a fine registrazione l'AI scrive cosa si stava dicendo (⇧⌘M)":
+    "Mark this moment in the notes: when the recording ends the AI writes what was being said (⇧⌘M)",
   "⚑ Segna": "⚑ Mark",
-  "La frase detta nel meeting": "The sentence said in the meeting",
+  "La frase detta nella registrazione": "The sentence said in the recording",
   "Chi l'ha detto": "Who said it",
   "Citazione dalla trascrizione": "Transcript quote",
   "Una frase detta, con chi e a che minuto": "Something that was said, with who and when",
@@ -608,8 +611,8 @@ const en: Record<string, string> = {
   "✦ In diagramma": "✦ To diagram",
   "Leggo la trascrizione…": "Reading the transcript…",
   "Premi Invio per chiedere": "Press Enter to ask",
-  "Scrivi una richiesta: la risposta si aggiorna mentre la riunione procede":
-    "Write a request: the answer updates as the meeting goes on",
+  "Scrivi una richiesta: la risposta si aggiorna mentre la registrazione procede":
+    "Write a request: the answer updates as the recording goes on",
   "Chiedi all'AI, es. riassumi le obiezioni del cliente":
     "Ask the AI, e.g. summarize the client's objections",
   "Si aggiorna da sola mentre registri, al massimo ogni due minuti":
@@ -620,7 +623,7 @@ const en: Record<string, string> = {
     "The note changed in the meantime: the text was not replaced",
   "Chiedi all'AI: accorcia, traduci, riscrivi…": "Ask the AI: shorten, translate, rewrite…",
   "Chiedi all'AI": "Ask the AI",
-  "Una richiesta sul meeting, che si aggiorna da sola": "A request about the meeting that updates on its own",
+  "Una richiesta sulla nota, che si aggiorna da sola": "A request about the note that updates on its own",
   "Riscrivi con l'AI": "Rewrite with AI",
   "Non ho sentito niente: riprova parlando più vicino al microfono":
     "I heard nothing: try again closer to the microphone",
@@ -643,7 +646,7 @@ const en: Record<string, string> = {
   "1 momento segnato": "1 marked moment",
   "{n} momenti segnati": "{n} marked moments",
   Libreria: "Library",
-  "Filtra i meeting elencati": "Filter the listed meetings",
+  "Filtra le note elencate": "Filter the listed notes",
   "Filtra in {name}": "Filter in {name}",
   Decisioni: "Decisions",
   Azioni: "Actions",
@@ -652,8 +655,8 @@ const en: Record<string, string> = {
     "⌘-click another dimension: its column opens alongside and filters together with the others",
   "Cosa elencare": "What to list",
   Elementi: "Items",
-  "Decisioni, azioni e citazioni scritte nelle note di questi meeting":
-    "Decisions, actions and quotes written in the notes of these meetings",
+  "Decisioni, azioni e citazioni scritte in queste note":
+    "Decisions, actions and quotes written in these notes",
   "Come scegliere": "How to pick",
   Clic: "Click",
   clic: "click",
@@ -663,23 +666,23 @@ const en: Record<string, string> = {
   "sposta senza scegliere": "moves without picking",
   Spazio: "Space",
   "aggiunge o toglie": "adds or removes",
-  "Nessuna voce nei meeting scelti dalle altre colonne.":
-    "Nothing here in the meetings chosen in the other columns.",
+  "Nessuna voce nelle note scelte dalle altre colonne.":
+    "Nothing here in the notes chosen in the other columns.",
   "Tipi di elemento": "Item types",
-  "Doppio clic o Invio: apre il meeting": "Double-click or Enter: opens the meeting",
+  "Doppio clic o Invio: apre la nota": "Double-click or Enter: opens the note",
   Fatta: "Done",
   "Nessun elemento dei tipi scelti: riattiva un tipo qui sopra.":
     "No items of the chosen types: turn a type back on above.",
   "Nessun elemento qui. Nelle note, un riquadro decisione, una checklist o una citazione dalla trascrizione compaiono in questo elenco.":
     "No items here. In the notes, a decision callout, a checklist or a transcript quote show up in this list.",
-  "Nessun meeting qui.": "No meetings here.",
-  "{n} meeting selezionati": "{n} meetings selected",
-  "Tag da aggiungere ai meeting selezionati": "Tag to add to the selected meetings",
+  "Nessuna nota qui.": "No notes here.",
+  "{n} note selezionate": "{n} notes selected",
+  "Tag da aggiungere alle note selezionate": "Tag to add to the selected notes",
   "Aggiungi a tutti": "Add to all",
   "Solo {n} su {total} lo hanno: aggiungilo agli altri": "Only {n} of {total} have it: add it to the others",
-  "Togli #{tag} dai meeting selezionati": "Remove #{tag} from the selected meetings",
+  "Togli #{tag} dalle note selezionate": "Remove #{tag} from the selected notes",
   "Annulla la selezione": "Clear the selection",
-  "Cambia l'ordine dei meeting": "Change the order of the meetings",
+  "Cambia l'ordine delle note": "Change the order of the notes",
   "↑ Più vecchi": "↑ Oldest",
   "↓ Più recenti": "↓ Newest",
   "Raggruppa per": "Group by",
@@ -698,65 +701,63 @@ const en: Record<string, string> = {
   "+ Nuovo progetto": "+ New project",
   "Cambia nome, colore e descrizione": "Change name, color and description",
   "Elimina il progetto {name}": "Delete the project {name}",
-  "Elimina il progetto: i suoi meeting restano, senza progetto":
-    "Delete the project: its meetings stay, without a project",
+  "Elimina il progetto: le sue note restano, senza progetto":
+    "Delete the project: its notes stay, without a project",
   "Elimina?": "Delete?",
   "Nessun progetto: creane uno con + Nuovo progetto.": "No projects: create one with + New project.",
-  "Nessun meeting qui: apri un meeting e scegli questo progetto, in alto a destra.":
-    "No meetings here: open a meeting and choose this project, at the top right.",
-  "Il progetto e i tag scelti qui valgono per tutti i meeting selezionati.":
-    "The project and the tags chosen here apply to all the selected meetings.",
-  "Progetto dei meeting selezionati": "Project of the selected meetings",
+  "Nessuna nota qui: apri una nota e scegli questo progetto, in alto a destra.":
+    "No notes here: open a note and choose this project, at the top right.",
+  "Il progetto e i tag scelti qui valgono per tutte le note selezionate.":
+    "The project and the tags chosen here apply to all the selected notes.",
+  "Progetto delle note selezionate": "Project of the selected notes",
   "Progetti diversi": "Different projects",
   "Nessun progetto": "No project",
-  "⌘ clic o Maiusc clic su altri meeting: li selezioni insieme per dare loro un progetto o un tag.":
-    "⌘-click or Shift-click other meetings: select them together to give them a project or a tag.",
-  "Progetto di questo meeting": "Project of this meeting",
-  "Il progetto in cui sta questo meeting": "The project this meeting belongs to",
+  "⌘ clic o Maiusc clic su altre note: le selezioni insieme per dare loro un progetto o un tag.":
+    "⌘-click or Shift-click other notes: select them together to give them a project or a tag.",
+  "Progetto di questa nota": "Project of this note",
+  "Il progetto in cui sta questa nota": "The project this note belongs to",
   "Riporta il progetto tra quelli attivi": "Bring the project back among the active ones",
-  "Archivia: il progetto è chiuso, i meeting restano": "Archive: the project is closed, its meetings stay",
+  "Archivia: il progetto è chiuso, le note restano": "Archive: the project is closed, its notes stay",
   Riattiva: "Reactivate",
   Archivia: "Archive",
-  "Nessun tag: aggiungine uno a un meeting, sotto il titolo.":
-    "No tags: add one to a meeting, below its title.",
-  "Nessun partecipante nei meeting.": "No attendees in your meetings.",
+  "Nessun tag: aggiungine uno a una nota, sotto il titolo.": "No tags: add one to a note, below its title.",
+  "Nessun partecipante nelle note.": "No attendees in your notes.",
   "Nascondi archiviati": "Hide archived",
   "Archiviati ({n})": "Archived ({n})",
   "Senza titolo": "Untitled",
-  "Nessun meeting qui: aggiungi il tag #{tag} a un meeting.":
-    "No meetings here: add the tag #{tag} to a meeting.",
-  "Apri il meeting": "Open the meeting",
-  "Scegli un meeting per vederne l'anteprima.": "Pick a meeting to preview it.",
+  "Nessuna nota qui: aggiungi il tag #{tag} a una nota.": "No notes here: add the tag #{tag} to a note.",
+  "Apri la nota": "Open the note",
+  "Scegli una nota per vederne l'anteprima.": "Pick a note to preview it.",
   "Sfoglia le note per progetto, persona, tag e periodo": "Browse notes by project, person, tag and period",
   "▤ Libreria": "▤ Library",
   "Carica i dati di esempio": "Load sample data",
-  "Toglie solo i meeting di esempio, anche se li hai modificati. I tuoi meeting restano.":
-    "Removes only the sample meetings, even if you edited them. Your own meetings stay.",
+  "Toglie solo le note di esempio, anche se le hai modificate. Le tue note restano.":
+    "Removes only the sample notes, even if you edited them. Your own notes stay.",
   "Togli i dati di esempio": "Remove sample data",
-  "{n} meeting di esempio caricati. Sfogliali dalla Libreria o dall'elenco a sinistra.":
-    "{n} sample meetings loaded. Browse them from the Library or the list on the left.",
-  "{n} meeting di esempio tolti": "{n} sample meetings removed",
+  "{n} note di esempio caricate. Sfogliale dalla Libreria o dall'elenco a sinistra.":
+    "{n} sample notes loaded. Browse them from the Library or the list on the left.",
+  "{n} note di esempio tolte": "{n} sample notes removed",
   "Stai vedendo i dati di esempio": "You're looking at sample data",
   "Vuoi vedere cosa sa fare?": "Want to see what it can do?",
-  "{n} meeting inventati, con note, trascrizioni e progetti. Quando hai finito di esplorare puoi toglierli: i tuoi meeting restano.":
-    "{n} made-up meetings, with notes, transcripts and projects. When you're done exploring you can remove them: your own meetings stay.",
-  "Carica qualche meeting inventato ma realistico: note con tutti i blocchi, trascrizioni, note AI e progetti nella Libreria. Si tolgono con un clic.":
-    "Load a few made-up but realistic meetings: notes with every block, transcripts, AI notes and projects in the Library. One click removes them.",
+  "{n} note inventate, con trascrizioni e progetti. Quando hai finito di esplorare puoi toglierle: le tue note restano.":
+    "{n} made-up notes, with transcripts and projects. When you're done exploring you can remove them: your own notes stay.",
+  "Carica qualche nota inventata ma realistica: tutti i blocchi dell'editor, trascrizioni, note AI e progetti nella Libreria. Si tolgono con un clic.":
+    "Load a few made-up but realistic notes: every editor block, transcripts, AI notes and projects in the Library. One click removes them.",
   "1 parte da verificare": "1 part to review",
   "{n} parti da verificare": "{n} parts to review",
-  "Finché ce ne sono, questo meeting non viene inviato a modelli online. Per ognuna scegli Oscura oppure Va bene.":
-    "While any remain, this meeting is not sent to online models. For each one choose Redact or Looks fine.",
+  "Finché ce ne sono, questa nota non viene inviata a modelli online. Per ognuna scegli Oscura oppure Va bene.":
+    "While any remain, this note is not sent to online models. For each one choose Redact or Looks fine.",
   "Oscura questa parte per sempre": "Redact this part for good",
   Oscura: "Redact",
   "Va bene così: non è più da verificare": "It's fine: no longer to review",
   "Va bene": "Looks fine",
-  "Resta leggibile, ma il meeting non va a modelli online finché non decidi":
-    "Stays readable, but the meeting doesn't go to online models until you decide",
+  "Resta leggibile, ma la nota non va a modelli online finché non decidi":
+    "Stays readable, but the note doesn't go to online models until you decide",
   "Da verificare": "To review",
   "Cancella per sempre il testo selezionato: non si può annullare":
     "Deletes the selected text for good: this can't be undone",
   "Oscurare per sempre?": "Redact for good?",
-  "Privacy di questo meeting": "Privacy of this meeting",
+  "Privacy di questa nota": "Privacy of this note",
   "Blindata: non esce niente da {device}. Note AI, chat e ogni funzione AI usano solo un modello locale, o non sono disponibili.":
     "Hardened: nothing leaves {device}. AI notes, chat and every AI feature use a local model only, or are unavailable.",
   "Audio locale: l'audio si trascrive solo su {device}. Il testo può andare al provider AI configurato.":
@@ -779,9 +780,9 @@ const en: Record<string, string> = {
   "Trascrizione affinata: ora distingue i parlanti. Clic su un nome per cambiarlo.":
     "Transcript refined: it now tells speakers apart. Click a name to change it.",
   "Trascrizione online con i parlanti": "Online transcription with speakers",
-  'A fine riunione l\'audio viene tenuto su {device} e il meeting propone "Affina online": solo se lo scegli l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla, e la trascrizione locale viene sostituita. Dopo il caricamento l\'audio viene cancellato; puoi anche eliminarlo senza caricarlo. Non vale per i meeting con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.':
-    'When the meeting ends the audio is kept on {device} and the meeting offers "Refine online": only if you choose it is the audio uploaded to Gladia, which transcribes it and tells speakers apart, and the local transcript is replaced. After the upload the audio is deleted; you can also delete it without uploading. It does not apply to meetings with "local audio" or "hardened" privacy, nor while parts are to review.',
-  "Proponi l'affinamento online dopo la riunione": "Offer online refinement after the meeting",
+  'A fine registrazione l\'audio viene tenuto su {device} e la nota propone "Affina online": solo se lo scegli l\'audio viene caricato su Gladia, che lo trascrive distinguendo chi parla, e la trascrizione locale viene sostituita. Dopo il caricamento l\'audio viene cancellato; puoi anche eliminarlo senza caricarlo. Non vale per le note con privacy "audio locale" o "blindata", né finché ci sono parti da verificare.':
+    'When the recording ends the audio is kept on {device} and the note offers "Refine online": only if you choose it is the audio uploaded to Gladia, which transcribes it and tells speakers apart, and the local transcript is replaced. After the upload the audio is deleted; you can also delete it without uploading. It does not apply to notes with "local audio" or "hardened" privacy, nor while parts are to review.',
+  "Proponi l'affinamento online dopo la registrazione": "Offer online refinement after the recording",
   "Audio conservato: puoi affinare la trascrizione online con Gladia":
     "Audio kept: you can refine the transcript online with Gladia",
   "Senza la chiave di Gladia l'audio non viene conservato e non parte niente.":
@@ -789,8 +790,8 @@ const en: Record<string, string> = {
   "Chiave API di Gladia": "Gladia API key",
   "Chiave salvata {where}": "Key saved {where}",
   "Incolla la chiave": "Paste the key",
-  'Nessuna registrazione salvata. Attiva "Salva le registrazioni" nelle Impostazioni: da lì in poi l\'audio di ogni riunione resta qui.':
-    'No saved recordings. Turn on "Save recordings" in Settings: from then on every meeting\'s audio stays here.',
+  'Nessuna registrazione salvata. Attiva "Salva le registrazioni" nelle Impostazioni: da lì in poi l\'audio di ogni registrazione resta qui.':
+    'No saved recordings. Turn on "Save recordings" in Settings: from then on the audio of every recording stays here.',
   "senza pause": "pauses removed",
   "Registrazione in corso, o non ancora chiusa.": "Recording in progress, or not closed yet.",
   "Toglie le pause senza audio. Dopo, i minuti non corrispondono più a quelli della trascrizione.":
@@ -798,8 +799,8 @@ const en: Record<string, string> = {
   "Tolgo le pause…": "Removing pauses…",
   "Togli le pause": "Remove pauses",
   Registrazioni: "Recordings",
-  "Di norma l'audio viene trascritto e scartato. Attivando il salvataggio, l'audio di ogni riunione resta in una cartella di {device} e si riascolta dalla Libreria o dal meeting. Non viene inviato a nessuno.":
-    "Normally audio is transcribed and discarded. With saving on, every meeting's audio stays in a folder on {device} and can be played back from the Library or the meeting. It is not sent anywhere.",
+  "Di norma l'audio viene trascritto e scartato. Attivando il salvataggio, l'audio di ogni registrazione resta in una cartella di {device} e si riascolta dalla Libreria o dalla nota. Non viene inviato a nessuno.":
+    "Normally audio is transcribed and discarded. With saving on, the audio of every recording stays in a folder on {device} and can be played back from the Library or the note. It is not sent anywhere.",
   "Salva le registrazioni": "Save recordings",
   Cartella: "Folder",
   "Cambia…": "Change…",
@@ -839,14 +840,14 @@ const en: Record<string, string> = {
   Tutti: "All",
 
   // meeting: copy, print, delete
-  "Meeting blindato: così il testo esce da Granello. Premi di nuovo per procedere.":
-    "Hardened meeting: this takes the text out of Granello. Press again to go ahead.",
+  "Nota blindata: così il testo esce da Granello. Premi di nuovo per procedere.":
+    "Hardened note: this takes the text out of Granello. Press again to go ahead.",
   "Ci sono parti da verificare: così il testo esce da Granello. Premi di nuovo per procedere.":
     "Some parts are still to review: this takes the text out of Granello. Press again to go ahead.",
   "Copia la nota come Markdown": "Copy the note as Markdown",
   "Stampa o salva in PDF": "Print or save as PDF",
   "Stampa o salva in PDF la nota che stai guardando": "Print or save as PDF the note you are looking at",
-  "Elimina il meeting": "Delete the meeting",
+  "Elimina la nota": "Delete the note",
 
   // recordings: one card per meeting, player with waveform, merge
   "Il file della registrazione non si trova: è stato spostato, o il disco è scollegato.":
@@ -855,18 +856,18 @@ const en: Record<string, string> = {
   "Posizione nella registrazione": "Position in the recording",
   "1 registrazione": "1 recording",
   "{n} registrazioni": "{n} recordings",
-  "Unisce le registrazioni di questo meeting in un solo file, dalla più vecchia. I file separati non restano.":
-    "Merges this meeting's recordings into a single file, oldest first. The separate files are not kept.",
+  "Unisce le registrazioni di questa nota in un solo file, dalla più vecchia. I file separati non restano.":
+    "Merges this note's recordings into a single file, oldest first. The separate files are not kept.",
   "Unisco…": "Merging…",
   "Unire in un solo file?": "Merge into one file?",
   Unisci: "Merge",
 
   // templates: full-area editing, starting notes
-  "Come l'AI deve strutturare le note AI di questo meeting.":
-    "How the AI should structure this meeting's AI notes.",
+  "Come l'AI deve strutturare le note AI con questo template.":
+    "How the AI should structure the AI notes with this template.",
   "Note di partenza": "Starting notes",
-  "Ciò che trovi già scritto nelle tue note quando scegli questo template su un meeting vuoto.":
-    "What you find already written in your notes when you pick this template on an empty meeting.",
+  "Ciò che trovi già scritto quando scegli questo template su una nota vuota.":
+    "What you find already written when you pick this template on an empty note.",
   "Un'agenda, i titoli delle sezioni, una checklist… Digita / per i comandi.":
     "An agenda, section headings, a checklist… Type / for commands.",
   "con note di partenza": "with starting notes",
@@ -898,10 +899,10 @@ const en: Record<string, string> = {
   "Fissato nella barra laterale": "Pinned to the sidebar",
   "Fissa tutti nella barra laterale": "Pin all to the sidebar",
   "Togli tutti dai fissati": "Unpin all",
-  "Nessun meeting fissato: aprine uno e premi la puntina accanto a copia, stampa ed elimina.":
-    "No pinned meetings: open one and press the pin next to copy, print and delete.",
+  "Nessuna nota fissata: aprine una e premi la puntina accanto a copia, stampa ed elimina.":
+    "No pinned notes: open one and press the pin next to copy, print and delete.",
   "dalla rubrica": "from contacts",
-  "1 meeting": "1 meeting",
+  "1 nota": "1 note",
   "{from} unito a {into}": "{from} merged into {into}",
   "macOS non permette a Granello di leggere la rubrica: consentilo in Impostazioni di Sistema → Privacy e sicurezza → Contatti.":
     "macOS doesn't let Granello read your contacts: allow it in System Settings → Privacy & Security → Contacts.",
@@ -909,23 +910,23 @@ const en: Record<string, string> = {
     "No emails to add: your contacts don't have any for these people.",
   "Aggiunta 1 email dalla rubrica": "Added 1 email from your contacts",
   "Aggiunte {n} email dalla rubrica": "Added {n} emails from your contacts",
-  "Chi ha partecipato ai tuoi meeting: Granello le propone quando aggiungi i partecipanti. Correggi un nome e cambia in tutti i meeting; unisci due voci che sono la stessa persona. Toglierne una non modifica i meeting.":
-    "Who took part in your meetings: Granello suggests them when you add participants. Fix a name and it changes in every meeting; merge two entries that are the same person. Removing someone doesn't change your meetings.",
+  "Chi compare come partecipante nelle tue note: Granello le propone quando aggiungi i partecipanti. Correggi un nome e cambia in tutte le note; unisci due voci che sono la stessa persona. Toglierne una non modifica le note.":
+    "Who appears as an attendee in your notes: Granello suggests them when you add participants. Fix a name and it changes in every note; merge two entries that are the same person. Removing someone doesn't change your notes.",
   "Cerca per nome o email": "Search by name or email",
   "Ordina le persone": "Sort people",
   "Per nome": "By name",
-  "Più meeting": "Most meetings",
+  "Più note": "Most notes",
   "Viste di recente": "Seen recently",
   "Aggiungi persone da un file .vcf": "Add people from a .vcf file",
   "Importa vCard…": "Import vCard…",
-  "Ancora nessuna persona: si aggiungono da sole con i partecipanti dei meeting, o importale da un file vCard.":
-    "No people yet: they are added automatically from your meetings' participants, or import them from a vCard file.",
+  "Ancora nessuna persona: si aggiungono da sole con i partecipanti delle note, o importale da un file vCard.":
+    "No people yet: they are added automatically from your notes' participants, or import them from a vCard file.",
   Email: "Email",
-  "Ultimo meeting": "Last meeting",
-  "Apri i meeting di {name} nella Libreria": "Open {name}'s meetings in the Library",
+  "Ultima nota": "Last note",
+  "Apri le note di {name} nella Libreria": "Open {name}'s notes in the Library",
   "Modifica {name}": "Edit {name}",
-  "Cambia nome o email: il nome nuovo arriva in tutti i meeting":
-    "Change name or email: the new name reaches every meeting",
+  "Cambia nome o email: il nome nuovo arriva in tutte le note":
+    "Change name or email: the new name reaches every note",
   "Unisci {name} a un'altra persona": "Merge {name} into another person",
   "Unisci a un'altra persona: è la stessa, scritta in due modi":
     "Merge into another person: the same one, written two ways",
@@ -939,10 +940,10 @@ const en: Record<string, string> = {
   "{n} persone aggiunte": "{n} people added",
   "{name} è la stessa persona di": "{name} is the same person as",
   "Persona con cui unire {name}": "Person to merge {name} into",
-  "1 meeting passa a {into}; {from} sparisce dalla rubrica.":
-    "1 meeting moves to {into}; {from} leaves your people.",
-  "{n} meeting passano a {into}; {from} sparisce dalla rubrica.":
-    "{n} meetings move to {into}; {from} leaves your people.",
+  "1 nota passa a {into}; {from} sparisce dalla rubrica.":
+    "1 note moves to {into}; {from} leaves your people.",
+  "{n} note passano a {into}; {from} sparisce dalla rubrica.":
+    "{n} notes move to {into}; {from} leaves your people.",
   "Importa da vCard": "Import from vCard",
   "Scegli chi aggiungere alla rubrica di Granello: le proporrà tra i partecipanti. Chi c'è già riceve l'email, se non ne aveva una.":
     "Choose who to add to Granello's people: it will suggest them as participants. Anyone already there gets the email, if they had none.",

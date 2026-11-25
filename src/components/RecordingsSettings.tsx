@@ -40,7 +40,7 @@ export default function RecordingsSettings({
       <h3>{t("Registrazioni")}</h3>
       <p className="muted small">
         {t(
-          "Di norma l'audio viene trascritto e scartato. Attivando il salvataggio, l'audio di ogni riunione resta in una cartella di {device} e si riascolta dalla Libreria o dal meeting. Non viene inviato a nessuno.",
+          "Di norma l'audio viene trascritto e scartato. Attivando il salvataggio, l'audio di ogni registrazione resta in una cartella di {device} e si riascolta dalla Libreria o dalla nota. Non viene inviato a nessuno.",
           { device: thisDevice() },
         )}
       </p>

@@ -10,7 +10,7 @@ export default defineConfig({
     starlight({
       title: "Granello",
       description:
-        "Meeting notes for macOS that stay on your Mac: local transcription, AI notes, a privacy level per meeting.",
+        "Notes for macOS that stay on your Mac: local transcription, AI notes, a privacy level per note.",
       logo: { src: "./src/assets/logo.png" },
       favicon: "/favicon.png",
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/davidnussio/granello" }],

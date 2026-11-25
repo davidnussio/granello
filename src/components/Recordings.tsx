@@ -236,7 +236,7 @@ export default function Recordings({
     return meetingId ? null : (
       <p className="muted small rec-empty">
         {t(
-          'Nessuna registrazione salvata. Attiva "Salva le registrazioni" nelle Impostazioni: da lì in poi l\'audio di ogni riunione resta qui.',
+          'Nessuna registrazione salvata. Attiva "Salva le registrazioni" nelle Impostazioni: da lì in poi l\'audio di ogni registrazione resta qui.',
         )}
       </p>
     );
@@ -257,7 +257,7 @@ export default function Recordings({
                   <button
                     className="recording-title"
                     onClick={() => onOpen?.(meeting)}
-                    title={t("Apri il meeting")}
+                    title={t("Apri la nota")}
                   >
                     {group[0].meetingTitle || t("Senza titolo")}
                   </button>
@@ -272,7 +272,7 @@ export default function Recordings({
                     disabled={busy !== null}
                     onClick={() => confirmed(meeting) && run(meeting, () => api.mergeRecordings(meeting))}
                     title={t(
-                      "Unisce le registrazioni di questo meeting in un solo file, dalla più vecchia. I file separati non restano.",
+                      "Unisce le registrazioni di questa nota in un solo file, dalla più vecchia. I file separati non restano.",
                     )}
                   >
                     {busy === meeting

@@ -139,7 +139,7 @@ const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,
 
 /**
  * Ricerca per il menu "/": senza distinzione di maiuscole e accenti, su titolo e parole chiave.
- * Anche il nome del gruppo è una chiave: "/meeting" mostra tutti i blocchi del gruppo Meeting,
+ * Anche il nome del gruppo è una chiave: "/note" mostra tutti i blocchi del gruppo Note,
  * "/strum" tutti gli strumenti. Un gruppo scritto per intero viene prima di tutto il resto.
  */
 export function filterCommands<T extends { title: string; keywords?: string[]; group?: string }>(

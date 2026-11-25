@@ -19,11 +19,11 @@ Granello non ha un servizio AI suo. In **Impostazioni → Modelli AI** scegli il
 
 Aggiungi un provider locale (un server su `localhost`) e sceglilo sia per **Note AI** sia per **Chat**. Da lì in poi nessun testo esce dal Mac.
 
-Per esserne certo su un singolo meeting, qualunque cosa dicano le impostazioni, mettilo su [blindata](/it/privacy/levels/): usa sempre e solo un provider su `localhost`.
+Per esserne certo su una singola nota, qualunque cosa dicano le impostazioni, mettila su [blindata](/it/privacy/levels/): usa sempre e solo un provider su `localhost`.
 
 ## Il contesto dei modelli locali
 
-Un'ora di riunione sono decine di migliaia di token. I server locali tagliano in silenzio quello che non ci sta, e alcuni partono con un contesto ridotto. Indicalo nel campo **Contesto (token)** del provider: Granello stima la dimensione di ogni richiesta e si ferma con un errore chiaro, invece di scrivere le note da mezza trascrizione.
+Un'ora di registrazione sono decine di migliaia di token. I server locali tagliano in silenzio quello che non ci sta, e alcuni partono con un contesto ridotto. Indicalo nel campo **Contesto (token)** del provider: Granello stima la dimensione di ogni richiesta e si ferma con un errore chiaro, invece di scrivere le note da mezza trascrizione.
 
 Il ragionamento che alcuni modelli locali stampano prima di rispondere viene tolto dalle note.
 

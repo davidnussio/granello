@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { api, errorText, newStreamId, on, SYSTEM_AUDIO } from "../api";
 import type {
   CalendarEvent,
@@ -19,7 +19,7 @@ import PrivacyIcon, { privacyHint, privacyLabel } from "./PrivacyIcon";
 import PinIcon from "./PinIcon";
 import ChatPanel from "./ChatPanel";
 import ProjectDialog, { projectColor } from "./ProjectDialog";
-import { dayLabel, mmss, time } from "../format";
+import { dayLabel, longWhen, mmss, sameDay, shortWhen, time } from "../format";
 import { t } from "../i18n";
 import { thisDevice } from "../platformText";
 import { Sparkles, sparkle } from "../sparkles";
@@ -123,7 +123,7 @@ const suggestTags = async (query: string): Promise<ChipSuggestion[]> => {
   return (await api.listTags())
     .filter((tag) => tag.name.includes(q))
     .slice(0, 8)
-    .map((tag) => ({ value: tag.name, hint: t("{n} meeting", { n: tag.count }) }));
+    .map((tag) => ({ value: tag.name, hint: t("{n} note", { n: tag.count }) }));
 };
 
 const ICONS = {
@@ -164,6 +164,15 @@ export default function MeetingView({
   minPrivacy,
 }: Props) {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
+  /**
+   * L'ultima modifica com'era quando la nota è stata aperta: dice quando ci si era lavorato
+   * l'ultima volta, e non diventa «ora» mentre si scrive.
+   */
+  const lastChange = useMemo(
+    () => meeting?.updatedAt ?? null,
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- conta solo l'apertura di un'altra nota
+    [meeting?.id],
+  );
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [tab, setTab] = useState<Tab>("notes");
@@ -347,11 +356,18 @@ export default function MeetingView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRecording]);
 
+  // dopo il salvataggio la barra laterale ricarica l'elenco: la nota sale tra le ultime modificate
   const saveNotes = useDebounced<string>((notesMd) => {
-    api.updateMeeting({ id, notesMd }).catch((e) => toast(errorText(e)));
+    api
+      .updateMeeting({ id, notesMd })
+      .then(onChanged)
+      .catch((e) => toast(errorText(e)));
   }, 600);
   const saveEnhanced = useDebounced<string>((enhancedMd) => {
-    api.updateMeeting({ id, enhancedMd }).catch((e) => toast(errorText(e)));
+    api
+      .updateMeeting({ id, enhancedMd })
+      .then(onChanged)
+      .catch((e) => toast(errorText(e)));
   }, 600);
   const saveTitle = useDebounced<string>((title) => {
     api
@@ -716,7 +732,7 @@ export default function MeetingView({
     setTimeout(() => setConfirmOut((c) => (c === action ? null : c)), 5000);
     toast(
       meeting?.privacy === "hardened"
-        ? t("Meeting blindato: così il testo esce da Granello. Premi di nuovo per procedere.")
+        ? t("Nota blindata: così il testo esce da Granello. Premi di nuovo per procedere.")
         : t("Ci sono parti da verificare: così il testo esce da Granello. Premi di nuovo per procedere."),
     );
     return false;
@@ -759,6 +775,9 @@ export default function MeetingView({
   const hasContent = meeting.notesMd.trim().length > 0 || segments.length > 0;
   const canEnhance = hasContent && !inSession && streaming === null;
   const when = meeting.startedAt ?? meeting.createdAt;
+  // l'ultima modifica si dice solo se la nota è stata ripresa più di un'ora dopo la fine del
+  // meeting: prima ripeterebbe la data
+  const edited = lastChange !== null && lastChange > (meeting.endedAt ?? when) + 3600_000 ? lastChange : null;
   const missingFromEvent = (calEvent?.attendees ?? []).filter(
     (name) => !meeting.attendees.some((a) => a.toLowerCase() === name.toLowerCase()),
   );
@@ -767,7 +786,9 @@ export default function MeetingView({
     <button
       className="btn small mark-btn"
       onClick={() => markMoment()}
-      title={t("Segna questo momento nelle note: a fine riunione l'AI scrive cosa si stava dicendo (⇧⌘M)")}
+      title={t(
+        "Segna questo momento nelle note: a fine registrazione l'AI scrive cosa si stava dicendo (⇧⌘M)",
+      )}
     >
       {t("⚑ Segna")}
     </button>
@@ -802,15 +823,15 @@ export default function MeetingView({
         <header className="meeting-header">
           <div className="title-row">
             {/* il campo è largo quanto il titolo, così il pulsante gli sta accanto */}
-            <span className="title-fit" data-value={meeting.title || t("Titolo del meeting")}>
+            <span className="title-fit" data-value={meeting.title || t("Titolo della nota")}>
               <input
                 ref={titleInput}
                 className="title-input"
                 // senza, il campo ha una larghezza minima sua e il pulsante resta lontano dai titoli corti
                 size={1}
-                aria-label={t("Titolo del meeting")}
+                aria-label={t("Titolo della nota")}
                 defaultValue={meeting.title}
-                placeholder={t("Titolo del meeting")}
+                placeholder={t("Titolo della nota")}
                 onChange={(e) => {
                   const title = e.target.value;
                   setMeeting((m) => (m ? { ...m, title } : m));
@@ -841,10 +862,10 @@ export default function MeetingView({
                   "--project": projectColor(projects.find((p) => p.id === meeting.projectId)),
                 } as CSSProperties
               }
-              aria-label={t("Progetto di questo meeting")}
+              aria-label={t("Progetto di questa nota")}
               title={
                 projects.find((p) => p.id === meeting.projectId)?.description ||
-                t("Il progetto in cui sta questo meeting")
+                t("Il progetto in cui sta questa nota")
               }
               onChange={(e) => {
                 if (e.target.value === NEW_PROJECT) setCreatingProject(true);
@@ -863,8 +884,26 @@ export default function MeetingView({
             </select>
           </div>
           <div className="meta-row">
-            <span className="chip">
+            <span
+              className="chip"
+              title={
+                edited
+                  ? t("Creata {created} · ultima modifica {changed}", {
+                      created: longWhen(when),
+                      changed: longWhen(edited),
+                    })
+                  : undefined
+              }
+            >
               {dayLabel(when)} · {time(when)}
+              {edited !== null && (
+                <span className="chip-edited">
+                  {" · "}
+                  {sameDay(edited, Date.now())
+                    ? t("ultima modifica alle {time}", { time: time(edited) })
+                    : t("ultima modifica {when}", { when: shortWhen(edited) })}
+                </span>
+              )}
             </span>
             <select
               className="chip select"
@@ -882,7 +921,7 @@ export default function MeetingView({
               className={"chip select privacy-select " + meeting.privacy}
               value={meeting.privacy}
               onChange={(e) => changePrivacy(e.target.value as Privacy)}
-              aria-label={t("Privacy di questo meeting")}
+              aria-label={t("Privacy di questa nota")}
               title={
                 meeting.privacy === "hardened"
                   ? t(
@@ -944,13 +983,13 @@ export default function MeetingView({
                 className={"chip icon-action delete-meeting" + (confirmDelete ? " confirm" : "")}
                 onClick={remove}
                 disabled={inSession}
-                aria-label={t("Elimina il meeting")}
+                aria-label={t("Elimina la nota")}
                 title={
                   isImporting
-                    ? t("Annulla la trascrizione del file prima di eliminare il meeting")
+                    ? t("Annulla la trascrizione del file prima di eliminare la nota")
                     : isRecording
-                      ? t("Ferma la registrazione prima di eliminare il meeting")
-                      : t("Elimina il meeting")
+                      ? t("Ferma la registrazione prima di eliminare la nota")
+                      : t("Elimina la nota")
                 }
               >
                 {confirmDelete ? t("Confermi?") : <ActionIcon name="trash" />}
@@ -1081,7 +1120,7 @@ export default function MeetingView({
             disabled={busyRec || otherRecording}
             title={
               otherRecording
-                ? t("C'è già una registrazione in corso su un altro meeting")
+                ? t("C'è già una registrazione in corso su un'altra nota")
                 : `${privacyLabel(meeting.privacy)}. ${privacyHint(meeting.privacy)}`
             }
           >
@@ -1189,7 +1228,7 @@ export default function MeetingView({
                 ? segments.length
                   ? t("Trascrizione ({n})", { n: segments.length })
                   : t("Trascrizione")
-                : t("Chiedi su questo meeting")}
+                : t("Chiedi su questa nota")}
             </strong>
             {sidebarToggle}
           </div>

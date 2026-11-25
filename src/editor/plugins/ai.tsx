@@ -95,7 +95,7 @@ function render(view: BlockView<LiveAi>) {
       ? t("Leggo la trascrizione…")
       : data.request
         ? t("Premi Invio per chiedere")
-        : t("Scrivi una richiesta: la risposta si aggiorna mentre la riunione procede");
+        : t("Scrivi una richiesta: la risposta si aggiorna mentre la registrazione procede");
   }
 
   const request = field(
@@ -258,11 +258,11 @@ export const ai: EditorPlugin = {
         return t("Chiedi all'AI");
       },
       get hint() {
-        return t("Una richiesta sul meeting, che si aggiorna da sola");
+        return t("Una richiesta sulla nota, che si aggiorna da sola");
       },
       icon: "✦",
       get group() {
-        return t("Meeting");
+        return t("Note");
       },
       keywords: ["ai", "chiedi", "ask", "riassumi", "riassunto", "summary", "live", "dal vivo", "claude"],
       run: (e) => e.chain().focus().insertContent({ type: "liveAi" }).run(),

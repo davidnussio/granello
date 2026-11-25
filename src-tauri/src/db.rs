@@ -15,7 +15,15 @@ fn now_ms() -> i64 {
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
 pub(crate) const MIGRATIONS: &[&str] =
-    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10];
+    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10, SCHEMA_V11];
+
+/// Quando una nota è stata modificata l'ultima volta (titolo, note, note AI, partecipanti, tag):
+/// la barra laterale le ordina così. Per quelle che ci sono già vale la fine del meeting, o la
+/// sua creazione. NULL (una riga arrivata dal sync da una versione precedente) = la creazione.
+const SCHEMA_V11: &str = r#"
+ALTER TABLE meetings ADD COLUMN updated_at INTEGER;
+UPDATE meetings SET updated_at = MAX(created_at, COALESCE(ended_at, created_at));
+"#;
 
 /// Meeting fissati: restano in cima alla barra laterale, sotto la Libreria, nell'ordine in
 /// cui sono stati fissati. NULL = non fissato.
@@ -294,10 +302,11 @@ impl Db {
     fn row_to_meeting(row: &rusqlite::Row) -> rusqlite::Result<Meeting> {
         let attendees: String = row.get("attendees")?;
         let tags: String = row.get("tags")?;
+        let created_at: i64 = row.get("created_at")?;
         Ok(Meeting {
             id: row.get("id")?,
             title: row.get("title")?,
-            created_at: row.get("created_at")?,
+            created_at,
             started_at: row.get("started_at")?,
             ended_at: row.get("ended_at")?,
             calendar_event_id: row.get("calendar_event_id")?,
@@ -309,6 +318,8 @@ impl Db {
             privacy: Privacy::parse(&row.get::<_, String>("privacy")?),
             project_id: row.get("project_id")?,
             pinned_at: row.get("pinned_at")?,
+            // una riga arrivata dal sync da una versione precedente non ce l'ha: vale la creazione
+            updated_at: row.get::<_, Option<i64>>("updated_at")?.unwrap_or(created_at),
         })
     }
 
@@ -340,10 +351,11 @@ impl Db {
         privacy: Privacy,
     ) -> Result<Meeting> {
         let id = uuid::Uuid::new_v4().to_string();
-        let title = if title.trim().is_empty() { tr("Nuovo meeting", "New meeting") } else { title.trim() };
+        let title = if title.trim().is_empty() { tr("Nuova nota", "New note") } else { title.trim() };
         self.conn.execute(
-            "INSERT INTO meetings (id, title, created_at, calendar_event_id, attendees, template_id, notes_md, privacy)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO meetings (id, title, created_at, updated_at, calendar_event_id, attendees, template_id, notes_md,
+                                   privacy)
+             VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
                 id,
                 title,
@@ -387,14 +399,26 @@ impl Db {
         template_id: Option<&str>,
     ) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
+        // l'ora di modifica cambia solo se il testo cambia davvero: un salvataggio uguale non sposta
+        // la nota in cima alla barra laterale
+        let now = now_ms();
         if let Some(t) = title {
-            self.conn.execute("UPDATE meetings SET title = ?1 WHERE id = ?2", params![t, id])?;
+            self.conn.execute(
+                "UPDATE meetings SET title = ?1, updated_at = ?3 WHERE id = ?2 AND title IS NOT ?1",
+                params![t, id, now],
+            )?;
         }
         if let Some(n) = notes_md {
-            self.conn.execute("UPDATE meetings SET notes_md = ?1 WHERE id = ?2", params![n, id])?;
+            self.conn.execute(
+                "UPDATE meetings SET notes_md = ?1, updated_at = ?3 WHERE id = ?2 AND notes_md IS NOT ?1",
+                params![n, id, now],
+            )?;
         }
         if let Some(e) = enhanced_md {
-            self.conn.execute("UPDATE meetings SET enhanced_md = ?1 WHERE id = ?2", params![e, id])?;
+            self.conn.execute(
+                "UPDATE meetings SET enhanced_md = ?1, updated_at = ?3 WHERE id = ?2 AND enhanced_md IS NOT ?1",
+                params![e, id, now],
+            )?;
         }
         if let Some(t) = template_id {
             let t = if t.is_empty() { None } else { Some(t) };
@@ -411,8 +435,8 @@ impl Db {
         let names: Vec<&str> = people.iter().map(|(n, _)| n.as_str()).collect();
         let tx = self.conn.unchecked_transaction()?;
         tx.execute(
-            "UPDATE meetings SET attendees = ?1 WHERE id = ?2",
-            params![serde_json::to_string(&names)?, id],
+            "UPDATE meetings SET attendees = ?1, updated_at = ?3 WHERE id = ?2 AND attendees IS NOT ?1",
+            params![serde_json::to_string(&names)?, id, now_ms()],
         )?;
         self.upsert_people(people)?;
         self.reindex(id)?;
@@ -422,7 +446,10 @@ impl Db {
 
     pub fn set_tags(&self, id: &str, tags: &[String]) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
-        tx.execute("UPDATE meetings SET tags = ?1 WHERE id = ?2", params![serde_json::to_string(tags)?, id])?;
+        tx.execute(
+            "UPDATE meetings SET tags = ?1, updated_at = ?3 WHERE id = ?2 AND tags IS NOT ?1",
+            params![serde_json::to_string(tags)?, id, now_ms()],
+        )?;
         self.reindex(id)?;
         tx.commit()?;
         Ok(())
@@ -488,8 +515,8 @@ impl Db {
             self.delete_meeting_rows(&m.id)?;
             self.conn.execute(
                 "INSERT INTO meetings (id, title, created_at, started_at, ended_at, attendees, tags, notes_md, enhanced_md,
-                                       pinned_at)
-                 VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                                       pinned_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6, ?7, ?8, ?9, COALESCE(?4, ?3))",
                 params![
                     m.id,
                     m.title,
@@ -918,7 +945,7 @@ impl Db {
             None => {
                 let mut stmt = self.conn.prepare(
                     "SELECT id, title, created_at, enhanced_md IS NOT NULL AND enhanced_md != '', attendees, tags,
-                            project_id, pinned_at
+                            project_id, pinned_at, COALESCE(updated_at, created_at)
                      FROM meetings ORDER BY created_at DESC",
                 )?;
                 let rows = stmt.query_map([], |r| {
@@ -933,6 +960,7 @@ impl Db {
                         tags: serde_json::from_str(&tags).unwrap_or_default(),
                         project_id: r.get(6)?,
                         pinned_at: r.get(7)?,
+                        updated_at: r.get(8)?,
                         snippet: None,
                     })
                 })?;
@@ -948,7 +976,8 @@ impl Db {
                 let mut stmt = self.conn.prepare(
                     "SELECT m.id, m.title, m.created_at,
                             m.enhanced_md IS NOT NULL AND m.enhanced_md != '', m.attendees,
-                            snippet(meetings_fts, -1, '«', '»', '…', 12), m.tags, m.project_id, m.pinned_at
+                            snippet(meetings_fts, -1, '«', '»', '…', 12), m.tags, m.project_id, m.pinned_at,
+                            COALESCE(m.updated_at, m.created_at)
                      FROM meetings_fts f JOIN meetings m ON m.id = f.meeting_id
                      WHERE meetings_fts MATCH ?1
                      ORDER BY bm25(meetings_fts, 0.0, 10.0, 4.0, 3.0, 1.0) LIMIT 50",
@@ -965,6 +994,7 @@ impl Db {
                         tags: serde_json::from_str(&tags).unwrap_or_default(),
                         project_id: r.get(7)?,
                         pinned_at: r.get(8)?,
+                        updated_at: r.get(9)?,
                         snippet: r.get(5)?,
                     })
                 })?;
@@ -1702,6 +1732,40 @@ mod tests {
         assert_eq!(db.get_meeting("m").unwrap().unwrap().pinned_at, None);
         db.set_meetings_pinned(&["m".to_string()], true).unwrap();
         assert!(db.get_meeting("m").unwrap().unwrap().pinned_at.is_some());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn notes_get_a_modified_time_on_migration_and_only_real_changes_move_it() {
+        let dir = std::env::temp_dir().join(format!("granello-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("db.sqlite");
+        {
+            // un database com'era prima dell'ora di modifica: fino allo schema 10
+            let conn = Connection::open(&path).unwrap();
+            for schema in &MIGRATIONS[..10] {
+                conn.execute_batch(schema).unwrap();
+            }
+            conn.pragma_update(None, "user_version", 10).unwrap();
+            conn.execute_batch(
+                "INSERT INTO meetings (id, title, created_at, ended_at) VALUES ('finito', 'Finito', 100, 500);
+                 INSERT INTO meetings (id, title, created_at) VALUES ('aperto', 'Aperto', 200);",
+            )
+            .unwrap();
+        }
+        let db = Db::open(&path).unwrap();
+        let updated = |id: &str| db.list_meetings(None).unwrap().into_iter().find(|m| m.id == id).unwrap().updated_at;
+        // per le note che c'erano già vale la fine del meeting, o la creazione
+        assert_eq!(updated("finito"), 500);
+        assert_eq!(updated("aperto"), 200);
+        // salvare lo stesso testo non la sposta, cambiarlo sì
+        db.update_meeting("aperto", Some("Aperto"), None, None, None).unwrap();
+        assert_eq!(updated("aperto"), 200);
+        db.update_meeting("aperto", None, Some("nuove note"), None, None).unwrap();
+        assert!(updated("aperto") > 1_000_000);
+        // i tag dati a più meeting insieme non spostano le note
+        db.tag_meetings(&["finito".to_string()], &["x".to_string()], &[]).unwrap();
+        assert_eq!(updated("finito"), 500);
         let _ = std::fs::remove_dir_all(dir);
     }
 

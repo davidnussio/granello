@@ -1,6 +1,6 @@
 ---
 title: Note AI, template e chat
-description: Trasforma i tuoi appunti e la trascrizione in note complete, dai loro una forma con un template e fai domande sui tuoi meeting.
+description: Trasforma i tuoi appunti e la trascrizione in note complete, dai loro una forma con un template e fai domande sulle tue note.
 ---
 
 ## Note AI
@@ -14,12 +14,12 @@ description: Trasforma i tuoi appunti e la trascrizione in note complete, dai lo
 
 ## Template
 
-Un template dice all'AI come strutturare le note. Granello ha Generale, 1:1, Standup, Colloquio e Meeting cliente, e puoi aggiungere i tuoi in **Impostazioni → Template**.
+Un template dice all'AI come strutturare le note. Granello ha Generale, 1:1, Standup, Colloquio e Cliente, e puoi aggiungere i tuoi in **Impostazioni → Template**.
 
 Un template ha due parti:
 
 - **Istruzioni per l'AI**: le sezioni e le regole per le note AI.
-- **Note di partenza** (facoltative): un'agenda, i titoli delle sezioni o una checklist, scritti con lo stesso editor delle note. Riempiono le tue note quando scegli il template su un meeting con le note ancora vuote. Le note che hai già scritto non vengono mai sostituite.
+- **Note di partenza** (facoltative): un'agenda, i titoli delle sezioni o una checklist, scritti con lo stesso editor delle note. Riempiono la nota quando scegli il template su una nota ancora vuota. Le note che hai già scritto non vengono mai sostituite.
 
 ![Modifica di un template: istruzioni per l'AI a sinistra, note di partenza a destra](../../../../assets/shots/it/templates.webp)
 
@@ -32,15 +32,15 @@ Sotto le due colonne, **Configura con l'AI** scrive il template per te. Descrivi
 - Non si salva nulla da solo: controlla i campi, cambia quello che vuoi, poi premi **Salva**. **Ripristina com'era** riporta i campi a prima della proposta dell'AI.
 - Usa il modello scelto per le note AI nelle **Impostazioni**. Se nessun modello è pronto, il messaggio dice cosa configurare lì.
 
-La tua descrizione e i campi attuali del template vanno a quel modello; nessun meeting viene inviato. Vedi [cosa può uscire dal Mac](/it/privacy/overview/).
+La tua descrizione e i campi attuali del template vanno a quel modello; nessuna nota viene inviata. Vedi [cosa può uscire dal Mac](/it/privacy/overview/).
 
 I template di sistema non si modificano: modificandone uno si salva una copia.
 
-Il template di ogni meeting si sceglie nella sua intestazione.
+Il template di ogni nota si sceglie nella sua intestazione.
 
 ## Chat
 
-- **Chiedi** dentro un meeting risponde dalle note e dalla trascrizione di quel meeting.
-- **Chiedi ai meeting** nella barra laterale risponde su tutti i meeting: una ricerca nel testo trova quelli pertinenti, e la risposta cita titolo e data.
+- **Chiedi** dentro una nota risponde da quello che hai scritto lì e dalla sua trascrizione.
+- **Chiedi alle note** nella barra laterale risponde su tutte le tue note: una ricerca nel testo trova quelle pertinenti, e la risposta cita titolo e data.
 
-La chat invia testo al provider AI che hai configurato. I meeting che non possono andare a quel modello, perché blindati o con parti da verificare, restano fuori. Vedi [livelli di privacy](/it/privacy/levels/).
+La chat invia testo al provider AI che hai configurato. Le note che non possono andare a quel modello, perché blindate o con parti da verificare, restano fuori. Vedi [livelli di privacy](/it/privacy/levels/).

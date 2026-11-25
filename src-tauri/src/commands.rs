@@ -240,7 +240,7 @@ pub fn list_meetings(state: State<AppState>, query: Option<String>) -> CmdResult
 #[tauri::command]
 pub fn get_meeting(state: State<AppState>, id: String) -> CmdResult<MeetingDetail> {
     let db = state.db.lock();
-    let meeting = db.get_meeting(&id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+    let meeting = db.get_meeting(&id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
     let segments = db.segments(&id).map_err(err)?;
     Ok(MeetingDetail { meeting, segments })
 }
@@ -325,7 +325,7 @@ pub fn update_meeting_meta(
     if let Some(tags) = tags {
         db.set_tags(&id, &normalize_tags(tags)).map_err(err)?;
     }
-    db.get_meeting(&id).map_err(err)?.ok_or_else(|| tr("Meeting non trovato", "Meeting not found").into())
+    db.get_meeting(&id).map_err(err)?.ok_or_else(|| tr("Nota non trovata", "Note not found").into())
 }
 
 /// Persone presenti negli eventi del calendario in cache. Non aspetta mai: se il calendario
@@ -641,7 +641,7 @@ pub async fn calendar_match(state: State<'_, AppState>, meeting_id: String) -> C
     const SLACK_MS: i64 = 10 * 60_000;
     let (when, linked) = {
         let db = state.db.lock();
-        let m = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+        let m = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
         (m.started_at.unwrap_or(m.created_at), m.calendar_event_id)
     };
     let events = current_events(&state).await;
@@ -662,7 +662,7 @@ pub async fn calendar_match(state: State<'_, AppState>, meeting_id: String) -> C
 #[tauri::command]
 pub fn delete_meeting(state: State<AppState>, id: String) -> CmdResult<()> {
     if state.session.lock().as_ref().map(|s| s.meeting_id == id).unwrap_or(false) {
-        return Err(tr("Ferma la registrazione prima di eliminare il meeting", "Stop the recording before deleting the meeting").into());
+        return Err(tr("Ferma la registrazione prima di eliminare la nota", "Stop the recording before deleting the note").into());
     }
     let db = state.db.lock();
     let meeting = db.get_meeting(&id).map_err(err)?;
@@ -973,12 +973,12 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
         }
         let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
-        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
         if !settings.online_transcription {
             return Err(tr("L'affinamento online è spento nelle Impostazioni", "Online refinement is off in Settings").into());
         }
         if meeting.privacy != Privacy::Open {
-            return Err(tr("La privacy di questo meeting tiene l'audio su questo computer", "This meeting's privacy keeps the audio on this computer").into());
+            return Err(tr("La privacy di questa nota tiene l'audio su questo computer", "This note's privacy keeps the audio on this computer").into());
         }
         if db.pending_reviews(&meeting_id).map_err(err)? > 0 {
             return Err(tr("Ci sono parti da verificare: decidi prima su quelle", "There are parts to review: decide on those first").into());
@@ -988,7 +988,7 @@ pub async fn refine_transcript(state: State<'_, AppState>, meeting_id: String) -
     let key = gladia_key(&state).ok_or(tr("Imposta la chiave di Gladia nelle Impostazioni", "Set the Gladia key in Settings"))?;
     let path = keep::path(&work.dir, &meeting_id)
         .filter(|p| p.is_file())
-        .ok_or(tr("Non c'è audio conservato per questo meeting", "There is no kept audio for this meeting"))?;
+        .ok_or(tr("Non c'è audio conservato per questa nota", "There is no kept audio for this note"))?;
     let utterances = gladia::transcribe(&state.http, gladia::BASE_URL, &key, &path, &language).await.map_err(err)?;
     if utterances.is_empty() {
         return Err(tr("Gladia non ha trovato parlato nell'audio: la trascrizione locale resta com'è", "Gladia found no speech in the audio: the local transcript is unchanged").into());
@@ -1037,7 +1037,7 @@ pub fn set_speaker(state: State<AppState>, meeting_id: String, name: String) -> 
             s.set_speaker(&name);
             Ok(())
         }
-        None => Err(tr("Su questo meeting non si sta registrando", "This meeting is not being recorded").into()),
+        None => Err(tr("Su questa nota non si sta registrando", "This note is not being recorded").into()),
     }
 }
 
@@ -1182,7 +1182,7 @@ fn start_session(app: &AppHandle, state: &AppState, meeting_id: String, file: Op
     let (settings, meeting, base_ms) = {
         let db = state.db.lock();
         let settings = state.main.lock().get_settings().map_err(err)?;
-        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
         let base_ms = db.transcript_end_ms(&meeting_id).map_err(err)?;
         (settings, meeting, base_ms)
     };
@@ -1245,7 +1245,7 @@ fn session_busy(s: &Session) -> &'static str {
     if s.importing {
         tr("È già in corso la trascrizione di un file audio", "An audio file is already being transcribed")
     } else {
-        tr("È già in corso una registrazione su un altro meeting", "Another meeting is already being recorded")
+        tr("È già in corso una registrazione su un'altra nota", "Another note is already being recorded")
     }
 }
 
@@ -1401,13 +1401,13 @@ fn provider_is_local(provider: &Provider) -> bool {
 /// è in modalità blindata, oppure ha parti della trascrizione ancora da verificare.
 pub(crate) fn local_only(db: &Db, meeting: &Meeting) -> CmdResult<Option<String>> {
     if meeting.privacy == Privacy::Hardened {
-        return Ok(Some(tr("Questo meeting è in modalità blindata", "This meeting is in hardened mode").into()));
+        return Ok(Some(tr("Questa nota è in modalità blindata", "This note is in hardened mode").into()));
     }
     let pending = db.pending_reviews(&meeting.id).map_err(err)?;
     Ok((pending > 0).then(|| {
         trf!(
-            "Questo meeting ha {pending} parti della trascrizione da verificare",
-            "This meeting has {pending} transcript parts to review"
+            "Questa nota ha {pending} parti della trascrizione da verificare",
+            "This note has {pending} transcript parts to review"
         )
     }))
 }
@@ -1493,10 +1493,10 @@ pub async fn enhance_notes(
     let (model, system, user) = {
         let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
-        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
         let segments = db.segments(&meeting_id).map_err(err)?;
         if meeting.notes_md.trim().is_empty() && segments.is_empty() {
-            return Err(tr("Non c'è niente da arricchire: scrivi qualche nota o registra il meeting", "There is nothing to enhance: write some notes or record the meeting").into());
+            return Err(tr("Non c'è niente da arricchire: scrivi qualcosa o avvia la registrazione", "There is nothing to enhance: write something or start recording").into());
         }
         let template = meeting
             .template_id
@@ -1554,7 +1554,7 @@ pub async fn fill_moments(state: State<'_, AppState>, meeting_id: String, moment
     let (model, system, user, asked) = {
         let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
-        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+        let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
         let segments = db.segments(&meeting_id).map_err(err)?;
         let mut asked: Vec<(i64, String)> = Vec::new();
         for ms in moments {
@@ -1630,7 +1630,7 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
         let mut reason = None;
         let context = match meeting_id.as_deref() {
             Some(id) => {
-                let meeting = db.get_meeting(id).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+                let meeting = db.get_meeting(id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
                 reason = local_only(&db, &meeting)?;
                 if kind == AssistKind::Sketch {
                     None
@@ -1787,11 +1787,11 @@ pub async fn chat(
                 })
                 .collect::<Vec<_>>();
             if with_tr.is_empty() {
-                return Err(tr("Non ci sono ancora meeting su cui fare domande", "There are no meetings to ask about yet").into());
+                return Err(tr("Non ci sono ancora note su cui fare domande", "There are no notes to ask about yet").into());
             }
             (model, prompts::chat_system_global(&with_tr))
         } else {
-            let m = db.get_meeting(&scope).map_err(err)?.ok_or(tr("Meeting non trovato", "Meeting not found"))?;
+            let m = db.get_meeting(&scope).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
             let model = resolve_model_for(&state, &settings, &settings.chat_model, local_only(&db, &m)?)?;
             let segs = db.segments(&scope).map_err(err)?;
             (model, prompts::chat_system_meeting(&m, &segs, &settings.user_name))

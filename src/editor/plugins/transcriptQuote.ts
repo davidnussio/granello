@@ -37,8 +37,8 @@ function render(view: BlockView<TranscriptQuote>) {
       area(data.text, (text) => view.set({ ...data, text }), {
         class: "tq-text",
         readOnly: !editable,
-        placeholder: t("La frase detta nel meeting"),
-        attrs: { "data-focus": "text", "aria-label": t("La frase detta nel meeting") },
+        placeholder: t("La frase detta nella registrazione"),
+        attrs: { "data-focus": "text", "aria-label": t("La frase detta nella registrazione") },
       }),
       h(
         "div",
@@ -60,8 +60,8 @@ function render(view: BlockView<TranscriptQuote>) {
           {
             class: "tq-time",
             readOnly: !editable,
-            title: t("Minuto del meeting (minuti:secondi)"),
-            attrs: { "data-focus": "time", "aria-label": t("Minuto del meeting") },
+            title: t("Minuto della registrazione (minuti:secondi)"),
+            attrs: { "data-focus": "time", "aria-label": t("Minuto della registrazione") },
           },
         ),
         h(
@@ -124,7 +124,7 @@ export const transcriptQuote: EditorPlugin = {
       },
       icon: "❝",
       get group() {
-        return t("Meeting");
+        return t("Note");
       },
       keywords: ["citazione", "trascrizione", "quote", "transcript", "frase", "detto"],
       run: (e) => {

@@ -3,7 +3,7 @@ title: Come funziona la privacy
 description: Cosa resta sul tuo Mac, cosa può uscirne e quando. La versione breve, con una tabella.
 ---
 
-Granello è fatto perché quello che si dice in riunione resti tuo. Questa pagina dice con precisione cosa resta sul Mac e cosa può uscirne.
+Granello è fatto perché quello che si dice in una conversazione resti tuo. Questa pagina dice con precisione cosa resta sul Mac e cosa può uscirne.
 
 ## In breve
 
@@ -16,9 +16,9 @@ Granello è fatto perché quello che si dice in riunione resti tuo. Questa pagin
 
 | Cosa | Quando | Come evitarlo |
 | --- | --- | --- |
-| Note e trascrizione, come testo | Generi le note AI, fai una domanda in chat o usi ✦ nell'editor, con un provider AI online | Usa un [provider locale](/it/privacy/local-models/), oppure metti il meeting su [blindata](/it/privacy/levels/) |
+| Note e trascrizione, come testo | Generi le note AI, fai una domanda in chat o usi ✦ nell'editor, con un provider AI online | Usa un [provider locale](/it/privacy/local-models/), oppure metti la nota su [blindata](/it/privacy/levels/) |
 | Un template che descrivi all'AI, con i suoi campi attuali | Usi **Configura con l'AI** in un template, con un provider AI online | Usa un [provider locale](/it/privacy/local-models/) per le note AI |
-| L'audio del meeting | Solo con la **trascrizione online** attiva, e solo quando premi *Affina online* su quel meeting | Lascia l'opzione spenta (è così di default), oppure metti il meeting su audio locale o blindata |
+| L'audio registrato | Solo con la **trascrizione online** attiva, e solo quando premi *Affina online* su quella nota | Lascia l'opzione spenta (è così di default), oppure metti la nota su audio locale o blindata |
 | L'indirizzo di un link | Crei l'anteprima di un link: alla pagina viene chiesto il titolo, una volta | Non creare anteprime dei link |
 | Una richiesta di contenuto incorporato | Premi **Carica** su un contenuto incorporato (video, progetto grafico, mappa) | Non premere Carica |
 | Una richiesta al tuo calendario | Granello scarica gli indirizzi iCal che hai aggiunto | Non aggiungere un calendario |
@@ -33,8 +33,8 @@ La rubrica del Mac si legge solo se attivi **Proponi i contatti della rubrica** 
 
 Tutte e due sono **spente di default**.
 
-- **Salva le registrazioni** tiene l'audio di ogni meeting in una cartella del tuo Mac, per riascoltarlo. Non viene mai caricato.
-- **Trascrizione online** tiene l'audio di un meeting quando finisce, e il meeting propone *Affina online*: solo se lo premi l'audio viene caricato su un servizio di trascrizione online, per avere una trascrizione che distingue i parlanti. L'audio resta nella cartella dei dati finché non lo carichi o lo elimini, e dopo il caricamento viene cancellato. Non parte mai per un meeting con privacy audio locale o blindata, né con parti ancora da verificare.
+- **Salva le registrazioni** tiene l'audio di ogni registrazione in una cartella del tuo Mac, per riascoltarlo. Non viene mai caricato.
+- **Trascrizione online** tiene l'audio quando una registrazione finisce, e la nota propone *Affina online*: solo se lo premi l'audio viene caricato su un servizio di trascrizione online, per avere una trascrizione che distingue i parlanti. L'audio resta nella cartella dei dati finché non lo carichi o lo elimini, e dopo il caricamento viene cancellato. Non parte mai per una nota con privacy audio locale o blindata, né con parti ancora da verificare.
 
 ## Dove stanno le cose
 
@@ -44,7 +44,7 @@ Tutte e due sono **spente di default**.
 
 Di più in [dati e file](/it/reference/data/).
 
-## Cosa decidi per ogni meeting
+## Cosa decidi per ogni nota
 
-- Il [livello di privacy](/it/privacy/levels/) decide se qualcosa di quel meeting può uscire dal Mac.
-- [Oscura e verifica](/it/privacy/redaction/) tolgono una frase per sempre, oppure trattengono un meeting finché non l'hai guardato.
+- Il [livello di privacy](/it/privacy/levels/) decide se qualcosa di quella nota può uscire dal Mac.
+- [Oscura e verifica](/it/privacy/redaction/) tolgono una frase per sempre, oppure trattengono una nota finché non l'hai guardata.

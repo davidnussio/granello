@@ -139,7 +139,7 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
         <div className="tpl-edit-cols">
           <label className="field tpl-edit-col">
             <span>{t("Istruzioni per l'AI")}</span>
-            <small className="muted">{t("Come l'AI deve strutturare le note AI di questo meeting.")}</small>
+            <small className="muted">{t("Come l'AI deve strutturare le note AI con questo template.")}</small>
             <textarea
               value={edit.instructions}
               onChange={(e) => setEdit({ ...edit, instructions: e.target.value })}
@@ -149,9 +149,7 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
           <div className="field tpl-edit-col">
             <span>{t("Note di partenza")}</span>
             <small className="muted">
-              {t(
-                "Ciò che trovi già scritto nelle tue note quando scegli questo template su un meeting vuoto.",
-              )}
+              {t("Ciò che trovi già scritto quando scegli questo template su una nota vuota.")}
             </small>
             <div className="tpl-edit-notes">
               <NoteEditor
@@ -222,7 +220,7 @@ export default function TemplatesView({ toast }: { toast: (text: string) => void
       </div>
       <p className="muted">
         {t(
-          "Il template dice all'AI come strutturare le note AI e può dare alle tue note un punto di partenza. Si sceglie per ogni meeting dall'intestazione.",
+          "Il template dice all'AI come strutturare le note AI e può dare alle tue note un punto di partenza. Si sceglie per ogni nota dall'intestazione.",
         )}
       </p>
 

@@ -192,7 +192,7 @@ export default function SettingsView({
               </p>
             )}
             <label className="field">
-              <span>{t("Lingua del meeting")}</span>
+              <span>{t("Lingua parlata")}</span>
               <select value={s.language} onChange={(e) => save({ language: e.target.value })}>
                 {LANGS.map(([v, l]) => (
                   <option key={v} value={v}>
@@ -201,7 +201,7 @@ export default function SettingsView({
                 ))}
               </select>
               <small className="muted">
-                {t("La lingua parlata nei meeting: guida la trascrizione e la lingua delle note AI.")}
+                {t("La lingua parlata nelle registrazioni: guida la trascrizione e la lingua delle note AI.")}
               </small>
             </label>
             <div className="field">

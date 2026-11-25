@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Granello registra l'audio del meeting per trascriverlo localmente sul tuo Mac.</string>
+  <string>Granello registra l'audio della conversazione per trascriverlo localmente sul tuo Mac.</string>
   <key>NSAudioCaptureUsageDescription</key>
   <string>Granello ascolta l'audio della call per trascrivere localmente anche gli altri partecipanti.</string>
   <key>NSContactsUsageDescription</key>

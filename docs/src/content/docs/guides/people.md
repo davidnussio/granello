@@ -1,23 +1,23 @@
 ---
 title: People
-description: "The people in your meetings: fix a name everywhere, merge duplicates, import a vCard file and use your Mac's contacts."
+description: "The people in your notes: fix a name everywhere, merge duplicates, import a vCard file and use your Mac's contacts."
 ---
 
-**Settings → People** lists everyone who took part in your meetings. Granello suggests them when you add participants to a meeting, and adds new ones on its own.
+**Settings → People** lists everyone who appears as a participant in your notes. Granello suggests them when you add participants to a note, and adds new ones on its own.
 
 ## The list
 
-Search by name or email, and sort by name, by number of meetings or by who you saw most recently. Each row shows the email, how many meetings the person was in and the date of the last one. Click a name to open that person's meetings in the [Library](/guides/library/).
+Search by name or email, and sort by name, by number of notes or by who you saw most recently. Each row shows the email, how many notes the person is in and the date of the last one. Click a name to open that person's notes in the [Library](/guides/library/).
 
 ## Fix a name
 
-Hover a person and press ✎ to change the name or the email. The new name reaches every meeting: the participants, the @mentions in notes and AI notes, and who said what in transcript quotes. A name that already belongs to someone else is not taken: merge the two instead.
+Hover a person and press ✎ to change the name or the email. The new name reaches every note: the participants, the @mentions in notes and AI notes, and who said what in transcript quotes. A name that already belongs to someone else is not taken: merge the two instead.
 
 ## Merge two people
 
-The same person often ends up written in two ways ("Marco" and "Marco Bianchi"). Hover the one to remove, press ⇢ and choose who it really is. Its meetings move to the other person, without duplicates, and it takes the email if the other had none.
+The same person often ends up written in two ways ("Marco" and "Marco Bianchi"). Hover the one to remove, press ⇢ and choose who it really is. Its notes move to the other person, without duplicates, and it takes the email if the other had none.
 
-Removing someone (×) only takes them out of the list: the meetings stay as they are.
+Removing someone (×) only takes them out of the list: the notes stay as they are.
 
 ## Import from a vCard file
 

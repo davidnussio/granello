@@ -755,7 +755,7 @@ export default function LibraryView({
                   title={
                     g.archived
                       ? t("Riporta il progetto tra quelli attivi")
-                      : t("Archivia: il progetto è chiuso, i meeting restano")
+                      : t("Archivia: il progetto è chiuso, le note restano")
                   }
                 >
                   {g.archived ? "⤒" : "⤓"}
@@ -765,7 +765,7 @@ export default function LibraryView({
                   onClick={() => deleteProject(g.project!)}
                   onBlur={() => setConfirmDelete(null)}
                   aria-label={t("Elimina il progetto {name}", { name: g.project.name })}
-                  title={t("Elimina il progetto: i suoi meeting restano, senza progetto")}
+                  title={t("Elimina il progetto: le sue note restano, senza progetto")}
                 >
                   {confirmDelete === g.key ? t("Elimina?") : "×"}
                 </button>
@@ -776,14 +776,14 @@ export default function LibraryView({
         {groups.length === 0 && (
           <p className="muted small lib-empty">
             {narrowed
-              ? t("Nessuna voce nei meeting scelti dalle altre colonne.")
+              ? t("Nessuna voce nelle note scelte dalle altre colonne.")
               : d === "projects"
                 ? t("Nessun progetto: creane uno con + Nuovo progetto.")
                 : d === "tags"
-                  ? t("Nessun tag: aggiungine uno a un meeting, sotto il titolo.")
+                  ? t("Nessun tag: aggiungine uno a una nota, sotto il titolo.")
                   : d === "people"
-                    ? t("Nessun partecipante nei meeting.")
-                    : t("Ancora nessun meeting")}
+                    ? t("Nessun partecipante nelle note.")
+                    : t("Ancora nessuna nota")}
           </p>
         )}
         {d === "projects" && columns.projects.archived > 0 && (
@@ -812,17 +812,17 @@ export default function LibraryView({
           type="search"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          aria-label={t("Filtra i meeting elencati")}
+          aria-label={t("Filtra le note elencate")}
           placeholder={
             chosenLabels.length > 0 && chosenLabels.length <= 2
               ? t("Filtra in {name}", { name: chosenLabels.join(" + ") })
-              : t("Filtra i meeting elencati")
+              : t("Filtra le note elencate")
           }
         />
         <button
           className="btn small ghost"
           onClick={() => setOldestFirst((v) => !v)}
-          title={t("Cambia l'ordine dei meeting")}
+          title={t("Cambia l'ordine delle note")}
         >
           {oldestFirst ? t("↑ Più vecchi") : t("↓ Più recenti")}
         </button>
@@ -833,12 +833,12 @@ export default function LibraryView({
               aria-pressed={mode === "meetings"}
               onClick={() => setMode("meetings")}
             >
-              {t("Meeting")}
+              {t("Note")}
             </button>
             <button
               className={mode === "items" ? "on" : ""}
               aria-pressed={mode === "items"}
-              title={t("Decisioni, azioni e citazioni scritte nelle note di questi meeting")}
+              title={t("Decisioni, azioni e citazioni scritte in queste note")}
               onClick={() => setMode("items")}
             >
               {t("Elementi")}
@@ -934,7 +934,7 @@ export default function LibraryView({
                     (s.id === currentItem?.id ? " on" : "") +
                     (s.item.done ? " done" : "")
                   }
-                  title={t("Doppio clic o Invio: apre il meeting")}
+                  title={t("Doppio clic o Invio: apre la nota")}
                   onClick={() => {
                     setItemId(s.id);
                     setCol(meetingsCol);
@@ -979,7 +979,7 @@ export default function LibraryView({
           className={"lib-col lib-meetings" + (at === meetingsCol ? " focus" : "")}
           role="listbox"
           aria-multiselectable="true"
-          aria-label={t("Meeting")}
+          aria-label={t("Note")}
         >
           {listed.map((m) => (
             <button
@@ -1016,16 +1016,16 @@ export default function LibraryView({
               {filter
                 ? t("Nessun risultato")
                 : meetings.length === 0
-                  ? t("Ancora nessun meeting")
+                  ? t("Ancora nessuna nota")
                   : pinnedOn && chosenLabels.length === 0
                     ? t(
-                        "Nessun meeting fissato: aprine uno e premi la puntina accanto a copia, stampa ed elimina.",
+                        "Nessuna nota fissata: aprine una e premi la puntina accanto a copia, stampa ed elimina.",
                       )
                     : only?.dim === "projects"
-                      ? t("Nessun meeting qui: apri un meeting e scegli questo progetto, in alto a destra.")
+                      ? t("Nessuna nota qui: apri una nota e scegli questo progetto, in alto a destra.")
                       : only?.dim === "tags"
-                        ? t("Nessun meeting qui: aggiungi il tag #{tag} a un meeting.", { tag: only.label })
-                        : t("Nessun meeting qui.")}
+                        ? t("Nessuna nota qui: aggiungi il tag #{tag} a una nota.", { tag: only.label })
+                        : t("Nessuna nota qui.")}
             </p>
           )}
         </div>
@@ -1033,14 +1033,14 @@ export default function LibraryView({
         <div hidden={recordingsView || mode === "items"} className="lib-col lib-preview">
           {bulk ? (
             <>
-              <h2>{t("{n} meeting selezionati", { n: selection.length })}</h2>
+              <h2>{t("{n} note selezionate", { n: selection.length })}</h2>
               <p className="muted small">
-                {t("Il progetto e i tag scelti qui valgono per tutti i meeting selezionati.")}
+                {t("Il progetto e i tag scelti qui valgono per tutte le note selezionate.")}
               </p>
               <select
                 className="chip select lib-bulk-project"
                 value={selectionProject}
-                aria-label={t("Progetto dei meeting selezionati")}
+                aria-label={t("Progetto delle note selezionate")}
                 onChange={(e) => moveSelection(e.target.value || null)}
               >
                 {selectionProject === "mixed" && <option value="mixed">{t("Progetti diversi")}</option>}
@@ -1068,7 +1068,7 @@ export default function LibraryView({
                   onChange={(e) => setNewTag(e.target.value)}
                   // le frecce qui scorrono i tag proposti, non le colonne
                   onKeyDown={(e) => e.key !== "Escape" && e.stopPropagation()}
-                  aria-label={t("Tag da aggiungere ai meeting selezionati")}
+                  aria-label={t("Tag da aggiungere alle note selezionate")}
                   placeholder={t("Nome del tag")}
                 />
                 <datalist id="lib-known-tags">
@@ -1101,8 +1101,8 @@ export default function LibraryView({
                       <button
                         type="button"
                         className="chip-x"
-                        aria-label={t("Togli #{tag} dai meeting selezionati", { tag: g.label })}
-                        title={t("Togli #{tag} dai meeting selezionati", { tag: g.label })}
+                        aria-label={t("Togli #{tag} dalle note selezionate", { tag: g.label })}
+                        title={t("Togli #{tag} dalle note selezionate", { tag: g.label })}
                         onClick={() => tagSelection([], [g.key])}
                       >
                         ×
@@ -1172,7 +1172,7 @@ export default function LibraryView({
               )}
               <div className="lib-actions">
                 <button className="btn small" onClick={() => onOpen(current.id)}>
-                  {t("Apri il meeting")}
+                  {t("Apri la nota")}
                 </button>
                 <button
                   className={"btn small ghost" + (current.pinnedAt !== null ? " on" : "")}
@@ -1190,12 +1190,12 @@ export default function LibraryView({
               </div>
               <p className="muted small lib-hint">
                 {t(
-                  "⌘ clic o Maiusc clic su altri meeting: li selezioni insieme per dare loro un progetto o un tag.",
+                  "⌘ clic o Maiusc clic su altre note: le selezioni insieme per dare loro un progetto o un tag.",
                 )}
               </p>
             </>
           ) : (
-            <p className="muted small">{t("Scegli un meeting per vederne l'anteprima.")}</p>
+            <p className="muted small">{t("Scegli una nota per vederne l'anteprima.")}</p>
           )}
         </div>
       </div>

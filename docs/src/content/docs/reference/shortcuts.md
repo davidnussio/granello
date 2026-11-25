@@ -7,8 +7,8 @@ description: The shortcuts of Granello, in the app, in a note and in the Library
 
 | Shortcut | What it does |
 | --- | --- |
-| ⌘N | New notes |
-| ⌘K | Search your meetings |
+| ⌘N | New note |
+| ⌘K | Search notes |
 | ⌘, | Settings |
 
 ## In a note
@@ -39,7 +39,7 @@ description: The shortcuts of Granello, in the app, in a note and in the Library
 | --- | --- |
 | ↑ ↓ | Move in the column |
 | ← → | Change column |
-| Enter | Open the meeting |
-| ⌘-click, Shift-click | Select several meetings |
-| ⌘A | Select all the listed meetings |
+| Enter | Open the note |
+| ⌘-click, Shift-click | Select several notes |
+| ⌘A | Select all the listed notes |
 | Esc | Clear the selection |

@@ -3,7 +3,7 @@ title: Comandi /
 description: Tutti i comandi del menu / di una nota, cosa inseriscono, la loro scorciatoia e come si scrivono in Markdown.
 ---
 
-Digita `/` in una nota per aprire il menu dei comandi. Continua a scrivere per filtrarlo (capisce parole italiane e inglesi: `/tabella` e `/table` vanno bene tutte e due), spostati con le frecce, inserisci con Invio, chiudi con Esc. Dentro il codice il menu non si apre. Il nome di un gruppo mostra tutto il gruppo: `/meeting` elenca tutti i blocchi del gruppo Meeting, `/strumenti` tutti gli strumenti.
+Digita `/` in una nota per aprire il menu dei comandi. Continua a scrivere per filtrarlo (capisce parole italiane e inglesi: `/tabella` e `/table` vanno bene tutte e due), spostati con le frecce, inserisci con Invio, chiudi con Esc. Dentro il codice il menu non si apre. Il nome di un gruppo mostra tutto il gruppo: `/note` elenca tutti i blocchi del gruppo Note, `/strumenti` tutti gli strumenti.
 
 ![Il menu / aperto in una nota vuota: in cima Struttura ed Elenchi](../../../../assets/shots/it/commands/menu.webp)
 
@@ -67,7 +67,7 @@ Scorciatoia: `1.` + spazio. Markdown: `1. voce`.
 
 ### Azione da fare
 
-Una casella da spuntare quando la cosa è fatta. Le azioni di tutti i meeting si trovano insieme nella [Libreria](/it/guides/library/#elementi-attraverso-i-meeting), e l'[avanzamento](#avanzamento) le conta.
+Una casella da spuntare quando la cosa è fatta. Le azioni di tutte le note si trovano insieme nella [Libreria](/it/guides/library/#elementi-attraverso-le-note), e l'[avanzamento](#avanzamento) le conta.
 
 Scorciatoia: `[ ]` + spazio. Markdown: `- [ ] da fare`, `- [x] fatto`.
 
@@ -77,7 +77,7 @@ Scorciatoia: `[ ]` + spazio. Markdown: `- [ ] da fare`, `- [x] fatto`.
 
 ### Citazione
 
-Una citazione che non viene dalla trascrizione, per esempio da una mail. Per una frase detta nel meeting c'è la [citazione dalla trascrizione](#citazione-dalla-trascrizione).
+Una citazione che non viene dalla trascrizione, per esempio da una mail. Per una frase detta nella registrazione c'è la [citazione dalla trascrizione](#citazione-dalla-trascrizione).
 
 Scorciatoia: `>` + spazio. Markdown: `> testo`.
 
@@ -173,7 +173,7 @@ Markdown: `> [!WARNING]`.
 
 ### Riquadro decisione
 
-Un riquadro per una decisione. I riquadri decisione di tutti i meeting si trovano insieme nella [Libreria](/it/guides/library/#elementi-attraverso-i-meeting).
+Un riquadro per una decisione. I riquadri decisione di tutte le note si trovano insieme nella [Libreria](/it/guides/library/#elementi-attraverso-le-note).
 
 Markdown: `> [!DECISION]`.
 
@@ -183,7 +183,7 @@ Markdown: `> [!DECISION]`.
 
 ### Immagine
 
-Scegli un file immagine: viene copiato negli allegati del meeting. Puoi anche incollare uno screenshot o trascinare un'immagine nella nota.
+Scegli un file immagine: viene copiato negli allegati della nota. Puoi anche incollare uno screenshot o trascinare un'immagine nella nota.
 
 Markdown: `![descrizione](attachments/…)`.
 
@@ -191,7 +191,7 @@ Markdown: `![descrizione](attachments/…)`.
 
 ### Allegato
 
-Scegli un file qualsiasi, fino a 25 MB: viene copiato negli allegati del meeting e mostrato con nome e dimensione.
+Scegli un file qualsiasi, fino a 25 MB: viene copiato negli allegati della nota e mostrato con nome e dimensione.
 
 Markdown: `[📎 nome (dimensione)](attachments/…)`.
 
@@ -213,7 +213,7 @@ Markdown: `[Titolo](https://… "embed")`.
 
 ![Un video di YouTube incorporato, che aspetta un clic prima di caricarsi](../../../../assets/shots/it/commands/embed.webp)
 
-## Meeting
+## Note
 
 ### Decisione
 
@@ -239,7 +239,7 @@ Scrive l'ora, per esempio `10:42`, come testo normale.
 
 ### Segna il momento
 
-Segna il minuto della registrazione, come ⇧⌘M mentre registri. Quando il meeting finisce, l'AI scrive cosa si stava dicendo in quel minuto; puoi anche scriverlo tu. ↗ apre la trascrizione in quel punto.
+Segna il minuto della registrazione, come ⇧⌘M mentre registri. Quando la registrazione finisce, l'AI scrive cosa si stava dicendo in quel minuto; puoi anche scriverlo tu. ↗ apre la trascrizione in quel punto.
 
 Markdown: `::: moment 12:34` … `:::`.
 
@@ -247,7 +247,7 @@ Markdown: `::: moment 12:34` … `:::`.
 
 ### Citazione dalla trascrizione
 
-Una frase detta nel meeting, con chi l'ha detta e il minuto. Il modo più veloce è selezionare il testo nel pannello Trascrizione e premere **❝ Cita** (mentre registri, lo stesso pulsante in fondo al pannello cita l'ultima frase); il comando ne inserisce una vuota da compilare, al minuto attuale della registrazione. Le citazioni si trovano nella [Libreria](/it/guides/library/#elementi-attraverso-i-meeting).
+Una frase detta nella registrazione, con chi l'ha detta e il minuto. Il modo più veloce è selezionare il testo nel pannello Trascrizione e premere **❝ Cita** (mentre registri, lo stesso pulsante in fondo al pannello cita l'ultima frase); il comando ne inserisce una vuota da compilare, al minuto attuale della registrazione. Le citazioni si trovano nella [Libreria](/it/guides/library/#elementi-attraverso-le-note).
 
 Markdown: `::: quote 12:34 Nome` … `:::`.
 
@@ -255,7 +255,7 @@ Markdown: `::: quote 12:34 Nome` … `:::`.
 
 ### Chiedi all'AI
 
-Una richiesta sul meeting, come "Quali sono le obiezioni del cliente?", con la risposta sotto. La risposta si ricalcola mentre registri e un'ultima volta quando la trascrizione finisce; ↻ la richiede. Invia le note e la trascrizione al provider AI che hai configurato: vedi [livelli di privacy](/it/privacy/levels/) per i meeting in cui questo non deve succedere.
+Una richiesta sulla nota, come "Quali sono le obiezioni del cliente?", con la risposta sotto. La risposta si ricalcola mentre registri e un'ultima volta quando la trascrizione finisce; ↻ la richiede. Invia le note e la trascrizione al provider AI che hai configurato: vedi [livelli di privacy](/it/privacy/levels/) per le note in cui questo non deve succedere.
 
 Markdown: `::: ai Richiesta` … `:::`.
 
@@ -267,7 +267,7 @@ Sondaggi, lavagne a colonne, timeline, pro e contro, matrici di decisione e diag
 
 ### Sondaggio
 
-Una domanda con le opzioni e i voti, per contare in fretta durante il meeting. − e + cambiano i voti; l'opzione in testa è evidenziata.
+Una domanda con le opzioni e i voti, per contare in fretta durante la riunione. − e + cambiano i voti; l'opzione in testa è evidenziata.
 
 Markdown: `::: poll Domanda`, poi `- [voti] opzione` per ogni opzione, poi `:::`.
 

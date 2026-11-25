@@ -16,6 +16,8 @@ export interface Meeting {
   notesMd: string;
   enhancedMd: string | null;
   privacy: Privacy;
+  /** Ultima modifica di titolo, note, note AI, partecipanti o tag. */
+  updatedAt: number;
 }
 
 /**
@@ -81,6 +83,8 @@ export interface MeetingSummary {
   projectId: string | null;
   /** Quando è stato fissato; null se non è fissato. */
   pinnedAt: number | null;
+  /** Ultima modifica di titolo, note, note AI, partecipanti o tag. */
+  updatedAt: number;
   snippet: string | null;
 }
 

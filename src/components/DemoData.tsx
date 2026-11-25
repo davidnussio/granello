@@ -36,7 +36,7 @@ export default function DemoButton({ demo, primary = false }: { demo: Demo; prim
     <button
       className={"btn small" + (confirm ? " danger" : "")}
       disabled={busy}
-      title={t("Toglie solo i meeting di esempio, anche se li hai modificati. I tuoi meeting restano.")}
+      title={t("Toglie solo le note di esempio, anche se le hai modificate. Le tue note restano.")}
       onClick={() => {
         if (confirm) return run(demo.remove);
         setConfirm(true);

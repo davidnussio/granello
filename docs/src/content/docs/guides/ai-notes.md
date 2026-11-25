@@ -1,6 +1,6 @@
 ---
 title: AI notes, templates and chat
-description: Turn your notes and the transcript into complete notes, shape them with a template, and ask questions about your meetings.
+description: Turn your notes and the transcript into complete notes, shape them with a template, and ask questions across your notes.
 ---
 
 ## AI notes
@@ -14,12 +14,12 @@ description: Turn your notes and the transcript into complete notes, shape them 
 
 ## Templates
 
-A template tells the AI how to structure the notes. Granello comes with General, 1:1, Standup, Interview and Client meeting, and you can add your own in **Settings → Templates**.
+A template tells the AI how to structure the notes. Granello comes with General, 1:1, Standup, Interview and Client, and you can add your own in **Settings → Templates**.
 
 A template has two parts:
 
 - **Instructions for the AI**: the sections and the rules for the AI notes.
-- **Starting notes** (optional): an agenda, section headings or a checklist, written with the same editor as your notes. They fill your notes when you pick the template on a meeting whose notes are still empty. Notes you already wrote are never replaced.
+- **Starting notes** (optional): an agenda, section headings or a checklist, written with the same editor as your notes. They fill the note when you pick the template on a note that is still empty. Notes you already wrote are never replaced.
 
 ![Editing a template: instructions for the AI on the left, starting notes on the right](../../../assets/shots/en/templates.webp)
 
@@ -32,15 +32,15 @@ Below the two columns, **Set up with AI** writes the template for you. Describe 
 - Nothing is saved on its own: review the fields, change what you want, then press **Save**. **Undo** puts the fields back as they were before the AI's suggestion.
 - It uses the model chosen for AI notes in **Settings**. If no model is ready, the message says what to set up there.
 
-Your description and the template's current fields go to that model; no meeting is sent. See [what can leave your Mac](/privacy/overview/).
+Your description and the template's current fields go to that model; no note is sent. See [what can leave your Mac](/privacy/overview/).
 
 Built-in templates cannot be changed: editing one saves a copy.
 
-You choose the template of each meeting in its header.
+You choose the template of each note in its header.
 
 ## Chat
 
-- **Ask** inside a meeting answers from that meeting's notes and transcript.
-- **Ask your meetings** in the sidebar answers across all meetings: a full-text search finds the relevant ones, and the answer cites their title and date.
+- **Ask** inside a note answers from what you wrote there and its transcript.
+- **Ask your notes** in the sidebar answers across all your notes: a full-text search finds the relevant ones, and the answer cites their title and date.
 
-The chat sends text to the AI provider you configured. Meetings that may not go to that model, because they are hardened or have parts to review, are left out. See [privacy levels](/privacy/levels/).
+The chat sends text to the AI provider you configured. Notes that may not go to that model, because they are hardened or have parts to review, are left out. See [privacy levels](/privacy/levels/).

@@ -92,7 +92,7 @@ function render(view: BlockView<Moment>) {
   const text = area(data.text, (next) => view.set({ ...data, text: next }), {
     class: "moment-text",
     readOnly: !editable,
-    placeholder: t("Cosa si stava dicendo? A fine riunione lo scrive l'AI"),
+    placeholder: t("Cosa si stava dicendo? A fine registrazione lo scrive l'AI"),
     attrs: { "data-focus": "text", "aria-label": t("Cosa si stava dicendo in quel momento") },
   });
 
@@ -108,8 +108,8 @@ function render(view: BlockView<Moment>) {
       {
         class: "moment-time",
         readOnly: !editable,
-        title: t("Minuto del meeting (minuti:secondi)"),
-        attrs: { "data-focus": "time", "aria-label": t("Minuto del meeting") },
+        title: t("Minuto della registrazione (minuti:secondi)"),
+        attrs: { "data-focus": "time", "aria-label": t("Minuto della registrazione") },
       },
     ),
     text,
@@ -175,7 +175,7 @@ export const moment: EditorPlugin = {
       },
       icon: "⚑",
       get group() {
-        return t("Meeting");
+        return t("Note");
       },
       keywords: [
         "momento",

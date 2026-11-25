@@ -47,12 +47,12 @@ export default function Home({
       <h1 className="page-title">{t("Ciao 👋")}</h1>
       <p className="muted">
         {t(
-          "Apri un meeting dal calendario o crea note nuove. Scrivi quello che ti sembra importante: Granello trascrive in locale e alla fine l'AI arricchisce le tue note con la trascrizione.",
+          "Apri un evento dal calendario o crea una nota nuova. Scrivi quello che ti sembra importante: Granello trascrive in locale e alla fine l'AI arricchisce le tue note con la trascrizione.",
         )}
       </p>
       <div className="row gap" style={{ margin: "20px 0 32px" }}>
         <button className="btn primary" onClick={onNew}>
-          {t("+ Nuove note")}
+          {t("+ Nuova nota")}
         </button>
         <button className="btn" onClick={onRefresh}>
           {t("↻ Aggiorna calendario")}
@@ -82,7 +82,7 @@ export default function Home({
             <li className={setup.hasCalendar ? "done" : "optional"}>
               <strong>{t("Calendario")}</strong>
               <span className="muted small">
-                {setup.hasCalendar ? t("Collegato") : t("Facoltativo: mostra qui i prossimi meeting.")}
+                {setup.hasCalendar ? t("Collegato") : t("Facoltativo: mostra qui i prossimi eventi.")}
               </span>
             </li>
           </ul>
@@ -99,11 +99,11 @@ export default function Home({
             <p className="muted small">
               {demo.count
                 ? t(
-                    "{n} meeting inventati, con note, trascrizioni e progetti. Quando hai finito di esplorare puoi toglierli: i tuoi meeting restano.",
+                    "{n} note inventate, con trascrizioni e progetti. Quando hai finito di esplorare puoi toglierle: le tue note restano.",
                     { n: demo.count },
                   )
                 : t(
-                    "Carica qualche meeting inventato ma realistico: note con tutti i blocchi, trascrizioni, note AI e progetti nella Libreria. Si tolgono con un clic.",
+                    "Carica qualche nota inventata ma realistica: tutti i blocchi dell'editor, trascrizioni, note AI e progetti nella Libreria. Si tolgono con un clic.",
                   )}
             </p>
           </div>
@@ -119,7 +119,7 @@ export default function Home({
         </section>
       )}
 
-      <h3>{t("Prossimi meeting")}</h3>
+      <h3>{t("Prossimi eventi")}</h3>
       {usable.length > 0 && (
         <div className="calendar-toggles" role="group" aria-label={t("Calendari")}>
           {usable.map((c) => (
@@ -147,7 +147,7 @@ export default function Home({
         <p className="muted small">
           {calendars.length === 0
             ? t(
-                "Nessun evento. Aggiungi l'URL iCal del tuo calendario nelle Impostazioni per vedere qui i meeting.",
+                "Nessun evento. Aggiungi l'URL iCal del tuo calendario nelle Impostazioni per vedere qui i tuoi eventi.",
               )
             : usable.length === 0
               ? t("Tutti i calendari sono disattivati.")

@@ -1,9 +1,9 @@
 ---
 title: Livelli di privacy
-description: Standard, audio locale e blindata. Ogni meeting ha il suo livello, mostrato come un occhio.
+description: Standard, audio locale e blindata. Ogni nota ha il suo livello, mostrato come un occhio.
 ---
 
-Ogni meeting ha un livello di **Privacy**, scelto nell'intestazione del meeting. Vale solo per quel meeting e ha la precedenza sulle impostazioni generali.
+Ogni nota ha un livello di **Privacy**, scelto nell'intestazione della nota. Vale solo per quella nota e ha la precedenza sulle impostazioni generali.
 
 | Livello | Audio | Testo inviato a un provider AI |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ Ogni meeting ha un livello di **Privacy**, scelto nell'intestazione del meeting.
 
 ## Blindata
 
-Con **blindata** non esce niente del meeting dal Mac. Note AI, chat, funzioni AI dell'editor e generazione del titolo usano solo un provider su `localhost`. Se non c'è un modello locale configurato, quelle funzioni non sono disponibili per quel meeting, e Granello lo dice invece di ripiegare su un modello online.
+Con **blindata** non esce niente della nota dal Mac. Note AI, chat, funzioni AI dell'editor e generazione del titolo usano solo un provider su `localhost`. Se non c'è un modello locale configurato, quelle funzioni non sono disponibili per quella nota, e Granello lo dice invece di ripiegare su un modello online.
 
 ## L'occhio
 
@@ -23,14 +23,14 @@ Il livello si vede sempre, come un occhio sul pulsante **Registra** e in cima al
 - un occhio **socchiuso** è audio locale,
 - un occhio **barrato** è blindata.
 
-![Un meeting blindato: l'occhio barrato sul pulsante Registra e in cima alla trascrizione](../../../../assets/shots/it/privacy.webp)
+![Una nota blindata: l'occhio barrato sul pulsante Registra e in cima alla trascrizione](../../../../assets/shots/it/privacy.webp)
 
 ## Copiare e stampare
 
-Copiare una nota come Markdown e stamparla portano il testo fuori da Granello. Per un meeting blindato, o con parti da verificare, il primo clic avvisa e il secondo procede.
+Copiare una nota come Markdown e stamparla portano il testo fuori da Granello. Per una nota blindata, o con parti da verificare, il primo clic avvisa e il secondo procede.
 
 ## Da sapere
 
-- Un [vault](/it/reference/data/#vault) può imporre un livello minimo: i suoi meeting partono da lì e i livelli più bassi non si possono scegliere.
+- Un [vault](/it/reference/data/#vault) può imporre un livello minimo: le sue note partono da lì e i livelli più bassi non si possono scegliere.
 - Puoi cambiare livello in qualsiasi momento. Vale da lì in poi: quello che è già stato inviato non torna indietro.
-- La chat su tutti i meeting lascia fuori quelli che non possono andare al modello in uso.
+- La chat su tutte le note lascia fuori quelle che non possono andare al modello in uso.

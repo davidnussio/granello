@@ -55,6 +55,7 @@ const MEETING_FIELDS: &[&str] = &[
     "privacy",
     "project_id",
     "pinned_at",
+    "updated_at",
 ];
 
 const ENTITIES: &[Entity] = &[
@@ -797,8 +798,8 @@ fn status(state: &AppState) -> CmdResult<Status> {
         available,
         blocked: (min == Privacy::Hardened).then(|| {
             tr(
-                "Un vault blindato non si sincronizza: niente dei suoi meeting deve uscire dal Mac.",
-                "A hardened vault does not sync: none of its meetings may leave the Mac.",
+                "Un vault blindato non si sincronizza: niente delle sue note deve uscire dal Mac.",
+                "A hardened vault does not sync: none of its notes may leave the Mac.",
             )
             .to_string()
         }),
