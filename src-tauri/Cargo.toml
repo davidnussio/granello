@@ -1,6 +1,6 @@
 [package]
 name = "granello"
-version = "0.2.9"
+version = "0.2.10"
 description = "Note di meeting arricchite dall'AI, trascrizione locale."
 authors = ["David Nussio"]
 license = "MIT"
