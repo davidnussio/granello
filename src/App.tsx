@@ -21,6 +21,7 @@ import type { Demo } from "./components/DemoData";
 import { getLang, resolveLang, setLang, t } from "./i18n";
 import { isMac } from "./platform";
 import { setTimeFormat } from "./format";
+import { OPEN_NOTE, linkTitle } from "./editor/plugins/noteLink";
 
 export interface SetupStatus {
   hasKey: boolean;
@@ -111,6 +112,30 @@ export default function App() {
     const onNotify = (e: Event) => toast((e as CustomEvent<string>).detail);
     window.addEventListener("granello:notify", onNotify);
     return () => window.removeEventListener("granello:notify", onNotify);
+  }, [toast]);
+
+  // un link [[Titolo]] in una nota: apre la nota con quel titolo (la più recente, se sono più d'una)
+  useEffect(() => {
+    const onOpenNote = (e: Event) => {
+      const title = linkTitle((e as CustomEvent<string>).detail).toLowerCase();
+      api
+        .listMeetings()
+        .then((list) => {
+          const found = list
+            .filter((m) => linkTitle(m.title).toLowerCase() === title)
+            .toSorted((a, b) => b.updatedAt - a.updatedAt)[0];
+          if (found) setView({ kind: "meeting", id: found.id });
+          else
+            toast(
+              t("Nessuna nota si chiama «{title}». Crea una nota con questo titolo e il link la apre.", {
+                title: (e as CustomEvent<string>).detail,
+              }),
+            );
+        })
+        .catch((err) => toast(errorText(err)));
+    };
+    window.addEventListener(OPEN_NOTE, onOpenNote);
+    return () => window.removeEventListener(OPEN_NOTE, onOpenNote);
   }, [toast]);
 
   /** La scheda dei dati di esempio nella Home è stata chiusa. */
@@ -476,6 +501,8 @@ export default function App() {
             onCalendarChanged={() => refreshEvents(true)}
             onTimeFormatChanged={applyTimeFormat}
             onOpenPerson={(person) => setView({ kind: "library", person })}
+            onMeetingsChanged={refreshMeetings}
+            onOpenLibrary={() => setView({ kind: "library" })}
             onLangChanged={(l) => {
               applyLang(l);
               refreshMeetings();

@@ -14,7 +14,7 @@ La Libreria sfoglia le note a colonne: scegli una dimensione, poi un valore, poi
 - **Persone**: chi ha partecipato.
 - **Tag**: i tag delle tue note.
 - **Periodo**: questa settimana, poi un gruppo per mese.
-- **Registrazioni**: l'audio salvato, vedi sotto.
+- **File**: registrazioni, immagini e altri file, vedi sotto.
 
 Le frecce muovono tra le colonne e Invio apre la nota; Maiusc + freccia aggiunge anche la voce o la dimensione successiva. ⌘ + ↑↓ si sposta senza cambiare cosa è scelto, e Spazio sceglie o toglie la voce dove sei (nell'elenco delle note, la aggiunge o la toglie dalla selezione).
 
@@ -71,9 +71,19 @@ Filtra per tipo con le etichette in cima, e cerca nel loro testo. Con un doppio 
 
 ![La vista Elementi: decisioni e azioni di più note in un solo elenco](../../../../assets/shots/it/items.webp)
 
-## Registrazioni
+## File
 
-Con **Salva le registrazioni** attivo, la Libreria mostra una scheda per nota con le sue registrazioni. Ognuna ha un player con la forma d'onda dell'audio: si clicca o si trascina per spostarsi.
+**File** elenca i file del vault aperto in tre schede:
+
+- **Registrazioni**: l'audio salvato, vedi sotto.
+- **Immagini**: le immagini incollate o trascinate nelle note.
+- **Altri file**: gli allegati delle note, e i file arrivati senza una nota con un [import](/it/guides/import/).
+
+Un clic sul nome apre il file con l'app predefinita, uno sul titolo apre la nota. Un file arrivato senza nota mostra la cartella da cui veniva, ed **Elimina** lo toglie; l'allegato di una nota si toglie dalla nota.
+
+### Registrazioni
+
+Con **Salva le registrazioni** attivo, la scheda Registrazioni mostra un riquadro per nota con le sue registrazioni. Ognuna ha un player con la forma d'onda dell'audio: si clicca o si trascina per spostarsi.
 
 - **Togli le pause** taglia le parti senza audio. Dopo, i minuti dell'audio non corrispondono più a quelli della trascrizione.
 - **Unisci** mette in un solo file le registrazioni di una nota registrata in più riprese.

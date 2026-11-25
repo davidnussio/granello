@@ -953,6 +953,59 @@ const en: Record<string, string> = {
   "{n} di {total} scelti": "{n} of {total} chosen",
   "Aggiungi 1 persona": "Add 1 person",
   "Aggiungi {n} persone": "Add {n} people",
+  "Nessuna nota si chiama «{title}». Crea una nota con questo titolo e il link la apre.":
+    "No note is called “{title}”. Create a note with this title and the link opens it.",
+  Immagini: "Images",
+  "Altri file": "Other files",
+  "Tipi di file": "File types",
+  "Nessuna immagine. Le immagini incollate o trascinate in una nota compaiono qui.":
+    "No images. Images pasted or dropped into a note appear here.",
+  "Nessun file. Gli allegati delle note e i file importati senza una nota (Impostazioni → Importa da) compaiono qui.":
+    "No files. Note attachments and files imported without a note (Settings → Import from) appear here.",
+  "Apri con l'app predefinita": "Open with the default app",
+  "File non trovato": "File not found",
+  "Importato senza una nota": "Imported without a note",
+  "Senza nota · {folder}": "No note · {folder}",
+  "Senza nota": "No note",
+  "In questa cartella non c'è la cartella .obsidian: forse non è un vault. Puoi importarla lo stesso, come una cartella di file Markdown.":
+    "This folder has no .obsidian folder: it may not be a vault. You can import it anyway, as a folder of Markdown files.",
+  "nota da importare": "note to import",
+  "note da importare": "notes to import",
+  "file usati dalle note, copiati come allegati": "files used by the notes, copied as attachments",
+  "file che nessuna nota usa, in Libreria → File": "files no note uses, in Library → Files",
+  "note già importate, saltate": "notes already imported, skipped",
+  "Progetti dalle cartelle di primo livello:": "Projects from the top-level folders:",
+  "{n} link portano a note che non ci sono: restano link, segnati come mancanti, e funzionano appena crei una nota con quel titolo.":
+    "{n} links point to notes that don't exist: they stay links, marked as missing, and work as soon as you create a note with that title.",
+  "{n} note cambiate in Obsidian dopo l'ultimo import: non vengono aggiornate":
+    "{n} notes changed in Obsidian since the last import: they are not updated",
+  "{n} elementi lasciati fuori": "{n} items left out",
+  "Importate {n} note e {f} file senza nota.": "Imported {n} notes and {f} files without a note.",
+  "Importate {n} note.": "Imported {n} notes.",
+  "Import annullato: tolte {n} note.": "Import undone: {n} notes removed.",
+  "Copia le note di un vault Obsidian nel vault aperto. Il vault Obsidian viene solo letto: non cambia niente. Le immagini e i file che le note usano diventano allegati, i link [[…]] collegano le note tra loro, le cartelle di primo livello diventano progetti e ogni nota riceve il tag #obsidian. Niente viene inviato a un modello AI.":
+    "Copies the notes of an Obsidian vault into the open vault. The Obsidian vault is only read: nothing in it changes. Images and files the notes use become attachments, [[…]] links connect the notes, top-level folders become projects and every note gets the #obsidian tag. Nothing is sent to an AI model.",
+  "Leggo la cartella…": "Reading the folder…",
+  "Non c'è niente di nuovo da importare in questa cartella.":
+    "There is nothing new to import in this folder.",
+  "Importo…": "Importing…",
+  "Importa 1 nota": "Import 1 note",
+  "Importa {n} note": "Import {n} notes",
+  "Scegli il vault Obsidian…": "Choose the Obsidian vault…",
+  "Import fatti": "Past imports",
+  "{n} file senza nota": "{n} files without a note",
+  "Elimina le note e i file arrivati con questo import, anche se li hai modificati dopo":
+    "Deletes the notes and files this import brought in, even if you changed them afterwards",
+  "Annullo…": "Undoing…",
+  "Eliminare {n} note?": "Delete {n} notes?",
+  "Annulla import": "Undo import",
+  File: "Files",
+  "Importa da": "Import from",
+  "Apri la nota «{title}»": "Open the note “{title}”",
+  "Nessuna nota si chiama «{title}»": "No note is called “{title}”",
+  "Collega una nota che non c'è ancora": "Link a note that doesn't exist yet",
+  "Link a una nota": "Link to a note",
+  "[[ + titolo": "[[ + title",
 };
 
 export default en;

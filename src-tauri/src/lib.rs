@@ -1,6 +1,7 @@
 // prima degli altri moduli: definisce le macro trf!/tra! che usano
 #[macro_use]
 mod i18n;
+mod imports;
 mod items;
 
 mod attachments;
@@ -18,6 +19,7 @@ mod keep;
 mod recordings;
 mod llm;
 mod models;
+mod obsidian;
 mod preview;
 mod prompts;
 mod secrets;
@@ -120,6 +122,13 @@ pub fn run() {
             sync::enable_sync,
             sync::disable_sync,
             sync::sync_now,
+            imports::list_files,
+            imports::delete_file,
+            imports::pick_import_dir,
+            imports::scan_obsidian,
+            imports::import_obsidian,
+            imports::list_imports,
+            imports::undo_import,
             commands::get_meeting,
             commands::create_meeting,
             commands::update_meeting,

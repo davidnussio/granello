@@ -15,7 +15,39 @@ fn now_ms() -> i64 {
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
 pub(crate) const MIGRATIONS: &[&str] =
-    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10, SCHEMA_V11];
+    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12];
+
+/// Import da altre app (Obsidian) e file senza nota. Un import ricorda da quale cartella è
+/// partito e cosa ha creato, per saltare le note già importate e per poterlo annullare. I file
+/// senza nota stanno tra gli allegati come gli altri: qui c'è il loro nome e da dove vengono.
+const SCHEMA_V12: &str = r#"
+CREATE TABLE imports (
+    id TEXT PRIMARY KEY,
+    source TEXT NOT NULL,
+    root TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    projects TEXT NOT NULL DEFAULT '[]',
+    people TEXT NOT NULL DEFAULT '[]',
+    report TEXT NOT NULL DEFAULT '{}'
+);
+CREATE TABLE imported_notes (
+    meeting_id TEXT PRIMARY KEY REFERENCES meetings(id) ON DELETE CASCADE,
+    import_id TEXT NOT NULL REFERENCES imports(id) ON DELETE CASCADE,
+    source_path TEXT NOT NULL,
+    source_hash TEXT NOT NULL
+);
+CREATE INDEX idx_imported_notes_import ON imported_notes(import_id);
+CREATE TABLE files (
+    id TEXT PRIMARY KEY,
+    path TEXT NOT NULL,
+    name TEXT NOT NULL,
+    bytes INTEGER NOT NULL DEFAULT 0,
+    folder TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    import_id TEXT REFERENCES imports(id) ON DELETE CASCADE,
+    source_path TEXT
+);
+"#;
 
 /// Quando una nota è stata modificata l'ultima volta (titolo, note, note AI, partecipanti, tag):
 /// la barra laterale le ordina così. Per quelle che ci sono già vale la fine del meeting, o la
@@ -403,10 +435,15 @@ impl Db {
         // la nota in cima alla barra laterale
         let now = now_ms();
         if let Some(t) = title {
+            let before: Option<String> =
+                self.conn.query_row("SELECT title FROM meetings WHERE id = ?1", [id], |r| r.get(0)).optional()?;
             self.conn.execute(
                 "UPDATE meetings SET title = ?1, updated_at = ?3 WHERE id = ?2 AND title IS NOT ?1",
                 params![t, id, now],
             )?;
+            if let Some(before) = before.filter(|b| b != t) {
+                self.rename_links(id, &before, t)?;
+            }
         }
         if let Some(n) = notes_md {
             self.conn.execute(
@@ -426,6 +463,35 @@ impl Db {
         }
         self.reindex(id)?;
         tx.commit()?;
+        Ok(())
+    }
+
+    /// Una nota ha cambiato titolo: i link `[[Vecchio]]` e `[[Vecchio|testo]]` delle altre note
+    /// seguono il nuovo. L'ora di modifica di quelle note non cambia.
+    fn rename_links(&self, id: &str, before: &str, after: &str) -> Result<()> {
+        let (from, to) = (crate::models::link_title(before), crate::models::link_title(after));
+        if from.is_empty() || to.is_empty() || from == to {
+            return Ok(());
+        }
+        let (a, b) = (format!("[[{from}]]"), format!("[[{from}|"));
+        let (c, d) = (format!("[[{to}]]"), format!("[[{to}|"));
+        let ids: Vec<String> = {
+            let mut stmt = self.conn.prepare(
+                "SELECT id FROM meetings WHERE id != ?1 AND (instr(notes_md, ?2) > 0 OR instr(notes_md, ?3) > 0
+                 OR instr(COALESCE(enhanced_md, ''), ?2) > 0 OR instr(COALESCE(enhanced_md, ''), ?3) > 0)",
+            )?;
+            let rows = stmt.query_map(params![id, a, b], |r| r.get(0))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        for other in ids {
+            self.conn.execute(
+                "UPDATE meetings SET notes_md = replace(replace(notes_md, ?2, ?3), ?4, ?5),
+                        enhanced_md = replace(replace(enhanced_md, ?2, ?3), ?4, ?5)
+                 WHERE id = ?1",
+                params![other, a, c, b, d],
+            )?;
+            self.reindex(&other)?;
+        }
         Ok(())
     }
 
@@ -928,10 +994,13 @@ impl Db {
         Ok(())
     }
 
-    /// true se qualche meeting cita ancora quell'allegato nelle note o nelle note AI.
+    /// true se qualche meeting cita ancora quell'allegato nelle note o nelle note AI, o se è
+    /// un file senza nota della Libreria.
     pub fn attachment_in_use(&self, path: &str) -> Result<bool> {
         let n: i64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM meetings WHERE instr(notes_md, ?1) > 0 OR instr(COALESCE(enhanced_md, ''), ?1) > 0",
+            "SELECT (SELECT COUNT(*) FROM meetings
+                     WHERE instr(notes_md, ?1) > 0 OR instr(COALESCE(enhanced_md, ''), ?1) > 0)
+                  + (SELECT COUNT(*) FROM files WHERE path = ?1)",
             [path],
             |r| r.get(0),
         )?;
@@ -1187,6 +1256,224 @@ impl Db {
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    // ---------- file e import ----------
+
+    /// Il testo di ogni nota (note e note AI), per trovare gli allegati che cita.
+    pub fn notes_for_files(&self) -> Result<Vec<(String, String, i64, String)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, title, COALESCE(updated_at, created_at), notes_md || char(10) || COALESCE(enhanced_md, '')
+             FROM meetings WHERE instr(notes_md, 'attachments/') > 0 OR instr(COALESCE(enhanced_md, ''), 'attachments/') > 0",
+        )?;
+        let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// I file senza nota, dal più recente.
+    pub fn loose_files(&self) -> Result<Vec<LooseFile>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, path, name, bytes, folder, created_at FROM files ORDER BY created_at DESC, name",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(LooseFile {
+                id: r.get(0)?,
+                path: r.get(1)?,
+                name: r.get(2)?,
+                bytes: r.get(3)?,
+                folder: r.get(4)?,
+                created_at: r.get(5)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Toglie un file senza nota dall'elenco. Ritorna il suo percorso tra gli allegati.
+    pub fn delete_file(&self, id: &str) -> Result<Option<String>> {
+        let path: Option<String> =
+            self.conn.query_row("SELECT path FROM files WHERE id = ?1", [id], |r| r.get(0)).optional()?;
+        self.conn.execute("DELETE FROM files WHERE id = ?1", [id])?;
+        Ok(path)
+    }
+
+    /// Le note e i file senza nota già importati da quella cartella: percorso nella cartella →
+    /// impronta del contenuto (vuota per i file).
+    pub fn already_imported(&self, root: &str) -> Result<std::collections::HashMap<String, String>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT n.source_path, n.source_hash FROM imported_notes n JOIN imports i ON i.id = n.import_id
+             WHERE i.root = ?1
+             UNION ALL
+             SELECT f.source_path, '' FROM files f JOIN imports i ON i.id = f.import_id
+             WHERE i.root = ?1 AND f.source_path IS NOT NULL",
+        )?;
+        let rows = stmt.query_map([root], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Scrive un import: le note, i file senza nota, i progetti che mancano. Tutto o niente.
+    pub fn save_import(
+        &self,
+        source: &str,
+        root: &str,
+        notes: &[NewNote],
+        files: &[NewFile],
+        privacy: Privacy,
+        report: &serde_json::Value,
+    ) -> Result<ImportRecord> {
+        let tx = self.conn.unchecked_transaction()?;
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = now_ms();
+        self.conn.execute(
+            "INSERT INTO imports (id, source, root, created_at, report) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![id, source, root, now, report.to_string()],
+        )?;
+        let mut created: Vec<String> = Vec::new();
+        let mut project_ids: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        for name in notes.iter().filter_map(|n| n.project.as_deref()) {
+            if project_ids.contains_key(&name.to_lowercase()) {
+                continue;
+            }
+            let existing: Option<String> = self
+                .conn
+                .query_row("SELECT id FROM projects WHERE name = ?1", [name], |r| r.get(0))
+                .optional()?;
+            let pid = match existing {
+                Some(pid) => pid,
+                None => {
+                    let pid = uuid::Uuid::new_v4().to_string();
+                    // archiviato solo se tutte le sue note venivano dall'archivio
+                    let archived = notes
+                        .iter()
+                        .filter(|n| n.project.as_deref().is_some_and(|p| p.eq_ignore_ascii_case(name)))
+                        .all(|n| n.archived_project);
+                    self.conn.execute(
+                        "INSERT INTO projects (id, name, archived, created_at) VALUES (?1, ?2, ?3, ?4)",
+                        params![pid, name, archived, now],
+                    )?;
+                    created.push(pid.clone());
+                    pid
+                }
+            };
+            project_ids.insert(name.to_lowercase(), pid);
+        }
+        self.conn.execute(
+            "UPDATE imports SET projects = ?1 WHERE id = ?2",
+            params![serde_json::to_string(&created)?, id],
+        )?;
+        // le persone che la rubrica non aveva: l'annullamento le toglie se non servono ad altri
+        let mut new_people: Vec<String> = Vec::new();
+        for name in notes.iter().flat_map(|n| &n.attendees) {
+            let known: bool = self.conn.query_row("SELECT COUNT(*) > 0 FROM people WHERE name = ?1", [name], |r| r.get(0))?;
+            if !known && !new_people.iter().any(|p| p.eq_ignore_ascii_case(name)) {
+                new_people.push(name.clone());
+            }
+        }
+        self.conn.execute(
+            "UPDATE imports SET people = ?1 WHERE id = ?2",
+            params![serde_json::to_string(&new_people)?, id],
+        )?;
+        for n in notes {
+            let mid = uuid::Uuid::new_v4().to_string();
+            let project = n.project.as_deref().and_then(|p| project_ids.get(&p.to_lowercase()));
+            self.conn.execute(
+                "INSERT INTO meetings (id, title, created_at, updated_at, attendees, tags, notes_md, privacy, project_id)
+                 VALUES (?1, ?2, ?3, ?4, ?9, ?5, ?6, ?7, ?8)",
+                params![
+                    mid,
+                    n.title,
+                    n.created_at,
+                    n.updated_at,
+                    serde_json::to_string(&n.tags)?,
+                    n.notes_md,
+                    privacy.as_str(),
+                    project,
+                    serde_json::to_string(&n.attendees)?
+                ],
+            )?;
+            self.upsert_people(&n.attendees.iter().map(|a| (a.clone(), None)).collect::<Vec<_>>())?;
+            self.conn.execute(
+                "INSERT INTO imported_notes (meeting_id, import_id, source_path, source_hash) VALUES (?1, ?2, ?3, ?4)",
+                params![mid, id, n.source_path, n.source_hash],
+            )?;
+            self.reindex(&mid)?;
+        }
+        for f in files {
+            self.conn.execute(
+                "INSERT INTO files (id, path, name, bytes, folder, created_at, import_id, source_path)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![uuid::Uuid::new_v4().to_string(), f.path, f.name, f.bytes, f.folder, f.created_at, id, f.source_path],
+            )?;
+        }
+        tx.commit()?;
+        self.list_imports()?.into_iter().find(|i| i.id == id).ok_or_else(|| anyhow::anyhow!("import non trovato"))
+    }
+
+    /// Gli import fatti, dal più recente, con quante note e file ne restano.
+    pub fn list_imports(&self) -> Result<Vec<ImportRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT i.id, i.source, i.root, i.created_at, i.report,
+                    (SELECT COUNT(*) FROM imported_notes n WHERE n.import_id = i.id),
+                    (SELECT COUNT(*) FROM files f WHERE f.import_id = i.id)
+             FROM imports i ORDER BY i.created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            let report: String = r.get(4)?;
+            Ok(ImportRecord {
+                id: r.get(0)?,
+                source: r.get(1)?,
+                root: r.get(2)?,
+                created_at: r.get(3)?,
+                report: serde_json::from_str(&report).unwrap_or(serde_json::Value::Null),
+                notes: r.get(5)?,
+                files: r.get(6)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Annulla un import: toglie le sue note (anche se modificate dopo), i suoi file senza nota e
+    /// i progetti che aveva creato e che sono rimasti vuoti. Ritorna il testo delle note tolte e i
+    /// percorsi dei file, perché chi chiama elimini gli allegati che non servono più.
+    pub fn undo_import(&self, id: &str) -> Result<(Vec<String>, Vec<String>)> {
+        let tx = self.conn.unchecked_transaction()?;
+        let notes: Vec<(String, String)> = {
+            let mut stmt = self.conn.prepare(
+                "SELECT m.id, m.notes_md || char(10) || COALESCE(m.enhanced_md, '')
+                 FROM imported_notes n JOIN meetings m ON m.id = n.meeting_id WHERE n.import_id = ?1",
+            )?;
+            let rows = stmt.query_map([id], |r| Ok((r.get(0)?, r.get(1)?)))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        for (mid, _) in &notes {
+            self.delete_meeting_rows(mid)?;
+        }
+        let files: Vec<String> = {
+            let mut stmt = self.conn.prepare("SELECT path FROM files WHERE import_id = ?1")?;
+            let rows = stmt.query_map([id], |r| r.get(0))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        self.conn.execute("DELETE FROM files WHERE import_id = ?1", [id])?;
+        let (projects, people): (Option<String>, Option<String>) = self
+            .conn
+            .query_row("SELECT projects, people FROM imports WHERE id = ?1", [id], |r| Ok((r.get(0)?, r.get(1)?)))
+            .optional()?
+            .unzip();
+        for name in serde_json::from_str::<Vec<String>>(&people.unwrap_or_default()).unwrap_or_default() {
+            self.conn.execute(
+                "DELETE FROM people WHERE name = ?1
+                 AND NOT EXISTS (SELECT 1 FROM meetings m, json_each(m.attendees) j WHERE j.value = ?1 COLLATE NOCASE)",
+                [&name],
+            )?;
+        }
+        for pid in serde_json::from_str::<Vec<String>>(&projects.unwrap_or_default()).unwrap_or_default() {
+            self.conn.execute(
+                "DELETE FROM projects WHERE id = ?1 AND NOT EXISTS (SELECT 1 FROM meetings WHERE project_id = ?1)",
+                [&pid],
+            )?;
+        }
+        self.conn.execute("DELETE FROM imports WHERE id = ?1", [id])?;
+        tx.commit()?;
+        Ok((notes.into_iter().map(|(_, text)| text).collect(), files))
     }
 
     // ---------- privacy ----------
@@ -2033,6 +2320,79 @@ mod tests {
         assert!(!copy.builtin && copy.id != builtin.id);
         assert_eq!(copy.notes_md, "Appunti");
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn renaming_a_note_updates_links_to_it() {
+        let db = Db::open_in_memory().unwrap();
+        let target = db.create_meeting("Piano [Q1]", None, &[], None).unwrap();
+        let other = db.create_meeting("Altra", None, &[], None).unwrap();
+        db.update_meeting(&other.id, None, Some("Vedi [[Piano (Q1)]] e [[Piano (Q1)|il piano]], non [[Piano]]"), None, None).unwrap();
+        let before = db.get_meeting(&other.id).unwrap().unwrap().updated_at;
+        db.update_meeting(&target.id, Some("Piano 2027"), None, None, None).unwrap();
+        let other = db.get_meeting(&other.id).unwrap().unwrap();
+        assert_eq!(other.notes_md, "Vedi [[Piano 2027]] e [[Piano 2027|il piano]], non [[Piano]]");
+        assert_eq!(other.updated_at, before);
+        assert_eq!(db.list_meetings(Some("2027")).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn saves_and_undoes_an_import() {
+        let db = Db::open_in_memory().unwrap();
+        let existing = db.save_project("", "Lavoro", "blue", "").unwrap();
+        let note = |title: &str, project: Option<&str>, path: &str| NewNote {
+            title: title.into(),
+            notes_md: format!("{title} con ![](attachments/{path}.png)"),
+            tags: vec!["obsidian".into()],
+            attendees: vec!["Giulia Ferri".into()],
+            project: project.map(String::from),
+            archived_project: false,
+            created_at: 1_000,
+            updated_at: 2_000,
+            source_path: format!("{path}.md"),
+            source_hash: "h".into(),
+        };
+        let notes = [note("Acme", Some("lavoro"), "a"), note("Diario", Some("Personale"), "b"), note("Sciolta", None, "c")];
+        let files = [NewFile {
+            path: "attachments/x.pdf".into(),
+            name: "vecchio.pdf".into(),
+            bytes: 10,
+            folder: "Archivio".into(),
+            created_at: 500,
+            source_path: "Archivio/vecchio.pdf".into(),
+        }];
+        let rec = db.save_import("obsidian", "/vault", &notes, &files, Privacy::Audio, &serde_json::json!({"skipped": []})).unwrap();
+        assert_eq!((rec.notes, rec.files, rec.root.as_str()), (3, 1, "/vault"));
+
+        let list = db.list_meetings(None).unwrap();
+        let acme = list.iter().find(|m| m.title == "Acme").unwrap();
+        assert_eq!(acme.project_id.as_deref(), Some(existing.id.as_str()), "il progetto con lo stesso nome si riusa");
+        assert_eq!((acme.created_at, acme.updated_at), (1_000, 2_000));
+        let full = db.get_meeting(&acme.id).unwrap().unwrap();
+        assert_eq!(full.privacy, Privacy::Audio);
+        assert_eq!(full.attendees, ["Giulia Ferri"]);
+        assert_eq!(db.search_people("Giulia", 5).unwrap().len(), 1);
+        assert_eq!(db.list_projects().unwrap().len(), 2, "Personale è nuovo");
+        assert_eq!(db.list_meetings(Some("Diario")).unwrap().len(), 1, "le note importate si cercano");
+        assert_eq!(db.loose_files().unwrap()[0].name, "vecchio.pdf");
+        assert!(db.attachment_in_use("attachments/x.pdf").unwrap(), "un file senza nota resta in uso");
+        let already = db.already_imported("/vault").unwrap();
+        assert_eq!(already.len(), 4);
+        assert_eq!(already["a.md"], "h");
+        assert!(db.already_imported("/altro").unwrap().is_empty());
+        assert_eq!(db.notes_for_files().unwrap().len(), 3);
+
+        // una nota eliminata a mano si può importare di nuovo
+        db.delete_meeting(&acme.id).unwrap();
+        assert!(!db.already_imported("/vault").unwrap().contains_key("a.md"));
+
+        let (texts, paths) = db.undo_import(&rec.id).unwrap();
+        assert_eq!((texts.len(), paths), (2, vec!["attachments/x.pdf".to_string()]));
+        assert!(db.list_meetings(None).unwrap().is_empty());
+        assert!(db.loose_files().unwrap().is_empty() && db.list_imports().unwrap().is_empty());
+        let names: Vec<String> = db.list_projects().unwrap().into_iter().map(|p| p.name).collect();
+        assert_eq!(names, ["Lavoro"], "via solo il progetto creato dall'import");
+        assert!(db.search_people("Giulia", 5).unwrap().is_empty(), "via la persona arrivata con l'import");
     }
 
     #[test]

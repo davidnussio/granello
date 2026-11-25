@@ -363,6 +363,14 @@ Markdown: `@[Name Surname]`.
 
 ![A sentence that mentions two people](../../../assets/shots/en/commands/person.webp)
 
+### Link to a note
+
+Links another note by its title: type a few letters and choose the note, or use a new title for a note you will write later. Typing `[[` opens the same list. Click the link to open the note; a link to a note that does not exist yet is dashed. Renaming a note updates the links to it.
+
+Markdown: `[[Title]]`, or `[[Title|text]]` to show other text.
+
+![A sentence with links to two notes, one that does not exist yet](../../../assets/shots/en/commands/note-link.webp)
+
 ### Today's date
 
 Inserts today's date as a date, shown as "Today" or as the weekday and day. Click it to choose another day.

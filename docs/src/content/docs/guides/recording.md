@@ -40,7 +40,7 @@ Select any part of the transcript and use **Who's speaking…** to assign it to 
 
 ## Saved recordings
 
-With **Save recordings** on (Settings, off by default), the audio you record stays in a folder on your Mac. Listen to it next to the transcript, or in the Library under **Recordings**. See [the Library](/guides/library/).
+With **Save recordings** on (Settings, off by default), the audio you record stays in a folder on your Mac. Listen to it next to the transcript, or in the Library under **Files → Recordings**. See [the Library](/guides/library/).
 
 ## If something goes wrong
 

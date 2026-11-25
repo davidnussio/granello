@@ -89,6 +89,53 @@ const fakeWave = (id: number) =>
     return Math.round(Math.abs(speech) ** 0.6 * 255 * (Math.sin(i / 23 + id) > -0.6 ? 1 : 0.05));
   });
 
+// file inventati per Libreria → File: allegati dei primi meeting e file arrivati da un import
+const day = 86_400_000;
+let files = [
+  { of: 0, name: lang === "it" ? "preventivo-v2.pdf" : "quote-v2.pdf", bytes: 248_000 },
+  { of: 1, name: lang === "it" ? "schema-architettura.png" : "architecture-sketch.png", bytes: 412_000 },
+  { of: 2, name: "roadmap.xlsx", bytes: 61_000 },
+  {
+    of: -1,
+    name: lang === "it" ? "contratto-quadro-2024.pdf" : "framework-contract-2024.pdf",
+    bytes: 1_300_000,
+  },
+  { of: -1, name: lang === "it" ? "verbale-assemblea.docx" : "general-meeting-minutes.docx", bytes: 38_000 },
+]
+  .filter((f) => f.of < 0 || titled[f.of])
+  .map((f, i) => ({
+    id: f.of < 0 ? `sciolto-${i}` : `${titled[f.of].id}:attachments/f${i}`,
+    path: `attachments/f${i}.${f.name.split(".").pop()}`,
+    name: f.name,
+    bytes: f.bytes,
+    meetingId: f.of < 0 ? null : titled[f.of].id,
+    meetingTitle: f.of < 0 ? null : titled[f.of].title,
+    folder: f.of < 0 ? (lang === "it" ? "Archivio" : "Archive") : null,
+    at: f.of < 0 ? Date.now() - 3 * day : titled[f.of].createdAt,
+    missing: false,
+  }));
+const importSummary = {
+  obsidian: true,
+  notes: 42,
+  attachments: 17,
+  loose: 2,
+  projects: lang === "it" ? ["Clienti", "Personale", "Team"] : ["Clients", "Personal", "Team"],
+  already: 0,
+  changed: [],
+  missingLinks: 3,
+  skipped: [
+    {
+      path: "Templates/",
+      reason: lang === "it" ? "cartella dei template di Obsidian" : "Obsidian templates folder",
+    },
+    {
+      path: lang === "it" ? "Mappe/progetto.canvas" : "Maps/project.canvas",
+      reason: lang === "it" ? "canvas di Obsidian" : "Obsidian canvas",
+    },
+  ],
+};
+let imports: unknown[] = [];
+
 // nell'anteprima c'è solo il vault principale; quelli aggiunti si perdono ricaricando
 let vaults = [
   {
@@ -413,6 +460,34 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   // il minuto della registrazione simulata: momenti e citazioni dal menu "/" lo prendono da qui
   recording_position: () => (params.has("rec") ? 125_000 : null),
   recordings_info: () => ({ dir: "", defaultDir: "", ffmpeg: true }),
+  list_files: () => files,
+  delete_file: (a) => {
+    files = files.filter((f) => f.id !== a.id);
+    return null;
+  },
+  pick_import_dir: () => "/Users/anteprima/Documents/Obsidian/Vault",
+  scan_obsidian: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    return importSummary;
+  },
+  import_obsidian: (a) => {
+    const rec = {
+      id: `import-${Date.now()}`,
+      source: "obsidian",
+      root: a.dir,
+      createdAt: Date.now(),
+      notes: importSummary.notes,
+      files: importSummary.loose,
+      report: importSummary,
+    };
+    imports = [rec, ...imports];
+    return rec;
+  },
+  list_imports: () => imports,
+  undo_import: (a) => {
+    imports = imports.filter((i) => (i as { id: string }).id !== a.id);
+    return importSummary.notes;
+  },
   list_recordings: (a) => recordings.filter((r) => !a.meetingId || r.meetingId === a.meetingId),
   recording_waveform: (a) => fakeWave(a.id as number),
   delete_recording: (a) => {

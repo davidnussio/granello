@@ -363,6 +363,14 @@ Markdown: `@[Nome Cognome]`.
 
 ![Una frase che cita due persone](../../../../assets/shots/it/commands/person.webp)
 
+### Link a una nota
+
+Collega un'altra nota per titolo: scrivi qualche lettera e scegli la nota, oppure usa un titolo nuovo per una nota che scriverai dopo. Scrivendo `[[` si apre lo stesso elenco. Un clic sul link apre la nota; il link a una nota che non c'è ancora è tratteggiato. Se una nota cambia titolo, i link che la portano seguono il nuovo.
+
+Markdown: `[[Titolo]]`, oppure `[[Titolo|testo]]` per mostrare un altro testo.
+
+![Una frase con i link a due note, una che non c'è ancora](../../../../assets/shots/it/commands/note-link.webp)
+
 ### Data di oggi
 
 Inserisce la data di oggi come data, che si legge "Oggi" o come giorno della settimana e del mese. Un clic sulla data ne sceglie un'altra.

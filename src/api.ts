@@ -2,6 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   CalendarEvent,
+  ImportRecord,
+  ImportSummary,
+  LibraryFile,
   CalendarOverview,
   ChatMessage,
   ContactsAccess,
@@ -65,6 +68,17 @@ export const api = {
   mergeRecordings: (meetingId: string) => invoke<void>("merge_recordings", { meetingId }),
   /** La forma d'onda di una registrazione: valori da 0 a 255, uno per barra. */
   recordingWaveform: (id: number) => invoke<number[]>("recording_waveform", { id }),
+  /** Gli allegati delle note e i file senza nota (le registrazioni hanno il loro elenco). */
+  listFiles: () => invoke<LibraryFile[]>("list_files"),
+  /** Elimina un file senza nota. */
+  deleteFile: (id: string) => invoke<void>("delete_file", { id }),
+  pickImportDir: () => invoke<string | null>("pick_import_dir"),
+  /** Cosa importerebbe quella cartella Obsidian, senza copiare niente. */
+  scanObsidian: (dir: string) => invoke<ImportSummary>("scan_obsidian", { dir }),
+  importObsidian: (dir: string) => invoke<ImportRecord>("import_obsidian", { dir }),
+  listImports: () => invoke<ImportRecord[]>("list_imports"),
+  /** Annulla un import; ritorna quante note ha tolto. */
+  undoImport: (id: string) => invoke<number>("undo_import", { id }),
   /** Fa scegliere la cartella delle registrazioni. null se la scelta viene annullata. */
   pickRecordingsDir: () => invoke<string | null>("pick_recordings_dir"),
   listVaults: () => invoke<Vault[]>("list_vaults"),

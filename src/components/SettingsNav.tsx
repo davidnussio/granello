@@ -10,6 +10,7 @@ const SECTIONS = [
   { id: "templates", icon: "☰", label: () => t("Template"), group: "app" },
   { id: "people", icon: "☻", label: () => t("Persone"), group: "data" },
   { id: "vaults", icon: "◫", label: () => t("Vault"), group: "data" },
+  { id: "import", icon: "⇣", label: () => t("Importa da"), group: "data" },
   { id: "data", icon: "▣", label: () => t("Dati e privacy"), group: "data" },
 ] as const;
 

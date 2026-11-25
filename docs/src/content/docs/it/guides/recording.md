@@ -40,7 +40,7 @@ Seleziona una parte qualsiasi della trascrizione e usa **Chi parla…** per attr
 
 ## Registrazioni salvate
 
-Con **Salva le registrazioni** attivo (nelle Impostazioni, spento di default), l'audio che registri resta in una cartella del Mac. Si riascolta accanto alla trascrizione, oppure nella Libreria alla voce **Registrazioni**. Vedi [la Libreria](/it/guides/library/).
+Con **Salva le registrazioni** attivo (nelle Impostazioni, spento di default), l'audio che registri resta in una cartella del Mac. Si riascolta accanto alla trascrizione, oppure nella Libreria alla voce **File → Registrazioni**. Vedi [la Libreria](/it/guides/library/).
 
 ## Se qualcosa va storto
 

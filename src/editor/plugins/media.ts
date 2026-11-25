@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/react";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { api, errorText, notify, type Attachment } from "../../api";
+import { sizeLabel } from "../../format";
 import { t } from "../../i18n";
 import type { MdState } from "../markdown";
 import type { EditorPlugin } from "../types";
@@ -25,11 +26,6 @@ function resolve(src: string): Promise<string> {
     p.catch(() => loaded.delete(src));
   }
   return p;
-}
-
-function sizeLabel(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
 function base64(file: File): Promise<string> {

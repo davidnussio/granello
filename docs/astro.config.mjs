@@ -46,6 +46,7 @@ export default defineConfig({
             { slug: "guides/ai-notes" },
             { slug: "guides/library" },
             { slug: "guides/people" },
+            { slug: "guides/import" },
           ],
         },
         {

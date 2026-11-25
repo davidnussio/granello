@@ -8,6 +8,7 @@ import type { Settings, Vault, WhisperModelInfo } from "../types";
 import VaultSettings from "./VaultSettings";
 import PeopleSettings from "./PeopleSettings";
 import SyncSettings from "./SyncSettings";
+import ImportSettings from "./ImportSettings";
 import AiSettings from "./AiSettings";
 import CalendarSettings from "./CalendarSettings";
 import { t } from "../i18n";
@@ -29,6 +30,9 @@ interface Props {
   onTimeFormatChanged: (setting: string) => void;
   /** Apre la Libreria sui meeting di una persona. */
   onOpenPerson: (name: string) => void;
+  /** Note arrivate o tolte da un import: la barra laterale va riletta. */
+  onMeetingsChanged: () => void;
+  onOpenLibrary: () => void;
 }
 
 const LANGS: [string, string][] = [
@@ -50,6 +54,8 @@ export default function SettingsView({
   onLangChanged,
   onTimeFormatChanged,
   onOpenPerson,
+  onMeetingsChanged,
+  onOpenLibrary,
 }: Props) {
   const [savedAt, setSavedAt] = useState(0);
   const [s, setS] = useState<Settings | null>(null);
@@ -338,6 +344,9 @@ export default function SettingsView({
           <VaultSettings vaults={vaults} onChanged={onVaultsChanged} onOpen={onOpenVault} toast={toast} />
           <SyncSettings vaultId={vaults.find((v) => v.active)?.id ?? ""} toast={toast} />
         </>
+      )}
+      {section === "import" && (
+        <ImportSettings toast={toast} onMeetingsChanged={onMeetingsChanged} onOpenLibrary={onOpenLibrary} />
       )}
       {section === "data" && (
         <>
