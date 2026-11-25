@@ -256,6 +256,7 @@ impl Db {
         conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;")?;
         let db = Db { conn };
         db.migrate()?;
+        db.repair()?;
         crate::sync::install(&db.conn)?;
         db.seed_templates()?;
         Ok(db)
@@ -296,6 +297,33 @@ impl Db {
         };
         for id in ids {
             self.reindex(&id)?;
+        }
+        Ok(())
+    }
+
+    /// Colonne che una build di sviluppo può aver lasciato fuori da una migrazione poi cambiata
+    /// prima del rilascio: la migrazione risulta fatta, la colonna manca. Si aggiungono solo se
+    /// mancano, quindi su un database normale non cambia niente.
+    fn repair(&self) -> Result<()> {
+        const COLUMNS: &[(&str, &str, &str)] = &[
+            // la 12 di sviluppo non aveva le persone aggiunte da un import (0.2.8)
+            ("imports", "people", "TEXT NOT NULL DEFAULT '[]'"),
+        ];
+        for (table, column, kind) in COLUMNS {
+            let present: bool = self.conn.query_row(
+                "SELECT COUNT(*) > 0 FROM pragma_table_info(?1) WHERE name = ?2",
+                [table, column],
+                |r| r.get(0),
+            )?;
+            let exists: bool = self.conn.query_row(
+                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type = 'table' AND name = ?1",
+                [table],
+                |r| r.get(0),
+            )?;
+            if exists && !present {
+                log::warn!("colonna mancante aggiunta: {table}.{column}");
+                self.conn.execute_batch(&format!("ALTER TABLE {table} ADD COLUMN {column} {kind}"))?;
+            }
         }
         Ok(())
     }
@@ -2334,6 +2362,33 @@ mod tests {
         assert_eq!(other.notes_md, "Vedi [[Piano 2027]] e [[Piano 2027|il piano]], non [[Piano]]");
         assert_eq!(other.updated_at, before);
         assert_eq!(db.list_meetings(Some("2027")).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn repairs_an_import_table_from_a_development_build() {
+        let dir = std::env::temp_dir().join(format!("granello-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("db.sqlite");
+        {
+            // la migrazione 12 come l'aveva una build di sviluppo: senza `people`
+            let conn = Connection::open(&path).unwrap();
+            for schema in &MIGRATIONS[..11] {
+                conn.execute_batch(schema).unwrap();
+            }
+            conn.execute_batch(&SCHEMA_V12.replace("    people TEXT NOT NULL DEFAULT '[]',\n", "")).unwrap();
+            conn.pragma_update(None, "user_version", 12).unwrap();
+            let n: i64 = conn
+                .query_row("SELECT COUNT(*) FROM pragma_table_info('imports') WHERE name = 'people'", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(n, 0, "la prova parte da una tabella senza la colonna");
+        }
+        let db = Db::open(&path).unwrap();
+        let rec = db.save_import("obsidian", "/vault", &[], &[], Privacy::Open, &serde_json::json!({})).unwrap();
+        assert!(db.undo_import(&rec.id).is_ok());
+        drop(db);
+        // una seconda apertura non tocca niente
+        Db::open(&path).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
