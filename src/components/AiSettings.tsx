@@ -13,7 +13,11 @@ interface Props {
 
 const ANTHROPIC = "anthropic";
 
+/** Granello Cloud: il servizio di dambox che parla il protocollo di OpenAI (per ora su invito). */
+const CLOUD_URL = "https://ai.dambox.ch/api/granello/v1";
+
 const PRESETS: { label: string; name: string; id: string; baseUrl: string }[] = [
+  { label: "Granello Cloud", name: "Granello Cloud", id: "granello-cloud", baseUrl: CLOUD_URL },
   { label: "LM Studio", name: "LM Studio", id: "lmstudio", baseUrl: "http://localhost:1234/v1" },
   { label: "Ollama", name: "Ollama", id: "ollama", baseUrl: "http://localhost:11434/v1" },
   { label: "OpenAI", name: "OpenAI", id: "openai", baseUrl: "https://api.openai.com/v1" },
@@ -176,6 +180,7 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
         const builtin = p.id === ANTHROPIC;
         const draft = keyDraft[p.id] ?? "";
         const saved = hasKey[p.id];
+        const cloud = p.kind === "openai" && p.baseUrl.trim().replace(/\/+$/, "") === CLOUD_URL;
         return (
           <div key={p.id} className="provider">
             <div className="row gap">
@@ -237,7 +242,9 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
                       ? t("•••••••••• salvata {where}", { where: keyStore() })
                       : builtin
                         ? "sk-ant-…"
-                        : t("Non serve per i server locali")
+                        : cloud
+                          ? "sk_…"
+                          : t("Non serve per i server locali")
                   }
                   onChange={(e) => setKeyDraft((x) => ({ ...x, [p.id]: e.target.value }))}
                 />
@@ -246,6 +253,13 @@ export default function AiSettings({ s, setS, save, toast }: Props) {
                 </button>
               </div>
             </label>
+            {cloud && (
+              <small className="muted">
+                {t(
+                  "Il servizio di dambox per Granello, per ora su invito: note e trascrizioni vengono inviate a ai.dambox.ch. Serve una chiave creata per Granello nella dashboard del servizio.",
+                )}
+              </small>
+            )}
             {p.kind === "openai" && isLocal(p.baseUrl) && (
               <small className="muted">
                 {t(

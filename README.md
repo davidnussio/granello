@@ -73,7 +73,7 @@ AI notes and chat can use different models, even from different providers (Setti
 | Provider type | Used for |
 |---|---|
 | Anthropic | Claude (the default provider, always present) |
-| OpenAI-compatible | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, OpenRouter and any server exposing `/chat/completions` |
+| OpenAI-compatible | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, OpenRouter, Granello Cloud (dambox's service, by invitation for now) and any server exposing `/chat/completions` |
 
 - The model list is read from the server (`/models`); "Test" checks that the provider responds.
 - Each provider has its own API key in the Keychain; local servers usually don't need one.

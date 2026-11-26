@@ -70,7 +70,7 @@ Le note AI e la chat possono usare modelli diversi, anche di provider diversi (I
 | Tipo di provider | Per cosa |
 |---|---|
 | Anthropic | Claude (provider predefinito, sempre presente) |
-| Compatibile OpenAI | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, OpenRouter e qualsiasi server che esponga `/chat/completions` |
+| Compatibile OpenAI | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, OpenRouter, Granello Cloud (il servizio di dambox, per ora su invito) e qualsiasi server che esponga `/chat/completions` |
 
 - L'elenco dei modelli viene letto dal server (`/models`); "Verifica" controlla che il provider risponda.
 - Ogni provider ha la sua API key nel Portachiavi; i server locali di solito non ne vogliono una.

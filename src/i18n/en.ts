@@ -47,6 +47,8 @@ const en: Record<string, string> = {
   "API key": "API key",
   "•••••••••• salvata {where}": "•••••••••• saved {where}",
   "Non serve per i server locali": "Not needed for local servers",
+  "Il servizio di dambox per Granello, per ora su invito: note e trascrizioni vengono inviate a ai.dambox.ch. Serve una chiave creata per Granello nella dashboard del servizio.":
+    "dambox's service for Granello, by invitation for now: notes and transcripts are sent to ai.dambox.ch. It needs a key created for Granello in the service's dashboard.",
   Salva: "Save",
   "Resta tutto su {device}. I server locali troncano in silenzio i testi più lunghi del contesto del modello (Ollama parte con un contesto ridotto): indica qui il contesto impostato sul server e Granello ti avvisa prima di inviare una nota che non ci sta.":
     "Everything stays on {device}. Local servers silently truncate text longer than the model's context (Ollama starts with a small one): enter the context configured on the server and Granello will warn you before sending a note that doesn't fit.",

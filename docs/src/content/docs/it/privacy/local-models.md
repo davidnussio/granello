@@ -3,14 +3,16 @@ title: Modelli locali e provider AI
 description: Scegli quale modello AI scrive le note. Con un provider locale non esce niente dal tuo Mac.
 ---
 
-Granello non ha un servizio AI suo. In **Impostazioni → Modelli AI** scegli il provider e il modello, e puoi usarne uno diverso per le note AI e per la chat.
+Sei tu a decidere dove va il testo. In **Impostazioni → Modelli AI** scegli il provider e il modello, e puoi usarne uno diverso per le note AI e per la chat.
 
 ## Due tipi di provider
 
 | Tipo di provider | Per cosa |
 | --- | --- |
 | Anthropic | Claude, il provider predefinito |
-| Compatibile OpenAI | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, OpenRouter e qualsiasi server che espone `/chat/completions` |
+| Compatibile OpenAI | LM Studio (`http://localhost:1234/v1`), Ollama (`http://localhost:11434/v1`), OpenAI, OpenRouter, Granello Cloud e qualsiasi server che espone `/chat/completions` |
+
+**Granello Cloud** è il servizio di dambox per Granello, per ora su invito: si aggiunge con **+ Granello Cloud** e una chiave creata per Granello nella dashboard del servizio. È un provider online come gli altri: note e trascrizioni vengono inviate a `ai.dambox.ch`.
 
 - L'elenco dei modelli viene letto dal server. **Verifica** controlla che il provider risponda.
 - Ogni provider ha la sua API key nel Portachiavi. Ai server locali di solito non serve.
