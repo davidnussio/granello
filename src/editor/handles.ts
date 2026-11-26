@@ -45,8 +45,11 @@ interface Target {
   cell: HTMLElement | null;
 }
 
-/** Quanto ci si può allontanare dal blocco senza che le maniglie spariscano: serve a raggiungerle. */
-const REACH = 26;
+/**
+ * Quanto ci si può allontanare dal blocco senza che le maniglie spariscano: serve a raggiungerle,
+ * e alcune stanno nel margine, fuori dall'editor.
+ */
+const REACH = 34;
 
 const place = (el: HTMLElement, at: Box) => {
   el.style.left = `${at.left}px`;
@@ -108,16 +111,20 @@ class HandlesView {
       this.leaveHost();
       this.host = host;
       if (getComputedStyle(host).position === "static") host.style.position = "relative";
-      host.addEventListener("mousemove", this.onMove);
-      host.addEventListener("mouseleave", this.onLeave);
+      // il puntatore si segue in tutta la pagina: le maniglie nel margine stanno fuori dall'editor,
+      // e uscirne per raggiungerle non deve farle sparire
+      document.addEventListener("mousemove", this.onMove);
+      document.documentElement.addEventListener("mouseleave", this.onLeave);
     }
     if (this.layer.parentElement !== host) host.append(this.layer);
     return true;
   }
 
   private leaveHost() {
-    this.host?.removeEventListener("mousemove", this.onMove);
-    this.host?.removeEventListener("mouseleave", this.onLeave);
+    if (this.host) {
+      document.removeEventListener("mousemove", this.onMove);
+      document.documentElement.removeEventListener("mouseleave", this.onLeave);
+    }
     this.host = null;
   }
 

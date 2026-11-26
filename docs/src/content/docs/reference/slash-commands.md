@@ -9,7 +9,7 @@ Type `/` in a note to open the command menu. Keep typing to filter it (it unders
 
 Everything a command inserts is saved as readable Markdown: each command below shows how. Several blocks have a shortcut you can type instead of opening the menu.
 
-Blocks with their own controls (quotes, marked moments, polls, boards, timers, charts…) show an **✕** in the top-right corner when you hover over them: it deletes the block. ⌘Z brings it back.
+Every block that isn't plain text (tables, table of contents, callouts, code, columns, quotes, marked moments, AI questions, polls, charts…) shows an **✕** in the margin to its right when you hover over it or the cursor is inside it: it deletes the whole block. ⌘Z brings it back.
 
 With the cursor inside a table, the menu starts with the table's own commands: **Add row above**, **Add row below**, **Add column to the left**, **Add column to the right**, **Delete row**, **Delete column**, **Delete table**. Inside a columns block it starts with the columns' commands: **Add column to the left**, **Add column to the right**, **Delete column**, **Remove the columns, keep the text**, **Delete the whole block**.
 

@@ -6,6 +6,7 @@ import { Node } from "@tiptap/react";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type { MdState } from "../markdown";
 import { trailingParagraph } from "../trailing";
+import { blockDelete } from "../blockDelete";
 import type { EditorPlugin } from "../types";
 
 /**
@@ -39,5 +40,6 @@ export const base: EditorPlugin = {
     Placeholder.configure({ placeholder: placeholder ?? t("Scrivi le tue note…") }),
     Markdown.configure({ html: false, tightLists: true, linkify: true, transformPastedText: true }),
     trailingParagraph,
+    blockDelete,
   ],
 };
