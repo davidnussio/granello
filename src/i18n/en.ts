@@ -608,6 +608,8 @@ const en: Record<string, string> = {
   "Citazione aggiunta alle note AI": "Quote added to the AI notes",
   "Citazione aggiunta alle tue note": "Quote added to your notes",
   "Crea o modifica con l'AI": "Create or edit with AI",
+  "Elimina il blocco": "Delete block",
+  "Elimina il blocco (⌘Z per riaverlo)": "Delete block (⌘Z to bring it back)",
   "L'AI sta scrivendo…": "The AI is writing…",
   "Chiedi all'AI: cosa creare o cosa cambiare": "Ask the AI: what to create or what to change",
   "Richiesta per l'AI": "Request for the AI",

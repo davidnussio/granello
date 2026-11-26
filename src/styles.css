@@ -3780,6 +3780,39 @@ h4.sub {
 .data-block:focus-within > .block-ai-btn {
   opacity: 0.7;
 }
+/* con la ✕ nell'angolo, il ✦ le sta accanto */
+.data-block:has(> .block-del-btn) > .block-ai-btn {
+  right: 30px;
+}
+.block-del-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.data-block:hover > .block-del-btn,
+.data-block:focus-within > .block-del-btn {
+  opacity: 0.7;
+}
+.data-block > .block-del-btn:hover,
+.data-block > .block-del-btn:focus-visible {
+  opacity: 1;
+  color: var(--rec);
+  background: var(--panel);
+}
 .data-block > .block-ai-btn:hover,
 .data-block > .block-ai-btn.on {
   opacity: 1;

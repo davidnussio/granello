@@ -233,9 +233,29 @@ export function dataBlock<T>(spec: DataBlockSpec<T>) {
           },
         };
         const ai = spec.ai && editor.isEditable ? aiControls(view, spec) : null;
+        // ✕ al passaggio del mouse: un blocco non si cancella col testo, e ⌘Z lo riporta
+        const remove = editor.isEditable
+          ? h(
+              "button",
+              {
+                type: "button",
+                class: "block-del-btn",
+                title: t("Elimina il blocco (⌘Z per riaverlo)"),
+                attrs: { "aria-label": t("Elimina il blocco") },
+                on: {
+                  click: () => {
+                    const pos = view.pos();
+                    if (pos !== null) editor.chain().setNodeSelection(pos).deleteSelection().focus().run();
+                  },
+                },
+              },
+              "✕",
+            )
+          : null;
         const paint = () => {
           spec.render(view);
           ai?.();
+          if (remove) dom.append(remove);
           if (focusNext) dom.querySelector<HTMLElement>(`[data-focus="${focusNext}"]`)?.focus();
           focusNext = undefined;
         };

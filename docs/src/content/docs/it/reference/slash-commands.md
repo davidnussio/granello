@@ -9,6 +9,8 @@ Digita `/` in una nota per aprire il menu dei comandi. Continua a scrivere per f
 
 Tutto quello che un comando inserisce si salva come Markdown leggibile: per ogni comando qui sotto c'è come. Diversi blocchi hanno una scorciatoia da digitare al posto del menu.
 
+I blocchi con una loro interfaccia (citazioni, momenti segnati, sondaggi, lavagne, timer, grafici…) hanno una **✕** nell'angolo in alto a destra, che compare passandoci sopra: lo elimina. ⌘Z lo riporta.
+
 Con il cursore dentro una tabella, il menu comincia con i comandi della tabella: **Aggiungi riga sopra**, **Aggiungi riga sotto**, **Aggiungi colonna a sinistra**, **Aggiungi colonna a destra**, **Elimina riga**, **Elimina colonna**, **Elimina tabella**. Dentro un blocco di colonne comincia con i comandi delle colonne: **Aggiungi colonna a sinistra**, **Aggiungi colonna a destra**, **Elimina colonna**, **Togli le colonne, tieni il testo**, **Elimina tutto il blocco**.
 
 ## Struttura
