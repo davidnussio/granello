@@ -751,6 +751,7 @@ h3 {
   grid-template-columns: 1fr 360px;
 }
 .meeting-main {
+  container: meeting-main / inline-size;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1723,6 +1724,10 @@ h3 {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;
+  white-space: nowrap;
+}
+.btn.quote-btn {
+  flex: none;
   white-space: nowrap;
 }
 .btn.mark-btn:hover {
@@ -4786,7 +4791,21 @@ button.lib-row {
 }
 .recbar .chip.select {
   max-width: 190px;
+  /* nella finestra stretta si accorciano loro, non i bottoni Segna, Cita e Chiedi */
+  min-width: 64px;
   text-overflow: ellipsis;
+}
+.recbar > .btn {
+  flex: none;
+}
+/* .meeting-main è il contenitore: la barra non può interrogare la propria larghezza */
+@container meeting-main (max-width: 760px) {
+  .recbar {
+    gap: 8px;
+  }
+  .recbar .meter {
+    display: none;
+  }
 }
 /* colori del livello di privacy: arancione = standard (qualcosa può uscire dal Mac),
    grigio = audio locale, verde = blindata (non esce niente). Mai rosso: sembrerebbe un pericolo

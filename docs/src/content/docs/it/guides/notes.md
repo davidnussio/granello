@@ -43,7 +43,7 @@ Tutto viene salvato come Markdown leggibile, così le tue note restano tue anche
 
 ## Citazioni dalla trascrizione
 
-Seleziona una frase nel pannello Trascrizione e premi **❝ Cita**. Nella nota compare una citazione con chi l'ha detta e il minuto; ↗ sulla citazione riapre la trascrizione in quel punto. Mentre registri, **❝ Cita** in fondo al pannello cita l'ultima frase trascritta senza selezionare niente. Dal menu `/` la citazione è vuota, al minuto attuale della registrazione.
+Seleziona una frase nel pannello Trascrizione e premi **❝ Cita**. Nella nota compare una citazione con chi l'ha detta e il minuto; ↗ sulla citazione riapre la trascrizione in quel punto. Mentre registri, **❝ Cita** in fondo al pannello (o nella barra sotto la nota, a pannello chiuso) cita l'ultima frase trascritta senza selezionare niente. Dal menu `/` la citazione è vuota, al minuto attuale della registrazione.
 
 ## Trova e sostituisci
 

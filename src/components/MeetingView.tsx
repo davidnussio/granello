@@ -350,12 +350,20 @@ export default function MeetingView({
   // cronometro
   useEffect(() => {
     if (!isRecording) return;
-    const startedAt = Date.now();
-    const base = segments.length ? segments[segments.length - 1].endMs : 0;
-    const iv = setInterval(() => setElapsed(base + Date.now() - startedAt), 500);
+    // il minuto lo dà la registrazione, come per "Segna" e "Cita": anche aprendo il meeting a
+    // registrazione già avviata, o riprendendola dopo una pausa
+    let offset: number | null = null;
+    api
+      .recordingPosition(id)
+      .then((ms) => {
+        if (ms !== null) offset = ms - Date.now();
+      })
+      .catch(() => {});
+    const iv = setInterval(() => {
+      if (offset !== null) setElapsed(Date.now() + offset);
+    }, 500);
     return () => clearInterval(iv);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRecording]);
+  }, [isRecording, id]);
 
   // dopo il salvataggio la barra laterale ricarica l'elenco: la nota sale tra le ultime modificate
   const saveNotes = useDebounced<string>((notesMd) => {
@@ -795,6 +803,17 @@ export default function MeetingView({
     </button>
   );
 
+  const quoteButton = (
+    <button
+      className="btn small quote-btn"
+      disabled={!lastSegment}
+      onClick={quoteLast}
+      title={t("Cita nelle note l'ultima frase trascritta, con chi l'ha detta e il minuto")}
+    >
+      {t("❝ Cita")}
+    </button>
+  );
+
   // la chat si apre da sotto; richiudendola si torna alla trascrizione
   const chatButton = (
     <button
@@ -1212,8 +1231,13 @@ export default function MeetingView({
             <span className="muted small">{t("Registrazione in corso altrove")}</span>
           )}
           <div className="spacer" />
-          {/* il segno sta nel pannello di destra; qui solo se il pannello è chiuso */}
-          {isRecording && side === "none" && markButton}
+          {/* segno e citazione stanno nel pannello di destra; qui solo se il pannello è chiuso */}
+          {isRecording && side === "none" && (
+            <>
+              {markButton}
+              {quoteButton}
+            </>
+          )}
           {side === "none" && chatButton}
         </footer>
         {side === "none" && sidebarToggle}
@@ -1264,14 +1288,7 @@ export default function MeetingView({
             {isRecording && (
               <>
                 {markButton}
-                <button
-                  className="btn small"
-                  disabled={!lastSegment}
-                  onClick={quoteLast}
-                  title={t("Cita nelle note l'ultima frase trascritta, con chi l'ha detta e il minuto")}
-                >
-                  {t("❝ Cita")}
-                </button>
+                {quoteButton}
                 <div className="spacer" />
               </>
             )}

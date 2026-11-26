@@ -247,7 +247,7 @@ Markdown: `::: moment 12:34` … `:::`.
 
 ### Citazione dalla trascrizione
 
-Una frase detta nella registrazione, con chi l'ha detta e il minuto. Il modo più veloce è selezionare il testo nel pannello Trascrizione e premere **❝ Cita** (mentre registri, lo stesso pulsante in fondo al pannello cita l'ultima frase); il comando ne inserisce una vuota da compilare, al minuto attuale della registrazione. Le citazioni si trovano nella [Libreria](/it/guides/library/#elementi-attraverso-le-note).
+Una frase detta nella registrazione, con chi l'ha detta e il minuto. Il modo più veloce è selezionare il testo nel pannello Trascrizione e premere **❝ Cita** (mentre registri, lo stesso pulsante in fondo al pannello, o nella barra sotto la nota a pannello chiuso, cita l'ultima frase); il comando ne inserisce una vuota da compilare, al minuto attuale della registrazione. Le citazioni si trovano nella [Libreria](/it/guides/library/#elementi-attraverso-le-note).
 
 Markdown: `::: quote 12:34 Nome` … `:::`.
 
