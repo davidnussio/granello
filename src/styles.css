@@ -4116,18 +4116,62 @@ button.lib-row {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 .lib-keys {
-  list-style: none;
+  container-type: inline-size;
   margin: auto 0 0;
-  padding: 12px 9px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  padding: 12px 4px 4px;
   font-size: 11.5px;
   line-height: 1.35;
   color: var(--muted);
 }
+.lib-keys-title {
+  margin-bottom: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+/* tasti a sinistra, tutti della stessa larghezza; descrizioni allineate a destra di loro */
+.lib-keys dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 5px 8px;
+  margin: 0;
+}
+/* colonna troppo stretta per due colonne: la descrizione va sotto il suo tasto */
+@container (max-width: 150px) {
+  .lib-keys dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .lib-keys dd {
+    margin-bottom: 5px;
+  }
+}
+.lib-keys dt {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text);
+  font-weight: 550;
+  white-space: nowrap;
+}
+.lib-keys dd {
+  margin: 0;
+}
 .lib-keys kbd {
+  display: inline-grid;
+  place-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--card);
   font: inherit;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--text);
 }

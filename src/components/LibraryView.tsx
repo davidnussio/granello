@@ -1041,20 +1041,30 @@ export default function LibraryView({
               <span className="lib-count">{dimCount(d.id)}</span>
             </button>
           ))}
-          <ul className="lib-keys" aria-label={t("Come scegliere")}>
-            <li>
-              <kbd>{t("Clic")}</kbd> {t("sceglie solo questa")}
-            </li>
-            <li>
-              <kbd>⌘ {t("clic")}</kbd> {t("aggiunge o toglie questa")}
-            </li>
-            <li>
-              <kbd>⇧ {t("clic")}</kbd> {t("aggiunge o toglie tutte fino a qui")}
-            </li>
-            <li>
-              <kbd>⌘ ↑↓</kbd> {t("sposta senza scegliere")}, <kbd>{t("Spazio")}</kbd> {t("aggiunge o toglie")}
-            </li>
-          </ul>
+          {/* come un elenco di scorciatoie: i tasti in colonna a sinistra, cosa fanno a destra */}
+          <div className="lib-keys">
+            <div className="lib-keys-title">{t("Come scegliere")}</div>
+            <dl>
+              <dt>{t("Clic")}</dt>
+              <dd>{t("solo questa")}</dd>
+              <dt>
+                <kbd>⌘</kbd> {t("clic")}
+              </dt>
+              <dd>{t("aggiungi o togli")}</dd>
+              <dt>
+                <kbd>⇧</kbd> {t("clic")}
+              </dt>
+              <dd>{t("tutte fino a qui")}</dd>
+              <dt>
+                <kbd>⌘</kbd> <kbd>↑↓</kbd>
+              </dt>
+              <dd>{t("muovi il cursore")}</dd>
+              <dt>
+                <kbd>{t("Spazio")}</kbd>
+              </dt>
+              <dd>{t("aggiungi o togli")}</dd>
+            </dl>
+          </div>
         </div>
 
         {filesView && (
