@@ -5,6 +5,7 @@ import type {
   CalendarEvent,
   CalendarInfo,
   MeetingSummary,
+  Group,
   Project,
   RecordingStatus,
   Vault,
@@ -17,6 +18,7 @@ import SettingsView from "./components/SettingsView";
 import SettingsNav, { DEFAULT_SECTION } from "./components/SettingsNav";
 import Home from "./components/Home";
 import LibraryView from "./components/LibraryView";
+import PeopleView from "./components/PeopleView";
 import type { Demo } from "./components/DemoData";
 import { getLang, resolveLang, setLang, t } from "./i18n";
 import { isMac } from "./platform";
@@ -57,12 +59,20 @@ export default function App() {
   });
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const refreshGroups = useCallback(() => {
+    api
+      .listGroups()
+      .then(setGroups)
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     api
       .listProjects()
       .then(setProjects)
       .catch(() => {});
-  }, []);
+    refreshGroups();
+  }, [refreshGroups]);
   const [vaults, setVaults] = useState<Vault[]>([]);
   useEffect(() => {
     api
@@ -256,9 +266,10 @@ export default function App() {
           .listProjects()
           .then(setProjects)
           .catch(() => {});
+        refreshGroups();
         if (view.kind === "meeting" && ids.includes(view.id)) setSyncRev((r) => r + 1);
       }),
-    [view, refreshMeetings],
+    [view, refreshMeetings, refreshGroups],
   );
 
   useEffect(() => {
@@ -316,6 +327,7 @@ export default function App() {
         const count = await api.loadDemo();
         setDemoCount(count);
         setProjects(await api.listProjects());
+        refreshGroups();
         refreshMeetings();
         toast(
           t("{n} note di esempio caricate. Sfogliale dalla Libreria o dall'elenco a sinistra.", {
@@ -332,6 +344,7 @@ export default function App() {
         const removed = await api.removeDemo();
         setDemoCount(0);
         setProjects(await api.listProjects());
+        refreshGroups();
         refreshMeetings();
         // il meeting aperto potrebbe essere uno di quelli appena tolti
         setView((v) => (v.kind === "meeting" && v.id.startsWith("demo-") ? { kind: "home" } : v));
@@ -455,6 +468,9 @@ export default function App() {
             onRecChanged={refreshRec}
             projects={projects}
             onProjectsChanged={setProjects}
+            groups={groups}
+            onGroupsChanged={refreshGroups}
+            onOpenGroup={(group) => setView({ kind: "people", group })}
             minPrivacy={vault?.minPrivacy ?? "open"}
             onDeleted={() => {
               setView({ kind: "home" });
@@ -464,15 +480,29 @@ export default function App() {
         )}
         {view.kind === "library" && (
           <LibraryView
-            // aperta su una persona (da Impostazioni → Persone) o su tutte le note riparte da lì
-            key={view.person ?? (view.all ? "all" : "")}
+            // aperta su una persona, su un gruppo (dalla pagina Persone) o su tutte le note
+            // riparte da lì
+            key={view.person ?? view.group ?? (view.all ? "all" : "")}
             person={view.person}
+            group={view.group}
             all={view.all}
             projects={projects}
+            groups={groups}
             onProjectsChanged={setProjects}
             onOpen={(id) => setView({ kind: "meeting", id })}
             onMeetingsChanged={refreshMeetings}
             toast={toast}
+          />
+        )}
+        {view.kind === "people" && (
+          <PeopleView
+            groups={groups}
+            onGroupsChanged={setGroups}
+            initialGroup={view.group}
+            toast={toast}
+            onOpenPerson={(person) => setView({ kind: "library", person })}
+            onOpenGroup={(group) => setView({ kind: "library", group })}
+            onOpenSettings={() => setView({ kind: "settings", section: "people" })}
           />
         )}
         {view.kind === "chat" && (
@@ -501,7 +531,7 @@ export default function App() {
             onOpenVault={openVault}
             onCalendarChanged={() => refreshEvents(true)}
             onTimeFormatChanged={applyTimeFormat}
-            onOpenPerson={(person) => setView({ kind: "library", person })}
+            onOpenPeople={() => setView({ kind: "people" })}
             onMeetingsChanged={refreshMeetings}
             onOpenLibrary={() => setView({ kind: "library" })}
             onLangChanged={(l) => {

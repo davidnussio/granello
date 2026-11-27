@@ -13,6 +13,7 @@ interface Fixtures {
   tags: unknown[];
   people: unknown[];
   projects: unknown[];
+  groups: unknown[];
   items: unknown[];
   templates: unknown[];
   demoCount: number;
@@ -173,6 +174,50 @@ interface PreviewPerson {
   lastMeetingAt: number | null;
 }
 const people = () => data.people as PreviewPerson[];
+
+interface PreviewGroup {
+  id: string;
+  name: string;
+  color: string;
+  description: string;
+  parentId: string | null;
+  kind: "team" | "audience";
+  members: string[];
+  meetings: number;
+  lastMeetingAt: number | null;
+}
+const groups = () => data.groups as PreviewGroup[];
+const byName = (x: { name: string }, y: { name: string }) => x.name.localeCompare(y.name);
+
+/** Un nome cambiato (o tolto, `to` = null) nella rubrica arriva tra i membri dei gruppi. */
+function renameMember(from: string, to: string | null) {
+  for (const g of groups()) {
+    const list = g.members.flatMap((x) => (x.toLowerCase() === from.toLowerCase() ? (to ? [to] : []) : [x]));
+    g.members = [...new Set(list)];
+  }
+}
+
+/** Le persone che entrano in un gruppo entrano anche in rubrica. */
+function addPeopleNamed(names: string[]) {
+  for (const name of names) {
+    if (people().some((p) => p.name.toLowerCase() === name.toLowerCase())) continue;
+    const id = Math.max(0, ...people().map((p) => p.id)) + 1;
+    data.people = [...people(), { id, name, email: null, meetings: 0, lastMeetingAt: null }].toSorted(byName);
+  }
+}
+
+/** Le note che usano un gruppo, contate di nuovo dopo una modifica. */
+function recountGroups() {
+  const metas = data.meetings as { groupIds: string[]; createdAt: number }[];
+  data.groups = groups().map((g) => {
+    const used = metas.filter((m) => m.groupIds.includes(g.id));
+    return {
+      ...g,
+      meetings: used.length,
+      lastMeetingAt: used.length ? Math.max(...used.map((m) => m.createdAt)) : null,
+    };
+  });
+}
 let contactsAccess = "notDetermined";
 
 /** Un nome cambiato nella rubrica arriva tra i partecipanti dei meeting. */
@@ -203,6 +248,69 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   list_tags: () => data.tags,
   list_people: () => data.people,
   list_projects: () => data.projects,
+  // i gruppi si scrivono davvero, in memoria, come i progetti
+  list_groups: () => data.groups,
+  save_group: (a) => {
+    const name = String(a.name).trim();
+    if (groups().some((g) => g.id !== a.id && g.name.toLowerCase() === name.toLowerCase()))
+      throw new Error(`Esiste già un gruppo con il nome «${name}». Scegline un altro.`);
+    const before = groups().find((g) => g.id === a.id);
+    const saved: PreviewGroup = {
+      id: (a.id as string) || `anteprima-gruppo-${Date.now()}`,
+      name,
+      color: String(a.color ?? ""),
+      description: String(a.description ?? ""),
+      parentId: (a.parentId as string | null) || null,
+      kind: a.kind === "audience" ? "audience" : "team",
+      members: a.members as string[],
+      meetings: before?.meetings ?? 0,
+      lastMeetingAt: before?.lastMeetingAt ?? null,
+    };
+    addPeopleNamed(saved.members);
+    data.groups = [...groups().filter((g) => g.id !== saved.id), saved].toSorted(byName);
+    return saved;
+  },
+  change_group_members: (a) => {
+    const g = groups().find((x) => x.id === a.id)!;
+    const remove = (a.remove as string[]).map((x) => x.toLowerCase());
+    const kept = g.members.filter((m) => !remove.includes(m.toLowerCase()));
+    const add = (a.add as string[]).filter((n) => !kept.some((m) => m.toLowerCase() === n.toLowerCase()));
+    addPeopleNamed(add);
+    const saved = { ...g, members: [...kept, ...add] };
+    data.groups = groups().map((x) => (x.id === g.id ? saved : x));
+    return saved;
+  },
+  delete_group: (a) => {
+    const gone = groups().find((g) => g.id === a.id);
+    data.groups = groups()
+      .filter((g) => g.id !== a.id)
+      .map((g) => (g.parentId === a.id ? { ...g, parentId: gone?.parentId ?? null } : g));
+    const clear = (m: { groupIds: string[] }) => {
+      m.groupIds = m.groupIds.filter((id) => id !== a.id);
+    };
+    (data.meetings as { groupIds: string[] }[]).forEach(clear);
+    for (const d of Object.values(data.details) as { meeting: { groupIds: string[] } }[]) clear(d.meeting);
+    data.meetings = [...data.meetings];
+    return data.groups;
+  },
+  // partecipanti, gruppi e tag di una nota cambiano davvero, in memoria
+  update_meeting_meta: (a) => {
+    const detail = data.details[a.id as string] as {
+      meeting: { id: string; attendees: string[]; groupIds: string[]; tags: string[] };
+    };
+    const m = detail.meeting;
+    if (a.attendees) {
+      m.attendees = a.attendees as string[];
+      addPeopleNamed(m.attendees);
+    }
+    if (a.groupIds) m.groupIds = a.groupIds as string[];
+    if (a.tags) m.tags = a.tags as string[];
+    data.meetings = (data.meetings as { id: string }[]).map((x) =>
+      x.id === m.id ? { ...x, attendees: m.attendees, groupIds: m.groupIds, tags: m.tags } : x,
+    );
+    recountGroups();
+    return m;
+  },
   list_items: () => data.items,
   print_window: () => window.print(),
   // l'unica scrittura che l'anteprima esegue davvero: serve a provare i tag su più meeting
@@ -291,6 +399,8 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   },
   // rubrica: nomi e unioni cambiano davvero, così la pagina Persone si prova tutta
   delete_person: (a) => {
+    const gone = people().find((p) => p.id === a.id);
+    if (gone) renameMember(gone.name, null);
     data.people = people().filter((p) => p.id !== a.id);
     return null;
   },
@@ -300,6 +410,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     if (people().some((x) => x.id !== p.id && x.name.toLowerCase() === name.toLowerCase()))
       throw new Error(`In rubrica c'è già «${name}»: per tenerne una sola usa Unisci.`);
     renameAttendee(p.name, name);
+    renameMember(p.name, name);
     p.name = name;
     p.email = (a.email as string | null) || null;
     return people();
@@ -308,6 +419,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     const from = people().find((x) => x.id === a.from)!;
     const into = people().find((x) => x.id === a.into)!;
     renameAttendee(from.name, into.name);
+    renameMember(from.name, into.name);
     into.meetings += from.meetings;
     into.email ??= from.email;
     into.lastMeetingAt = Math.max(into.lastMeetingAt ?? 0, from.lastMeetingAt ?? 0) || null;

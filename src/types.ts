@@ -7,6 +7,8 @@ export interface Meeting {
   endedAt: number | null;
   calendarEventId: string | null;
   attendees: string[];
+  /** I gruppi presenti (id), oltre alle persone una per una. */
+  groupIds: string[];
   tags: string[];
   /** Il progetto in cui sta, se ne ha uno. */
   projectId: string | null;
@@ -81,6 +83,8 @@ export interface MeetingSummary {
   createdAt: number;
   hasEnhanced: boolean;
   attendees: string[];
+  /** I gruppi presenti (id). */
+  groupIds: string[];
   tags: string[];
   projectId: string | null;
   /** Quando è stato fissato; null se non è fissato. */
@@ -98,6 +102,31 @@ export interface Person {
   /** Quando è stato creato l'ultimo meeting a cui ha partecipato. */
   lastMeetingAt: number | null;
 }
+
+/**
+ * Come entra un gruppo in una nota: "team" porta con sé i membri come partecipanti, uno per
+ * uno; "audience" (tutta l'azienda, un reparto) resta un solo chip.
+ */
+export type GroupKind = "team" | "audience";
+
+/** Un gruppo di persone, dentro un altro gruppo o di primo livello. */
+export interface Group {
+  id: string;
+  name: string;
+  /** Uno dei colori dei progetti; vuoto = quello predefinito. */
+  color: string;
+  description: string;
+  parentId: string | null;
+  kind: GroupKind;
+  /** I nomi dei membri, come in rubrica. */
+  members: string[];
+  /** In quante note compare. */
+  meetings: number;
+  lastMeetingAt: number | null;
+}
+
+/** Fino a quanti membri un gruppo nuovo è un team (oltre, un pubblico). */
+export const TEAM_SIZE = 15;
 
 /** Una persona letta da un file vCard; `known` se è già in rubrica. */
 export interface ImportedPerson {
@@ -363,6 +392,7 @@ export interface LibraryItem {
 export type View =
   | { kind: "meeting"; id: string }
   | { kind: "chat" }
-  | { kind: "library"; person?: string; all?: boolean }
+  | { kind: "library"; person?: string; group?: string; all?: boolean }
+  | { kind: "people"; group?: string }
   | { kind: "settings"; section?: SettingsSection }
   | { kind: "home" };

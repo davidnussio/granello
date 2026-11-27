@@ -291,12 +291,13 @@ pub fn update_meeting(
         .map_err(err)
 }
 
-/// Aggiorna partecipanti e/o tag di un meeting (i campi assenti restano invariati).
+/// Aggiorna partecipanti, gruppi e/o tag di un meeting (i campi assenti restano invariati).
 #[tauri::command]
 pub fn update_meeting_meta(
     state: State<AppState>,
     id: String,
     attendees: Option<Vec<String>>,
+    group_ids: Option<Vec<String>>,
     tags: Option<Vec<String>>,
 ) -> CmdResult<Meeting> {
     // le email note dal calendario finiscono in rubrica insieme ai nomi
@@ -321,6 +322,9 @@ pub fn update_meeting_meta(
             })
             .collect();
         db.set_attendees(&id, &people).map_err(err)?;
+    }
+    if let Some(groups) = group_ids {
+        db.set_meeting_groups(&id, &groups).map_err(err)?;
     }
     if let Some(tags) = tags {
         db.set_tags(&id, &normalize_tags(tags)).map_err(err)?;
@@ -419,6 +423,59 @@ pub fn delete_project(state: State<AppState>, id: String) -> CmdResult<Vec<Proje
     let db = state.db.lock();
     db.delete_project(&id).map_err(err)?;
     db.list_projects().map_err(err)
+}
+
+#[tauri::command]
+pub fn list_groups(state: State<AppState>) -> CmdResult<Vec<Group>> {
+    state.db.lock().list_groups().map_err(err)
+}
+
+/// Crea un gruppo (`id` assente) o ne cambia nome, colore, descrizione, genitore, tipo e membri.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub fn save_group(
+    state: State<AppState>,
+    id: Option<String>,
+    name: String,
+    color: String,
+    description: String,
+    parent_id: Option<String>,
+    kind: GroupKind,
+    members: Vec<String>,
+) -> CmdResult<Group> {
+    let name: String = name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
+    if name.is_empty() {
+        return Err(tr("Dai un nome al gruppo", "Give the group a name").into());
+    }
+    let color = if PROJECT_COLORS.contains(&color.as_str()) { color.as_str() } else { "" };
+    let description: String = description.trim().chars().take(600).collect();
+    let parent = parent_id.filter(|p| !p.is_empty());
+    let members = normalize_names(members, 80, MAX_GROUP_MEMBERS);
+    state
+        .db
+        .lock()
+        .save_group(id.as_deref().unwrap_or(""), &name, color, &description, parent.as_deref(), kind, &members)
+        .map_err(err)
+}
+
+/// Aggiunge e toglie persone da un gruppo.
+#[tauri::command]
+pub fn change_group_members(
+    state: State<AppState>,
+    id: String,
+    add: Vec<String>,
+    remove: Vec<String>,
+) -> CmdResult<Group> {
+    let add = normalize_names(add, 80, MAX_GROUP_MEMBERS);
+    state.db.lock().change_group_members(&id, &add, &remove).map_err(err)
+}
+
+/// Elimina un gruppo: le note e le persone restano.
+#[tauri::command]
+pub fn delete_group(state: State<AppState>, id: String) -> CmdResult<Vec<Group>> {
+    let db = state.db.lock();
+    db.delete_group(&id).map_err(err)?;
+    db.list_groups().map_err(err)
 }
 
 /// Mette uno o più meeting in un progetto, o li toglie dal loro (`project_id` assente).

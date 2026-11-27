@@ -1,11 +1,17 @@
 projects: clients/cliente-nord, app-mobile, clients/cliente-lago
 archived: sito-2025
+group: azienda | Whole company | audience | Elena Rossi, Giulia Moretti, Luca Ferri, Anna Villa, Sara Conti, Chiara Fontana, Stefano Bruno
+group: azienda/mobile | Mobile team | team | Giulia Moretti, Luca Ferri, Anna Villa, Sara Conti
+group: clienti | Clients | audience |
+group: clienti/nord | Nord | team | Marco Bianchi, Paolo Greco
+group: clienti/lago | Lago Logistica | team | Francesca Galli, Roberto Marino
 
 === demo-rinnovo
 title: Nord contract renewal 2027
 when: 1 10:00
 minutes: 42
 attendees: Marco Bianchi, Elena Rossi
+groups: nord
 tags: cliente-nord, prezzi
 pinned: yes
 --- notes
@@ -105,6 +111,7 @@ title: CRM integration demo
 when: 8 15:00
 minutes: 31
 attendees: Marco Bianchi, Luca Ferri
+groups: nord
 tags: cliente-nord
 --- notes
 ## What we showed
@@ -160,6 +167,7 @@ title: Nord project kickoff
 when: 30 09:30
 minutes: 55
 attendees: Marco Bianchi, Elena Rossi, Giulia Moretti
+groups: nord
 tags: cliente-nord
 --- notes
 ## Goals
@@ -191,6 +199,7 @@ title: Mobile app roadmap, first quarter
 when: 5 14:00
 minutes: 48
 attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+groups: mobile
 tags: app-mobile
 pinned: yes
 --- notes
@@ -256,6 +265,7 @@ title: Monday standup
 when: 3 09:15
 minutes: 12
 attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+groups: mobile
 tags: standup
 --- notes
 [[timer:10:00]]
@@ -358,6 +368,7 @@ title: Closing call with Nord
 when: 0 08:30
 minutes: 25
 attendees: Marco Bianchi, Elena Rossi
+groups: nord
 tags: cliente-nord, prezzi
 --- notes
 Nord's board approved the two years.
@@ -385,6 +396,7 @@ title: Presentation to Nord's board
 when: 4 11:30
 minutes: 45
 attendees: Marco Bianchi, Paolo Greco, Elena Rossi
+groups: nord
 tags: cliente-nord, prezzi
 --- notes
 @[Paolo Greco] is the CFO: he only looks at the total cost over the two years.
@@ -534,6 +546,7 @@ title: Thursday standup
 when: 7 09:15
 minutes: 10
 attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+groups: mobile
 tags: standup
 --- notes
 [[timer:10:00]]
@@ -549,6 +562,7 @@ title: Last Monday's standup
 when: 10 09:15
 minutes: 14
 attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+groups: mobile
 tags: standup
 --- notes
 ::: kanban
@@ -567,6 +581,7 @@ title: November retrospective
 when: 14 14:30
 minutes: 60
 attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+groups: mobile
 tags: retrospettiva
 --- notes
 How the month went: [[rating:4]]
@@ -699,6 +714,7 @@ title: First meeting with Lago Logistics
 when: 24 10:00
 minutes: 40
 attendees: Francesca Galli, Elena Rossi
+groups: lago
 tags: cliente-lago
 --- notes
 ## Who they are
@@ -748,6 +764,7 @@ title: Lago Logistics requirements
 when: 19 14:00
 minutes: 55
 attendees: Francesca Galli, Roberto Marino, Luca Ferri
+groups: lago
 tags: cliente-lago
 --- notes
 [[toc]]
@@ -815,6 +832,7 @@ title: Negotiation with Lago
 when: 6 16:00
 minutes: 30
 attendees: Francesca Galli, Elena Rossi
+groups: lago
 tags: cliente-lago, prezzi
 --- notes
 ## Where we are
@@ -844,6 +862,7 @@ title: Signing the Lago contract
 when: 1 15:00
 minutes: 20
 attendees: Francesca Galli, Roberto Marino, Elena Rossi
+groups: lago
 tags: cliente-lago
 --- notes
 Contract signed for the first phase.
@@ -867,6 +886,7 @@ title: Wednesday standup
 when: 5 09:15
 minutes: 11
 attendees: Giulia Moretti, Luca Ferri, Elena Rossi
+groups: mobile
 tags: standup
 --- notes
 [[timer:10:00]]
@@ -883,6 +903,7 @@ title: Friday standup
 when: 22 09:15
 minutes: 9
 attendees: Giulia Moretti, Luca Ferri, Anna Villa
+groups: mobile
 tags: standup
 --- notes
 - @[Anna Villa]: closed 14 tickets, none urgent
@@ -896,6 +917,7 @@ title: Standup two weeks ago
 when: 17 09:15
 minutes: 13
 attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+groups: mobile
 tags: standup
 --- notes
 ::: kanban
@@ -914,6 +936,7 @@ title: October retrospective
 when: 44 14:30
 minutes: 55
 attendees: Giulia Moretti, Luca Ferri, Elena Rossi, Anna Villa
+groups: mobile
 tags: retrospettiva
 --- notes
 How the month went: [[rating:3]]
@@ -1104,6 +1127,7 @@ title: Sprint 12 planning
 when: 1 11:30
 minutes: 40
 attendees: Giulia Moretti, Luca Ferri, Sara Conti
+groups: mobile
 tags: app-mobile
 --- notes
 Sprint capacity: 30 points.
@@ -1330,6 +1354,7 @@ title: Quarterly review with Nord
 when: 60 10:00
 minutes: 60
 attendees: Marco Bianchi, Paolo Greco, Elena Rossi
+groups: nord
 tags: cliente-nord
 --- notes
 ## Quarter numbers
@@ -1377,3 +1402,40 @@ tags: marketing
 
 - [ ] @[Chiara Fontana]: draft by the 10th
 - [ ] @[Elena Rossi]: ask Nord for permission for the story
+
+=== demo-all-hands
+title: Company all-hands, November
+when: 3 09:00
+minutes: 45
+attendees: Elena Rossi, Giulia Moretti
+groups: azienda
+tags: company
+--- notes
+## Numbers for the month
+
+- Revenue 6% above plan, thanks to Nord and Lago
+- Two new people in January: mobile development and support
+
+## What @[Giulia Moretti] showed
+
+The mobile app goes into beta next month. Anyone who wants to try it writes to Anna.
+
+## Questions from the floor
+
+::: quote 31:20 Audience
+Does working from home on Fridays continue next year?
+:::
+
+Elena's answer: yes, unchanged.
+
+## Actions
+
+- [ ] Send everyone the slides and the month's numbers
+- [ ] Open sign-ups for the beta
+--- transcript
+00:10 them Good morning everyone, let's start with the numbers for the month.
+02:40 them We're six percent above plan, mostly thanks to Nord and Lago Logistica.
+14:05 them Over to Giulia for the mobile app.
+14:20 them We go into beta next month: anyone who wants to try it, write to Anna.
+31:20 them Does working from home on Fridays continue next year?
+31:35 them Yes, it stays as it is.

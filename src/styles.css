@@ -2782,10 +2782,6 @@ h4.sub {
   flex: none;
 }
 
-/* Impostazioni → Persone: a tutta pagina, l'elenco scorre con la pagina */
-.page.settings.wide {
-  max-width: 1180px;
-}
 .roster-tools {
   display: flex;
   align-items: center;
@@ -2873,17 +2869,6 @@ h4.sub {
 .roster-row:hover .roster-acts,
 .roster-acts:focus-within {
   opacity: 1;
-}
-.roster-group.editing .roster-row {
-  grid-template-columns: minmax(160px, 1.3fr) minmax(140px, 1.4fr) auto;
-}
-.roster-group.editing input {
-  min-width: 0;
-}
-.roster-edit-buttons {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
 }
 .roster-merge {
   display: flex;
@@ -5117,4 +5102,516 @@ button.lib-twisty:hover {
 .menu-item.asking {
   background: color-mix(in srgb, var(--rec) 14%, transparent);
   color: var(--rec);
+}
+
+/* ---------- pagina Persone: gruppi a sinistra, persone a destra ----------
+   Quattro dimensioni di testo: 11 (intestazioni in maiuscolo), 12 (chip, numeri, date, note),
+   13.5 (nomi e righe, come la Libreria), 22 (titolo). Ogni riga dell'elenco è alta uguale. */
+.people-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.people-total {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.people-cols {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: clamp(170px, 24%, 240px) minmax(0, 1fr);
+  border-top: 1px solid var(--line);
+}
+.people-groups-head {
+  margin-top: 10px;
+}
+button.lib-row.people-group-row {
+  padding-left: calc(9px + var(--depth, 0) * 14px);
+}
+.people-groups .lib-new {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.people-main {
+  container: people / inline-size;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 14px 24px 28px;
+  font-size: 13.5px;
+}
+
+/* intestazione del gruppo: titolo con il tipo, poi una riga di azioni leggere */
+.people-group-head {
+  margin-bottom: 10px;
+}
+.people-group-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.people-group-title h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.people-group-title .project-dot {
+  width: 10px;
+  height: 10px;
+}
+.people-kind {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 7px;
+  cursor: help;
+}
+.people-group-desc {
+  margin: 4px 0 0 19px;
+  white-space: pre-wrap;
+}
+.people-group-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 6px 0 0 19px;
+  font-size: 12px;
+}
+.people-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--line);
+}
+.people-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+.people-link:hover {
+  color: var(--accent);
+}
+.people-link:first-child {
+  color: var(--accent);
+  font-weight: 550;
+}
+.people-link.danger {
+  color: var(--rec);
+  font-weight: 550;
+}
+.people-page .link-button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.people-page .link-button:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* ricerca (che aggiunge anche) e, con delle persone scelte, i loro comandi: stessa altezza */
+.people-main .roster-tools {
+  height: 33px;
+  margin: 0 0 10px;
+}
+.people-main .roster-tools .search {
+  flex: 1 1 auto;
+  max-width: 420px;
+  min-width: 0;
+  font-size: 13.5px;
+}
+.people-bulk {
+  padding: 0 0 0 12px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+.people-bulk > * {
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.people-bulk > strong,
+.people-bulk-x {
+  flex-shrink: 0;
+}
+.people-bulk-x {
+  font-size: 16px;
+  line-height: 1;
+}
+.people-bulk .chip.select {
+  max-width: 200px;
+  min-width: 80px;
+}
+/* i pulsanti restano interi: si stringe il menu dei gruppi */
+.people-bulk > button {
+  flex-shrink: 0;
+}
+.people-bulk .btn.danger {
+  color: var(--rec);
+  font-weight: 550;
+}
+.people-add-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 10px;
+  padding: 6px 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* l'elenco: righe alte uguali, numeri e date più piccoli dei nomi */
+.people-roster {
+  outline: none;
+}
+.people-roster .roster-row {
+  grid-template-columns:
+    22px minmax(120px, 1.2fr) minmax(110px, 1fr) minmax(130px, 1.4fr)
+    44px 64px 72px;
+  gap: 10px;
+  height: 36px;
+  min-height: 0;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+.people-roster .roster-row:not(.head) {
+  cursor: default;
+}
+.people-roster .roster-row.head {
+  height: 30px;
+}
+.people-roster .roster-name {
+  font-size: 13.5px;
+}
+.people-roster .muted.num,
+.people-roster .muted.col-last,
+.people-roster .muted.col-email {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.people-roster .col-last {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.people-roster .roster-check {
+  display: flex;
+  align-items: center;
+}
+.people-roster .roster-check input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+.roster-sort {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.roster-sort:hover {
+  color: var(--text);
+}
+.people-roster .num .roster-sort {
+  width: 100%;
+  text-align: right;
+}
+.roster-group.picked {
+  background: var(--accent-soft);
+}
+.people-count {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+}
+.people-count:hover {
+  text-decoration: underline;
+}
+/* la riga delle frecce, solo mentre l'elenco ha il fuoco */
+.people-roster:focus .roster-group.cur,
+.people-roster:focus-within .roster-group.cur:not(.inline-edit) {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.roster-group.inline-edit {
+  background: var(--panel);
+}
+.roster-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--accent);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 3px 7px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.people-roster .roster-acts {
+  gap: 0;
+}
+.people-roster .roster-acts .lib-act.confirm {
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+.people-roster .roster-acts:has(.confirm) {
+  opacity: 1;
+}
+
+/* chip dei gruppi di una persona: in una riga, con × per togliere e «+N» per il resto */
+.people-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+.people-chip {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.people-chip:hover {
+  border-color: var(--accent);
+}
+/* pagina larga: due chip e «+N» per il resto; stretta: un chip solo */
+.people-chip:first-child {
+  flex-shrink: 1;
+}
+.people-more.narrow {
+  display: none;
+}
+@container people (max-width: 900px) {
+  .people-chip:nth-child(2) {
+    display: none;
+  }
+  .people-more.narrow {
+    display: inline;
+  }
+  .people-more.wide {
+    display: none;
+  }
+}
+.people-chip .project-dot {
+  width: 7px;
+  height: 7px;
+}
+.people-chip-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0 2px 0 8px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.people-chip-x {
+  border: none;
+  background: none;
+  padding: 0 6px 0 2px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted);
+  opacity: 0;
+  cursor: pointer;
+}
+.people-chip:hover .people-chip-x,
+.people-chip-x:focus-visible {
+  opacity: 1;
+}
+.people-chip-x:hover {
+  color: var(--rec);
+}
+button.people-chip.add {
+  padding: 0 9px;
+  cursor: pointer;
+  color: var(--accent);
+}
+button.people-chip.add.fresh {
+  border-style: dashed;
+}
+.people-more {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: help;
+}
+
+/* finestra più stretta: prima sparisce l'email, poi numero di note e ultima nota */
+@container people (max-width: 600px) {
+  .people-roster .roster-row {
+    grid-template-columns: 22px minmax(110px, 1.3fr) minmax(100px, 1fr) 44px 64px 72px;
+  }
+  .people-roster .col-email {
+    display: none;
+  }
+}
+@container people (max-width: 470px) {
+  .people-roster .roster-row {
+    grid-template-columns: 22px minmax(0, 1.3fr) minmax(0, 1fr) 72px;
+    gap: 8px;
+  }
+  .people-roster .num,
+  .people-roster .col-last {
+    display: none;
+  }
+}
+
+/* ---------- gruppi in una nota ---------- */
+.group-chip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.chip.group {
+  color: var(--text);
+  gap: 0;
+  padding-left: 4px;
+}
+/* un pubblico (tutta l'azienda) non porta dentro i suoi membri: si distingue dal team */
+.chip.group.audience {
+  background: var(--panel);
+  border-style: dotted;
+}
+.group-chip-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  padding: 0 0 0 4px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.group-chip-name {
+  font-weight: 550;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.group-chip-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.group-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  width: 300px;
+  max-width: 80vw;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.18);
+}
+.group-pop-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.group-pop-hint {
+  margin: 0;
+}
+.group-pop-search {
+  width: 100%;
+  box-sizing: border-box;
+}
+.group-pop-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.group-pop-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px;
+  border-radius: 6px;
+  font-size: 13px;
+  min-width: 0;
+}
+.group-pop-item:hover {
+  background: var(--panel);
+}
+.group-pop-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- finestra del gruppo: team o pubblico ---------- */
+.group-kinds {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.group-kind {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+.group-kind > span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.group-kind input {
+  margin-top: 3px;
+}
+.group-kinds > legend {
+  padding: 0;
+  margin-bottom: 2px;
+  font-weight: 550;
+  font-size: 13px;
 }

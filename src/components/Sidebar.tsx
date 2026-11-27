@@ -166,9 +166,16 @@ export default function Sidebar(p: Props) {
         <button
           className={navCls(p.view.kind === "library")}
           onClick={() => p.setView({ kind: "library" })}
-          title={t("Sfoglia le note per progetto, persona, tag e periodo")}
+          title={t("Sfoglia le note per progetto, gruppo, persona, tag e periodo")}
         >
           {t("▤ Libreria")}
+        </button>
+        <button
+          className={navCls(p.view.kind === "people")}
+          onClick={() => p.setView({ kind: "people" })}
+          title={t("Le persone delle tue note e i loro gruppi")}
+        >
+          {t("☺ Persone")}
         </button>
       </nav>
 

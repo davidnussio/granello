@@ -1,4 +1,12 @@
-import type { Project } from "./types";
+import type { Group, Project } from "./types";
+
+/** Quello che serve per stare in un albero: progetti e gruppi di persone. */
+interface Node {
+  id: string;
+  parentId: string | null;
+  name: string;
+  archived?: boolean;
+}
 import { locale } from "./i18n";
 
 /** Come si scrive un progetto dentro un altro: `dambox › bizcard`. */
@@ -7,9 +15,9 @@ export const PATH_SEPARATOR = " › ";
 const byName = (a: string, b: string) => a.localeCompare(b, locale(), { sensitivity: "base" });
 
 /** Il progetto con quelli sopra, dal primo livello. Un genitore che non c'è chiude il percorso. */
-export function projectPath(id: string | null | undefined, projects: Project[]): Project[] {
+export function projectPath<T extends Node>(id: string | null | undefined, projects: T[]): T[] {
   const byId = new Map(projects.map((p) => [p.id, p]));
-  const out: Project[] = [];
+  const out: T[] = [];
   const seen = new Set<string>();
   let p = id ? byId.get(id) : undefined;
   while (p && !seen.has(p.id)) {
@@ -21,7 +29,7 @@ export function projectPath(id: string | null | undefined, projects: Project[]):
 }
 
 /** Il nome completo di un progetto: `dambox › bizcard`. */
-export const projectTitle = (id: string | null | undefined, projects: Project[]) =>
+export const projectTitle = (id: string | null | undefined, projects: Node[]) =>
   projectPath(id, projects)
     .map((p) => p.name)
     .join(PATH_SEPARATOR);
@@ -31,19 +39,19 @@ export const archivedIn = (id: string, projects: Project[]) =>
   projectPath(id, projects).some((p) => p.archived);
 
 /** I progetti nell'ordine dell'albero (ognuno seguito dai suoi), con la loro profondità. */
-export function projectTree(projects: Project[]): { project: Project; depth: number }[] {
+export function projectTree<T extends Node>(projects: T[]): { project: T; depth: number }[] {
   const ids = new Set(projects.map((p) => p.id));
-  const kids = new Map<string | null, Project[]>();
+  const kids = new Map<string | null, T[]>();
   for (const p of projects) {
     // un genitore che non c'è (cancellato, o non ancora arrivato dal sync) vale come nessuno
     const parent = p.parentId && ids.has(p.parentId) && p.parentId !== p.id ? p.parentId : null;
     kids.set(parent, [...(kids.get(parent) ?? []), p]);
   }
-  const out: { project: Project; depth: number }[] = [];
+  const out: { project: T; depth: number }[] = [];
   const seen = new Set<string>();
   const walk = (parent: string | null, depth: number) => {
     const list = (kids.get(parent) ?? []).toSorted(
-      (a, b) => Number(a.archived) - Number(b.archived) || byName(a.name, b.name),
+      (a, b) => Number(!!a.archived) - Number(!!b.archived) || byName(a.name, b.name),
     );
     for (const p of list) {
       if (seen.has(p.id)) continue;
@@ -59,7 +67,7 @@ export function projectTree(projects: Project[]): { project: Project; depth: num
 }
 
 /** Il progetto e tutti quelli che contiene, a ogni livello. */
-export function projectBranch(id: string, projects: Project[]): Set<string> {
+export function projectBranch(id: string, projects: Node[]): Set<string> {
   const out = new Set([id]);
   let grew = true;
   while (grew) {
@@ -82,6 +90,10 @@ export const projectOptions = (projects: Project[], keep?: string | null) =>
   projectTree(projects)
     .filter(({ project }) => project.id === keep || !archivedIn(project.id, projects))
     .map(({ project }) => ({ id: project.id, label: projectTitle(project.id, projects) }));
+
+/** I gruppi da offrire in un menu: nell'ordine dell'albero e con il nome completo. */
+export const groupOptions = (groups: Group[]) =>
+  projectTree(groups).map(({ project }) => ({ id: project.id, label: projectTitle(project.id, groups) }));
 
 /** I livelli di un tag scritto con `/`: `progetto/bizcard` → `progetto`, `progetto/bizcard`. */
 export function tagLevels(tag: string): string[] {

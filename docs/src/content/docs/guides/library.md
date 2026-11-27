@@ -12,6 +12,7 @@ The Library browses your notes in columns: pick a dimension, then a value, then 
 - **All notes**: every note, newest first, with no filter.
 - **Pinned**: the notes you pinned to the sidebar, see below.
 - **Projects**: the projects you created, each with the notes that belong to it.
+- **Groups**: the groups of [people](/guides/people/) added to your notes; a group that contains others also lists their notes.
 - **People**: who took part.
 - **Tags**: the tags on your notes.
 - **Period**: this week, then one group per month.

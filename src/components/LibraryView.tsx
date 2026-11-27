@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, errorText } from "../api";
-import type { ItemKind, LibraryItem, Meeting, MeetingSummary, Project } from "../types";
+import type { Group as PeopleGroup, ItemKind, LibraryItem, Meeting, MeetingSummary, Project } from "../types";
 import { dayLabel, mmss, time } from "../format";
 import { locale, t } from "../i18n";
 import { sparkle } from "../sparkles";
@@ -20,6 +20,8 @@ import {
 
 interface Props {
   projects: Project[];
+  /** I gruppi di persone, per la dimensione Gruppi. */
+  groups: PeopleGroup[];
   onProjectsChanged: (projects: Project[]) => void;
   onOpen: (meetingId: string) => void;
   /** Tag o progetto di qualche meeting sono cambiati: chi tiene un elenco di meeting lo ricarica. */
@@ -27,11 +29,13 @@ interface Props {
   toast: (text: string) => void;
   /** Apre la Libreria sui meeting di questa persona. */
   person?: string;
+  /** Apre la Libreria sulle note di questo gruppo (id). */
+  group?: string;
   /** Apre la Libreria su tutte le note (da «Tutte le note» nella barra laterale). */
   all?: boolean;
 }
 
-type Dim = "all" | "pinned" | "projects" | "people" | "tags" | "period" | "files";
+type Dim = "all" | "pinned" | "projects" | "groups" | "people" | "tags" | "period" | "files";
 /** Le dimensioni che raggruppano i meeting (i file no). */
 type GroupDim = Exclude<Dim, "files">;
 /**
@@ -39,12 +43,12 @@ type GroupDim = Exclude<Dim, "files">;
  * le note nessun filtro.
  */
 type FacetDim = Exclude<GroupDim, "pinned" | "all">;
-const FACETS: FacetDim[] = ["projects", "people", "tags", "period"];
+const FACETS: FacetDim[] = ["projects", "groups", "people", "tags", "period"];
 /**
  * Con più voci scelte nella stessa colonna, in persone e tag un meeting deve averle tutte (Ermanno
  * e Daniele insieme); in progetti e periodo ne basta una, perché un meeting ne ha una sola.
  */
-const ALL_OF: ReadonlySet<FacetDim> = new Set(["people", "tags"]);
+const ALL_OF: ReadonlySet<FacetDim> = new Set(["groups", "people", "tags"]);
 
 /** I tasti tenuti premuti durante un clic: Cmd aggiunge o toglie, Maiusc prende fino a lì. */
 interface Mods {
@@ -78,6 +82,8 @@ interface Group {
   archived?: boolean;
   /** Solo nella dimensione dei progetti: il progetto di questa voce. */
   project?: Project;
+  /** Solo nella dimensione dei gruppi: il gruppo di questa voce. */
+  peopleGroup?: PeopleGroup;
   /** Progetti e tag con `/` stanno in un albero: la voce che contiene questa, e a che livello. */
   parent?: string;
   depth?: number;
@@ -89,6 +95,7 @@ const DIMS: { id: Dim; icon: React.ReactNode; label: () => string }[] = [
   // una voce sola, senza seconda colonna: i meeting fissati nella barra laterale
   { id: "pinned", icon: <PinIcon filled />, label: () => t("Fissati") },
   { id: "projects", icon: "▣", label: () => t("Progetti") },
+  { id: "groups", icon: "⧉", label: () => t("Gruppi") },
   { id: "people", icon: "☺", label: () => t("Persone") },
   { id: "tags", icon: "#", label: () => t("Tag") },
   { id: "period", icon: "▦", label: () => t("Periodo") },
@@ -185,13 +192,31 @@ function tagTree(meetings: MeetingSummary[]): Group[] {
 }
 
 /** Le voci di una dimensione, ognuna con i suoi meeting. */
-function groupsOf(dim: FacetDim, meetings: MeetingSummary[], projects: Project[]): Group[] {
+function groupsOf(
+  dim: FacetDim,
+  meetings: MeetingSummary[],
+  projects: Project[],
+  peopleGroups: PeopleGroup[],
+): Group[] {
   // persone e tag in ordine alfabetico: filtrando cambiano i numeri, non il posto delle voci
   const byName = (groups: Group[]) =>
     groups.toSorted((a, b) => a.label.localeCompare(b.label, locale(), { sensitivity: "base" }));
   if (dim === "people") return byName(groupBy(meetings, (m) => m.attendees));
   if (dim === "period") return byPeriod(meetings);
   if (dim === "tags") return tagTree(meetings);
+  // i gruppi come i progetti: in albero, e uno che ne contiene altri raccoglie anche le loro note
+  if (dim === "groups")
+    return projectTree(peopleGroups).map(({ project: g, depth }) => {
+      const branch = projectBranch(g.id, peopleGroups);
+      return {
+        key: g.id,
+        label: g.name,
+        meetings: meetings.filter((m) => m.groupIds.some((id) => branch.has(id))),
+        peopleGroup: g,
+        depth,
+        parent: depth > 0 ? (g.parentId ?? undefined) : undefined,
+      };
+    });
   // un progetto resta in elenco anche prima di avere meeting; uno che ne contiene altri raccoglie
   // anche le loro note
   return projectTree(projects).map(({ project: p, depth }) => {
@@ -290,18 +315,22 @@ export default function LibraryView({
   onMeetingsChanged,
   toast,
   person,
+  group,
+  groups: peopleGroups,
   all: allNotes,
 }: Props) {
   const [meetings, setMeetings] = useState<MeetingSummary[]>([]);
   /** Le dimensioni scelte nella prima colonna, nell'ordine in cui sono state aggiunte. */
-  const [active, setActive] = useState<Dim[]>([person ? "people" : allNotes ? "all" : "projects"]);
+  const [active, setActive] = useState<Dim[]>([
+    person ? "people" : group ? "groups" : allNotes ? "all" : "projects",
+  ]);
   /** Le voci scelte in ogni colonna; una colonna senza voci scelte non filtra. */
   const [sel, setSel] = useState<Partial<Record<FacetDim, string[]>>>(
-    person ? { people: [person.toLowerCase()] } : {},
+    person ? { people: [person.toLowerCase()] } : group ? { groups: [group] } : {},
   );
   /** L'ultima voce cliccata o raggiunta con le frecce in ogni colonna: da lì partono Maiusc e le frecce. */
   const [cursor, setCursor] = useState<Partial<Record<FacetDim, string>>>(
-    person ? { people: person.toLowerCase() } : {},
+    person ? { people: person.toLowerCase() } : group ? { groups: group } : {},
   );
   /**
    * La dimensione dove sono le frecce nella prima colonna, se ci si è arrivati con ⌘ + freccia
@@ -314,7 +343,7 @@ export default function LibraryView({
   const [showArchived, setShowArchived] = useState(false);
   const [detail, setDetail] = useState<Meeting | null>(null);
   /** Colonna che riceve le frecce: 0 dimensioni, poi una per dimensione con voci, poi i meeting. */
-  const [col, setCol] = useState(person ? 2 : 1);
+  const [col, setCol] = useState(person || group ? 2 : 1);
   /** Si sta usando la tastiera: solo allora si vede la riga dove sono le frecce. Un clic la nasconde. */
   const [usingKeys, setUsingKeys] = useState(false);
   /** Quanti file ci sono (registrazioni comprese), per il numero accanto a File. */
@@ -377,14 +406,14 @@ export default function LibraryView({
     const out = {} as Record<FacetDim, Map<string, { label: string; ids: Set<string> }>>;
     for (const d of FACETS) {
       out[d] = new Map(
-        groupsOf(d, meetings, projects).map((g) => [
+        groupsOf(d, meetings, projects, peopleGroups).map((g) => [
           g.key,
           { label: g.label, ids: new Set(g.meetings.map((m) => m.id)) },
         ]),
       );
     }
     return out;
-  }, [meetings, projects]);
+  }, [meetings, projects, peopleGroups]);
 
   /** Le voci scelte in una colonna che esistono ancora. */
   const chosen = useCallback((d: FacetDim) => (sel[d] ?? []).filter((k) => known[d].has(k)), [sel, known]);
@@ -428,7 +457,7 @@ export default function LibraryView({
       const narrowed = pinnedOn || facets.some((o) => o !== d && chosen(o).length > 0);
       // filtrando da altre colonne restano le voci con meeting; i progetti archiviati restano
       // nascosti (salvo quelli scelti) finché non si apre «Archiviati»
-      const candidates = groupsOf(d, passing(d), projects).filter(
+      const candidates = groupsOf(d, passing(d), projects, peopleGroups).filter(
         (g) => keys.includes(g.key) || !narrowed || g.meetings.length > 0,
       );
       const archived = candidates.filter((g) => g.archived && !keys.includes(g.key)).length;
@@ -447,7 +476,7 @@ export default function LibraryView({
       out[d] = { groups: all.filter(shown), total: all.length, parents, narrowed, archived };
     }
     return out;
-  }, [chosen, pinnedOn, facets, passing, projects, showArchived, known, open]);
+  }, [chosen, pinnedOn, facets, passing, projects, peopleGroups, showArchived, known, open]);
 
   /** Apre o chiude il ramo di una voce. */
   const toggleOpen = (d: FacetDim, key: string, to?: boolean) =>
@@ -460,6 +489,13 @@ export default function LibraryView({
       saveOpen(next);
       return next;
     });
+
+  // aperta su un gruppo dentro altri: i rami sopra si aprono, così la voce scelta si vede
+  useEffect(() => {
+    if (!group) return;
+    for (const up of projectPath(group, peopleGroups).slice(0, -1)) toggleOpen("groups", up.id, true);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- solo all'apertura
+  }, []);
 
   const filtered = useMemo(() => passing(), [passing]);
 
@@ -913,10 +949,15 @@ export default function LibraryView({
               role="option"
               aria-selected={keys.includes(g.key)}
               className="lib-row-main"
-              title={g.project?.description || (g.short ? hash(d) + g.label : undefined)}
+              title={
+                g.project?.description ||
+                g.peopleGroup?.description ||
+                (g.short ? hash(d) + g.label : undefined)
+              }
               onClick={(e) => pickValue(d, g.key, e)}
             >
               {g.project && <ProjectDot project={g.project} />}
+              {g.peopleGroup && <ProjectDot project={g.peopleGroup} />}
               <span className="lib-label">
                 {hash(d)}
                 {g.short ?? g.label}
@@ -946,11 +987,13 @@ export default function LibraryView({
               ? t("Nessuna voce nelle note scelte dalle altre colonne.")
               : d === "projects"
                 ? t("Nessun progetto: creane uno con + Nuovo progetto.")
-                : d === "tags"
-                  ? t("Nessun tag: aggiungine uno a una nota, sotto il titolo.")
-                  : d === "people"
-                    ? t("Nessun partecipante nelle note.")
-                    : t("Ancora nessuna nota")}
+                : d === "groups"
+                  ? t("Nessun gruppo: crealo dalla pagina Persone.")
+                  : d === "tags"
+                    ? t("Nessun tag: aggiungine uno a una nota, sotto il titolo.")
+                    : d === "people"
+                      ? t("Nessun partecipante nelle note.")
+                      : t("Ancora nessuna nota")}
           </p>
         )}
         {d === "projects" && columns.projects.archived > 0 && (
@@ -1202,9 +1245,11 @@ export default function LibraryView({
                       )
                     : only?.dim === "projects"
                       ? t("Nessuna nota qui: apri una nota e scegli questo progetto, in alto a destra.")
-                      : only?.dim === "tags"
-                        ? t("Nessuna nota qui: aggiungi il tag #{tag} a una nota.", { tag: only.label })
-                        : t("Nessuna nota qui.")}
+                      : only?.dim === "groups"
+                        ? t("Nessuna nota qui: apri una nota e aggiungi il gruppo sotto il titolo.")
+                        : only?.dim === "tags"
+                          ? t("Nessuna nota qui: aggiungi il tag #{tag} a una nota.", { tag: only.label })
+                          : t("Nessuna nota qui.")}
             </p>
           )}
         </div>

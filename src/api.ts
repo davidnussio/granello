@@ -8,6 +8,8 @@ import type {
   CalendarOverview,
   ChatMessage,
   ContactsAccess,
+  Group,
+  GroupKind,
   ImportedPerson,
   LibraryItem,
   Meeting,
@@ -51,7 +53,7 @@ export const api = {
     enhancedMd?: string;
     templateId?: string;
   }) => invoke<void>("update_meeting", args),
-  updateMeetingMeta: (args: { id: string; attendees?: string[]; tags?: string[] }) =>
+  updateMeetingMeta: (args: { id: string; attendees?: string[]; groupIds?: string[]; tags?: string[] }) =>
     invoke<Meeting>("update_meeting_meta", args),
   deleteMeeting: (id: string) => invoke<void>("delete_meeting", { id }),
   setMeetingPrivacy: (id: string, privacy: Privacy) => invoke<void>("set_meeting_privacy", { id, privacy }),
@@ -156,6 +158,20 @@ export const api = {
   listItems: () => invoke<LibraryItem[]>("list_items"),
   listTags: () => invoke<TagCount[]>("list_tags"),
   listPeople: () => invoke<Person[]>("list_people"),
+  listGroups: () => invoke<Group[]>("list_groups"),
+  /** Crea un gruppo (`id` assente) o ne cambia i dati, membri compresi. */
+  saveGroup: (group: {
+    id?: string;
+    name: string;
+    color: string;
+    description: string;
+    parentId: string | null;
+    kind: GroupKind;
+    members: string[];
+  }) => invoke<Group>("save_group", group),
+  changeGroupMembers: (id: string, add: string[], remove: string[]) =>
+    invoke<Group>("change_group_members", { id, add, remove }),
+  deleteGroup: (id: string) => invoke<Group[]>("delete_group", { id }),
   deletePerson: (id: number) => invoke<void>("delete_person", { id }),
   /** Cambia nome ed email; il nome nuovo arriva in tutti i meeting. Restituisce la rubrica. */
   updatePerson: (id: number, name: string, email: string | null) =>

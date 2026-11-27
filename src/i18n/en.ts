@@ -741,7 +741,6 @@ const en: Record<string, string> = {
   "Nessuna nota qui: aggiungi il tag #{tag} a una nota.": "No notes here: add the tag #{tag} to a note.",
   "Apri la nota": "Open the note",
   "Scegli una nota per vederne l'anteprima.": "Pick a note to preview it.",
-  "Sfoglia le note per progetto, persona, tag e periodo": "Browse notes by project, person, tag and period",
   "▤ Libreria": "▤ Library",
   "Carica i dati di esempio": "Load sample data",
   "Toglie solo le note di esempio, anche se le hai modificate. Le tue note restano.":
@@ -923,23 +922,12 @@ const en: Record<string, string> = {
     "No emails to add: your contacts don't have any for these people.",
   "Aggiunta 1 email dalla rubrica": "Added 1 email from your contacts",
   "Aggiunte {n} email dalla rubrica": "Added {n} emails from your contacts",
-  "Chi compare come partecipante nelle tue note: Granello le propone quando aggiungi i partecipanti. Correggi un nome e cambia in tutte le note; unisci due voci che sono la stessa persona. Toglierne una non modifica le note.":
-    "Who appears as an attendee in your notes: Granello suggests them when you add participants. Fix a name and it changes in every note; merge two entries that are the same person. Removing someone doesn't change your notes.",
   "Cerca per nome o email": "Search by name or email",
-  "Ordina le persone": "Sort people",
-  "Per nome": "By name",
-  "Più note": "Most notes",
-  "Viste di recente": "Seen recently",
   "Aggiungi persone da un file .vcf": "Add people from a .vcf file",
   "Importa vCard…": "Import vCard…",
-  "Ancora nessuna persona: si aggiungono da sole con i partecipanti delle note, o importale da un file vCard.":
-    "No people yet: they are added automatically from your notes' participants, or import them from a vCard file.",
   Email: "Email",
-  "Ultima nota": "Last note",
   "Apri le note di {name} nella Libreria": "Open {name}'s notes in the Library",
   "Modifica {name}": "Edit {name}",
-  "Cambia nome o email: il nome nuovo arriva in tutte le note":
-    "Change name or email: the new name reaches every note",
   "Unisci {name} a un'altra persona": "Merge {name} into another person",
   "Unisci a un'altra persona: è la stessa, scritta in due modi":
     "Merge into another person: the same one, written two ways",
@@ -1020,6 +1008,124 @@ const en: Record<string, string> = {
   "Collega una nota che non c'è ancora": "Link a note that doesn't exist yet",
   "Link a una nota": "Link to a note",
   "[[ + titolo": "[[ + title",
+  "1 persona spostata in «{name}»": "1 person moved to “{name}”",
+  "{n} persone spostate in «{name}»": "{n} people moved to “{name}”",
+  "«{name}» non è più in rubrica: le note non cambiano.":
+    "“{name}” is no longer in your people: the notes don't change.",
+  "{n} persone tolte dalla rubrica: le note non cambiano.":
+    "{n} people removed from your people: the notes don't change.",
+  "Cerca o aggiungi a «{name}»": "Search or add to “{name}”",
+  "Cerca o aggiungi una persona": "Search or add a person",
+  "1 nota →": "1 note →",
+  "{n} note →": "{n} notes →",
+  "Eliminare il gruppo?": "Delete the group?",
+  "Gruppi delle persone scelte": "Groups of the selected people",
+  "Gruppo…": "Group…",
+  "Aggiungi a": "Add to",
+  "Un gruppo nuovo…": "A new group…",
+  "Sposta da «{name}» a": "Move from “{name}” to",
+  "Sono la stessa persona, scritta in due modi": "They are the same person, written two ways",
+  "Toglie le persone scelte dalla rubrica e dai gruppi: le note non cambiano":
+    "Removes the selected people from your people and groups: the notes don't change",
+  "Rimuovere {n}?": "Remove {n}?",
+  "Incolla un elenco (una persona per riga, anche da un foglio di calcolo) per aggiungerle tutte":
+    "Paste a list (one person per line, a spreadsheet works too) to add them all",
+  "Aggiungere {n} persone a «{name}»?": "Add {n} people to “{name}”?",
+  "Aggiungere {n} persone alla rubrica?": "Add {n} people to your people?",
+  "Aggiungi {n}": "Add {n}",
+  "Aggiungi a «{name}»:": "Add to “{name}”:",
+  "Una persona nuova, che entra anche in rubrica": "A new person, who also joins your people",
+  "+ «{name}» (nuova)": "+ “{name}” (new)",
+  "Ancora nessuna persona: si aggiungono da sole con i partecipanti delle note, scrivendo un nome qui sopra o importandole da un file vCard.":
+    "No people yet: they arrive on their own with the attendees of your notes, or type a name above, or import them from a vCard file.",
+  "Altri gruppi": "Other groups",
+  Ultima: "Last",
+  "Doppio clic per correggere": "Double-click to edit",
+  "Doppio clic per aggiungere l'email": "Double-click to add the email",
+  "Togli {person} da «{name}»": "Remove {person} from “{name}”",
+  "Rimuovere?": "Remove?",
+  "Cambia nome o email (anche con doppio clic): il nome nuovo arriva in tutte le note":
+    "Change the name or email (double-click works too): the new name reaches every note",
+  "Invio salva e passa alla riga sotto · Maiusc + Invio sopra · Esc annulla":
+    "Return saves and moves down · Shift + Return moves up · Esc cancels",
+  "Nessuno in questo gruppo: scrivi un nome qui sopra, incolla un elenco, o scegli più persone in «Tutte le persone».":
+    "No one in this group: type a name above, paste a list, or select several people in “All people”.",
+  "Aggiungendolo a una nota entrano anche i suoi membri come partecipanti.":
+    "Adding it to a note also adds its members as attendees.",
+  "Nella nota resta un solo chip: dei membri aggiungi solo chi serve.":
+    "The note shows a single chip: add only the members you need.",
+  "Modifica il gruppo": "Edit group",
+  "Nuovo gruppo": "New group",
+  "Con 1 persona già dentro.": "With 1 person already in it.",
+  "Con {n} persone già dentro.": "With {n} people already in it.",
+  "Team, reparto, cliente…": "Team, department, client…",
+  "Nessun gruppo (primo livello)": "No group (top level)",
+  "Nelle note": "In notes",
+  Team: "Team",
+  Pubblico: "Audience",
+  "Chi ne fa parte, a cosa serve": "Who belongs to it, what it is for",
+  Gruppi: "Groups",
+  "Nessun gruppo: crealo dalla pagina Persone.": "No groups: create one on the People page.",
+  "Nessuna nota qui: apri una nota e aggiungi il gruppo sotto il titolo.":
+    "No notes here: open a note and add the group below the title.",
+  "Ci sono tutti i membri di «{name}»: aggiungi il gruppo alla nota":
+    "All members of “{name}” are here: add the group to the note",
+  "+ {name}": "+ {name}",
+  "Nome del gruppo": "Group name",
+  "team · {n}": "team · {n}",
+  "pubblico · {n}": "audience · {n}",
+  "Nessun gruppo con questo nome": "No group with this name",
+  "Ci sono già tutti": "They are all here already",
+  "+ Gruppo": "+ Group",
+  "{n} di {total} presenti": "{n} of {total} present",
+  "1 membro": "1 member",
+  "{n} membri": "{n} members",
+  "Togli il gruppo {name}": "Remove the group {name}",
+  "Togli il gruppo dalla nota: i partecipanti restano": "Remove the group from the note: the attendees stay",
+  "Togli la spunta a chi non c'era.": "Untick anyone who wasn't there.",
+  "Spunta chi ha parlato o va citato: diventa un partecipante della nota.":
+    "Tick who spoke or should be named: they become an attendee of the note.",
+  "Cerca nel gruppo": "Search the group",
+  "Il gruppo non ha ancora membri.": "The group has no members yet.",
+  "Tutti presenti": "All present",
+  "Apri il gruppo": "Open the group",
+  "Aggiungile anche al gruppo «{name}»": "Also add them to the group “{name}”",
+  "Le persone delle tue note e i loro gruppi (team, reparti, clienti, tutta l'azienda) stanno nella pagina Persone.":
+    "The people in your notes and their groups (teams, departments, clients, the whole company) are on the People page.",
+  "Apri la pagina Persone": "Open the People page",
+  "Sono già tutte in «{name}»": "They are all in “{name}” already",
+  "1 persona aggiunta a «{name}»": "1 person added to “{name}”",
+  "{n} persone aggiunte a «{name}»": "{n} people added to “{name}”",
+  "1 persona tolta da «{name}»": "1 person removed from “{name}”",
+  "{n} persone tolte da «{name}»": "{n} people removed from “{name}”",
+  "Gruppo «{name}» eliminato: le note e le persone restano.":
+    "Group “{name}” deleted: the notes and the people stay.",
+  "Rubrica del Mac e altre impostazioni": "Mac contacts and other settings",
+  "Tutte le persone": "All people",
+  "Senza gruppo": "No group",
+  "Ancora nessun gruppo. Un gruppo riunisce un team, un reparto, un cliente o tutta l'azienda.":
+    "No groups yet. A group brings together a team, a department, a client or the whole company.",
+  "+ Nuovo gruppo": "+ New group",
+  "Nessuna nota con questo gruppo: aggiungilo a una nota, sotto il titolo.":
+    "No notes with this group: add it to a note, below the title.",
+  "Apri le note del gruppo nella Libreria": "Open the group's notes in the Library",
+  "Nessuna nota": "No notes",
+  "+ Gruppo dentro": "+ Group inside",
+  "Le note e le persone restano: sparisce solo il gruppo":
+    "The notes and the people stay: only the group goes",
+  "Persone scelte": "Selected people",
+  "Togli da «{name}»": "Remove from “{name}”",
+  "Annulla la scelta": "Clear selection",
+  "Annulla la scelta (Esc)": "Clear selection (Esc)",
+  "Scegli tutte le persone in elenco": "Select everyone in the list",
+  "Scegli {name}": "Select {name}",
+  "Toglie {name} dalla rubrica e dai gruppi: le note non cambiano":
+    "Removes {name} from your people and groups: the notes don't change",
+  "Sono tutte in almeno un gruppo.": "Everyone is in at least one group.",
+  "Sfoglia le note per progetto, gruppo, persona, tag e periodo":
+    "Browse notes by project, group, person, tag and period",
+  "Le persone delle tue note e i loro gruppi": "The people in your notes and their groups",
+  "☺ Persone": "☺ People",
 };
 
 export default en;

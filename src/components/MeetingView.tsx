@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { api, errorText, newStreamId, on, SYSTEM_AUDIO } from "../api";
 import type {
   CalendarEvent,
+  Group,
   Meeting,
   Privacy,
   RecordingStatus,
@@ -11,6 +12,7 @@ import type {
   Project,
 } from "../types";
 import ChipInput, { type ChipSuggestion } from "./ChipInput";
+import MeetingGroups from "./MeetingGroups";
 import NoteEditor from "../editor/NoteEditor";
 import Markdown from "./Markdown";
 import TranscriptPanel from "./TranscriptPanel";
@@ -46,6 +48,12 @@ interface Props {
   onDeleted: () => void;
   projects: Project[];
   onProjectsChanged: (projects: Project[]) => void;
+  /** I gruppi di persone, da aggiungere alla nota. */
+  groups: Group[];
+  /** Una nota ha cambiato i suoi gruppi: i conteggi dei gruppi vanno ricaricati. */
+  onGroupsChanged: () => void;
+  /** Apre un gruppo nella pagina Persone. */
+  onOpenGroup: (id: string) => void;
   /** La privacy minima del vault aperto: i livelli più bassi non si possono scegliere. */
   minPrivacy: Privacy;
 }
@@ -162,6 +170,9 @@ export default function MeetingView({
   onDeleted,
   projects,
   onProjectsChanged,
+  groups,
+  onGroupsChanged,
+  onOpenGroup,
   minPrivacy,
 }: Props) {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
@@ -601,13 +612,16 @@ export default function MeetingView({
     }
   };
 
-  const saveMeta = async (patch: { attendees?: string[]; tags?: string[] }) => {
+  const saveMeta = async (patch: { attendees?: string[]; groupIds?: string[]; tags?: string[] }) => {
     // aggiornamento immediato; il backend restituisce poi i valori ripuliti
     setMeeting((m) => (m ? { ...m, ...patch } : m));
     try {
       const saved = await api.updateMeetingMeta({ id, ...patch });
-      setMeeting((m) => (m ? { ...m, attendees: saved.attendees, tags: saved.tags } : m));
+      setMeeting((m) =>
+        m ? { ...m, attendees: saved.attendees, groupIds: saved.groupIds, tags: saved.tags } : m,
+      );
       onChanged();
+      if (patch.groupIds) onGroupsChanged();
     } catch (e) {
       toast(errorText(e));
       load();
@@ -1015,6 +1029,13 @@ export default function MeetingView({
             </span>
           </div>
           <div className="meta-row people-row">
+            <MeetingGroups
+              groupIds={meeting.groupIds ?? []}
+              attendees={meeting.attendees}
+              groups={groups}
+              onChange={(patch) => void saveMeta(patch)}
+              onOpenGroup={onOpenGroup}
+            />
             <ChipInput
               values={meeting.attendees}
               onChange={(attendees) => saveMeta({ attendees })}

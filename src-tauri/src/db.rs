@@ -15,7 +15,26 @@ fn now_ms() -> i64 {
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
 pub(crate) const MIGRATIONS: &[&str] =
-    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13];
+    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13, SCHEMA_V14];
+
+/// Gruppi di persone (team, reparti, clienti, tutta l'azienda), uno dentro l'altro come i
+/// progetti. I membri sono nomi della rubrica, come i partecipanti dei meeting: il sync
+/// riconosce una persona dal nome. Un meeting ricorda i gruppi presenti per id. La tabella non
+/// si chiama `groups`: GROUPS è una parola chiave di SQLite.
+const SCHEMA_V14: &str = r#"
+CREATE TABLE people_groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    color TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    parent_id TEXT,
+    kind TEXT NOT NULL DEFAULT 'team',
+    members TEXT NOT NULL DEFAULT '[]',
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX idx_people_groups_parent ON people_groups(parent_id);
+ALTER TABLE meetings ADD COLUMN group_ids TEXT NOT NULL DEFAULT '[]';
+"#;
 
 /// Progetti dentro altri progetti (`dambox › bizcard`). NULL = un progetto di primo livello, come
 /// pure un genitore che qui non c'è (cancellato, o non ancora arrivato dal sync). Niente chiave
@@ -379,6 +398,7 @@ impl Db {
             ended_at: row.get("ended_at")?,
             calendar_event_id: row.get("calendar_event_id")?,
             attendees: serde_json::from_str(&attendees).unwrap_or_default(),
+            group_ids: serde_json::from_str(&row.get::<_, String>("group_ids")?).unwrap_or_default(),
             tags: serde_json::from_str(&tags).unwrap_or_default(),
             template_id: row.get("template_id")?,
             notes_md: row.get("notes_md")?,
@@ -654,6 +674,29 @@ impl Db {
                 leaves.extend(path.rsplit('/').next().map(String::from));
             }
         }
+        // i gruppi di esempio hanno un id che comincia con `demo-`; uno con lo stesso nome di un
+        // gruppo dell'utente non si crea, e le note di esempio restano senza
+        for g in &data.groups {
+            let id = crate::demo::DemoGroup::id(&g.key);
+            let parent = g.parent.as_deref().map(|p| self.demo_group_id(p)).transpose()?.flatten();
+            self.conn.execute(
+                "INSERT INTO people_groups (id, name, parent_id, kind, members, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                 ON CONFLICT DO NOTHING",
+                params![id, g.name, parent, g.kind.as_str(), serde_json::to_string(&g.members)?, now_ms()],
+            )?;
+            self.add_known_people(&g.members)?;
+        }
+        for m in data.meetings.iter().filter(|m| !m.groups.is_empty()) {
+            let mut ids = Vec::new();
+            for key in &m.groups {
+                ids.extend(self.demo_group_id(key)?);
+            }
+            self.conn.execute(
+                "UPDATE meetings SET group_ids = ?1 WHERE id = ?2",
+                params![serde_json::to_string(&ids)?, m.id],
+            )?;
+            self.reindex(&m.id)?;
+        }
         for m in &data.meetings {
             if let Some(name) = m.tags.iter().find(|t| leaves.contains(t)) {
                 self.conn.execute(
@@ -665,6 +708,15 @@ impl Db {
         }
         tx.commit()?;
         Ok(())
+    }
+
+    /// L'id del gruppo di esempio con quella chiave, se c'è: un gruppo dell'utente con lo stesso
+    /// nome ha impedito di crearlo.
+    fn demo_group_id(&self, key: &str) -> Result<Option<String>> {
+        let id = crate::demo::DemoGroup::id(key);
+        let exists: bool =
+            self.conn.query_row("SELECT EXISTS(SELECT 1 FROM people_groups WHERE id = ?1)", [&id], |r| r.get(0))?;
+        Ok(exists.then_some(id))
     }
 
     /// Toglie i meeting di esempio, e con loro i progetti e le persone che non servono più
@@ -691,10 +743,20 @@ impl Db {
                 )?;
             }
         }
+        // dai sotto-gruppi in su: uno usato da una nota dell'utente, o con dentro un suo gruppo, resta
+        for g in data.groups.iter().rev() {
+            self.conn.execute(
+                "DELETE FROM people_groups WHERE id = ?1
+                 AND NOT EXISTS (SELECT 1 FROM meetings m, json_each(m.group_ids) j WHERE j.value = ?1)
+                 AND NOT EXISTS (SELECT 1 FROM people_groups c WHERE c.parent_id = ?1)",
+                [crate::demo::DemoGroup::id(&g.key)],
+            )?;
+        }
         for name in data.people() {
             self.conn.execute(
                 "DELETE FROM people WHERE name = ?1
-                 AND NOT EXISTS (SELECT 1 FROM meetings m, json_each(m.attendees) j WHERE j.value = ?1 COLLATE NOCASE)",
+                 AND NOT EXISTS (SELECT 1 FROM meetings m, json_each(m.attendees) j WHERE j.value = ?1 COLLATE NOCASE)
+                 AND NOT EXISTS (SELECT 1 FROM people_groups g, json_each(g.members) j WHERE j.value = ?1 COLLATE NOCASE)",
                 [name],
             )?;
         }
@@ -879,6 +941,253 @@ impl Db {
         Ok(())
     }
 
+    // ---------- gruppi di persone ----------
+
+    /// I gruppi in ordine alfabetico, con il numero di note in cui compaiono.
+    pub fn list_groups(&self) -> Result<Vec<Group>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT g.id, g.name, g.color, g.description, g.parent_id, g.kind, g.members, COUNT(m.id), MAX(m.created_at)
+             FROM people_groups g
+             LEFT JOIN meetings m ON EXISTS (SELECT 1 FROM json_each(m.group_ids) j WHERE j.value = g.id)
+             GROUP BY g.id ORDER BY g.name",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(Group {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                color: r.get(2)?,
+                description: r.get(3)?,
+                parent_id: r.get(4)?,
+                kind: GroupKind::parse(&r.get::<_, String>(5)?),
+                members: serde_json::from_str(&r.get::<_, String>(6)?).unwrap_or_default(),
+                meetings: r.get(7)?,
+                last_meeting_at: r.get(8)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    fn get_group(&self, id: &str) -> Result<Option<Group>> {
+        Ok(self.list_groups()?.into_iter().find(|g| g.id == id))
+    }
+
+    /// Il gruppo e tutti quelli che contiene, a ogni livello.
+    pub(crate) fn group_branch(&self, id: &str) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare(
+            "WITH RECURSIVE branch(id) AS (SELECT ?1 UNION SELECT g.id FROM people_groups g JOIN branch b ON g.parent_id = b.id)
+             SELECT id FROM branch",
+        )?;
+        let rows = stmt.query_map([id], |r| r.get(0))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Le note in cui compare il gruppo.
+    fn group_meetings(&self, id: &str) -> Result<Vec<String>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT m.id FROM meetings m WHERE EXISTS (SELECT 1 FROM json_each(m.group_ids) j WHERE j.value = ?1)",
+        )?;
+        let rows = stmt.query_map([id], |r| r.get(0))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Crea un gruppo (`id` vuoto) o ne cambia nome, colore, descrizione, genitore, tipo e
+    /// membri. Due gruppi non possono avere lo stesso nome; i membri nuovi entrano in rubrica.
+    #[allow(clippy::too_many_arguments)]
+    pub fn save_group(
+        &self,
+        id: &str,
+        name: &str,
+        color: &str,
+        description: &str,
+        parent: Option<&str>,
+        kind: GroupKind,
+        members: &[String],
+    ) -> Result<Group> {
+        let taken: Option<String> = self
+            .conn
+            .query_row("SELECT id FROM people_groups WHERE name = ?1", [name], |r| r.get(0))
+            .optional()?;
+        if taken.as_deref().is_some_and(|other| other != id) {
+            return Err(crate::tra!(
+                "Esiste già un gruppo con il nome «{name}». Scegline un altro.",
+                "A group named \"{name}\" already exists. Choose another name."
+            ));
+        }
+        if let Some(parent) = parent {
+            let exists: bool = self
+                .conn
+                .query_row("SELECT EXISTS(SELECT 1 FROM people_groups WHERE id = ?1)", [parent], |r| r.get(0))?;
+            if !exists {
+                return Err(crate::tra!(
+                    "Il gruppo che dovrebbe contenerlo non c'è più. Scegline un altro.",
+                    "The group meant to contain it no longer exists. Choose another one."
+                ));
+            }
+            if !id.is_empty() && self.group_branch(id)?.iter().any(|g| g == parent) {
+                return Err(crate::tra!(
+                    "Un gruppo non può stare dentro sé stesso o dentro uno dei gruppi che contiene. Scegli un altro gruppo.",
+                    "A group cannot sit inside itself or one of the groups it contains. Choose another group."
+                ));
+            }
+        }
+        let renamed = !id.is_empty()
+            && self
+                .conn
+                .query_row("SELECT name FROM people_groups WHERE id = ?1", [id], |r| r.get::<_, String>(0))
+                .optional()?
+                .is_some_and(|before| before != name);
+        let id = if id.is_empty() { uuid::Uuid::new_v4().to_string() } else { id.to_string() };
+        let tx = self.conn.unchecked_transaction()?;
+        self.conn.execute(
+            "INSERT INTO people_groups (id, name, color, description, parent_id, kind, members, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+             ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color,
+             description = excluded.description, parent_id = excluded.parent_id, kind = excluded.kind,
+             members = excluded.members",
+            params![id, name, color, description, parent, kind.as_str(), serde_json::to_string(members)?, now_ms()],
+        )?;
+        self.add_known_people(members)?;
+        // il nome del gruppo è nell'indice di ricerca delle sue note
+        if renamed {
+            for m in self.group_meetings(&id)? {
+                self.reindex(&m)?;
+            }
+        }
+        tx.commit()?;
+        self.get_group(&id)?.ok_or_else(|| anyhow::anyhow!("gruppo non trovato dopo il salvataggio"))
+    }
+
+    /// Aggiunge e toglie membri a un gruppo (la selezione multipla della pagina Persone).
+    pub fn change_group_members(&self, id: &str, add: &[String], remove: &[String]) -> Result<Group> {
+        let tx = self.conn.unchecked_transaction()?;
+        let current: String = self
+            .conn
+            .query_row("SELECT members FROM people_groups WHERE id = ?1", [id], |r| r.get(0))
+            .optional()?
+            .ok_or_else(|| crate::tra!("Gruppo non trovato: ricarica l'elenco.", "Group not found: reload the list."))?;
+        let mut members: Vec<String> = serde_json::from_str(&current).unwrap_or_default();
+        members.retain(|m| !remove.iter().any(|r| r.eq_ignore_ascii_case(m)));
+        for name in add {
+            if !members.iter().any(|m| m.eq_ignore_ascii_case(name)) && members.len() < MAX_GROUP_MEMBERS {
+                members.push(name.clone());
+            }
+        }
+        self.conn.execute(
+            "UPDATE people_groups SET members = ?1 WHERE id = ?2",
+            params![serde_json::to_string(&members)?, id],
+        )?;
+        self.add_known_people(add)?;
+        tx.commit()?;
+        self.get_group(id)?.ok_or_else(|| anyhow::anyhow!("gruppo non trovato dopo il salvataggio"))
+    }
+
+    /// Mette in rubrica i nomi che non ci sono ancora, senza toccare "ultimo uso" di chi c'è:
+    /// entrare in un gruppo non è partecipare a una nota.
+    fn add_known_people(&self, names: &[String]) -> Result<()> {
+        let now = now_ms();
+        for name in names.iter().map(|n| n.trim()).filter(|n| !n.is_empty()) {
+            self.conn.execute(
+                "INSERT OR IGNORE INTO people (name, created_at, last_used_at) VALUES (?1, ?2, ?2)",
+                params![name, now],
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Elimina il gruppo: le note restano (senza quel gruppo), le persone pure, e i gruppi che
+    /// conteneva salgono di un livello.
+    pub fn delete_group(&self, id: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        self.conn.execute(
+            "UPDATE people_groups SET parent_id = (SELECT parent_id FROM people_groups WHERE id = ?1) WHERE parent_id = ?1",
+            [id],
+        )?;
+        for m in self.group_meetings(id)? {
+            let current: String = self.conn.query_row("SELECT group_ids FROM meetings WHERE id = ?1", [&m], |r| r.get(0))?;
+            let mut ids: Vec<String> = serde_json::from_str(&current).unwrap_or_default();
+            ids.retain(|g| g != id);
+            self.conn.execute(
+                "UPDATE meetings SET group_ids = ?1 WHERE id = ?2",
+                params![serde_json::to_string(&ids)?, m],
+            )?;
+            self.reindex(&m)?;
+        }
+        self.conn.execute("DELETE FROM people_groups WHERE id = ?1", [id])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Sostituisce i gruppi presenti in un meeting. Gli id che non sono gruppi si scartano.
+    pub fn set_meeting_groups(&self, id: &str, groups: &[String]) -> Result<()> {
+        let mut ids: Vec<String> = Vec::new();
+        for g in groups {
+            let exists: bool =
+                self.conn.query_row("SELECT EXISTS(SELECT 1 FROM people_groups WHERE id = ?1)", [g], |r| r.get(0))?;
+            if exists && !ids.contains(g) && ids.len() < MAX_MEETING_GROUPS {
+                ids.push(g.clone());
+            }
+        }
+        let tx = self.conn.unchecked_transaction()?;
+        self.conn.execute(
+            "UPDATE meetings SET group_ids = ?1, updated_at = ?3 WHERE id = ?2 AND group_ids IS NOT ?1",
+            params![serde_json::to_string(&ids)?, id, now_ms()],
+        )?;
+        self.reindex(id)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// I nomi dei gruppi di un meeting, nell'ordine in cui ci sono. Un gruppo eliminato (o non
+    /// ancora arrivato dal sync) non c'è.
+    pub fn group_names(&self, ids: &[String]) -> Result<Vec<String>> {
+        let mut out = Vec::new();
+        for id in ids {
+            if let Some(name) = self
+                .conn
+                .query_row("SELECT name FROM people_groups WHERE id = ?1", [id], |r| r.get::<_, String>(0))
+                .optional()?
+            {
+                out.push(name);
+            }
+        }
+        Ok(out)
+    }
+
+    /// Porta il nome nuovo di una persona nei gruppi di cui fa parte (senza doppioni), o la
+    /// toglie (`new` = `None`). Senza transazione propria: la apre chi chiama.
+    fn rename_in_groups(&self, old: &str, new: Option<&str>) -> Result<()> {
+        let rows: Vec<(String, String)> = {
+            let mut stmt = self.conn.prepare("SELECT id, members FROM people_groups")?;
+            let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        for (id, json) in rows {
+            let list: Vec<String> = serde_json::from_str(&json).unwrap_or_default();
+            if !list.iter().any(|m| m.trim().eq_ignore_ascii_case(old)) {
+                continue;
+            }
+            let mut renamed: Vec<String> = Vec::new();
+            for m in list {
+                let m = if m.trim().eq_ignore_ascii_case(old) {
+                    match new {
+                        Some(n) => n.to_string(),
+                        None => continue,
+                    }
+                } else {
+                    m
+                };
+                if !renamed.iter().any(|x| x.eq_ignore_ascii_case(&m)) {
+                    renamed.push(m);
+                }
+            }
+            self.conn.execute(
+                "UPDATE people_groups SET members = ?1 WHERE id = ?2",
+                params![serde_json::to_string(&renamed)?, id],
+            )?;
+        }
+        Ok(())
+    }
+
     // ---------- rubrica ----------
 
     /// Aggiunge le persone mancanti e aggiorna "ultimo uso" (ed email, se prima mancava).
@@ -999,6 +1308,7 @@ impl Db {
                 params![id, name, email, created, used],
             )?;
             self.rename_in_meetings(&old, name)?;
+            self.rename_in_groups(&old, Some(name))?;
         }
         tx.commit()?;
         Ok(())
@@ -1032,6 +1342,7 @@ impl Db {
             params![from_email, from_created, from_used, into],
         )?;
         self.rename_in_meetings(&from_name, &into_name)?;
+        self.rename_in_groups(&from_name, Some(&into_name))?;
         tx.commit()?;
         Ok(())
     }
@@ -1072,9 +1383,17 @@ impl Db {
         Ok(())
     }
 
-    /// Toglie una persona dalla rubrica. I meeting a cui ha partecipato non cambiano.
+    /// Toglie una persona dalla rubrica e dai suoi gruppi. I meeting a cui ha partecipato non
+    /// cambiano.
     pub fn delete_person(&self, id: i64) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        let name: Option<String> =
+            self.conn.query_row("SELECT name FROM people WHERE id = ?1", [id], |r| r.get(0)).optional()?;
         self.conn.execute("DELETE FROM people WHERE id = ?1", [id])?;
+        if let Some(name) = name {
+            self.rename_in_groups(&name, None)?;
+        }
+        tx.commit()?;
         Ok(())
     }
 
@@ -1128,7 +1447,7 @@ impl Db {
             None => {
                 let mut stmt = self.conn.prepare(
                     "SELECT id, title, created_at, enhanced_md IS NOT NULL AND enhanced_md != '', attendees, tags,
-                            project_id, pinned_at, COALESCE(updated_at, created_at)
+                            project_id, pinned_at, COALESCE(updated_at, created_at), group_ids
                      FROM meetings ORDER BY created_at DESC",
                 )?;
                 let rows = stmt.query_map([], |r| {
@@ -1141,6 +1460,7 @@ impl Db {
                         has_enhanced: r.get(3)?,
                         attendees: serde_json::from_str(&att).unwrap_or_default(),
                         tags: serde_json::from_str(&tags).unwrap_or_default(),
+                        group_ids: serde_json::from_str(&r.get::<_, String>(9)?).unwrap_or_default(),
                         project_id: r.get(6)?,
                         pinned_at: r.get(7)?,
                         updated_at: r.get(8)?,
@@ -1160,7 +1480,7 @@ impl Db {
                     "SELECT m.id, m.title, m.created_at,
                             m.enhanced_md IS NOT NULL AND m.enhanced_md != '', m.attendees,
                             snippet(meetings_fts, -1, '«', '»', '…', 12), m.tags, m.project_id, m.pinned_at,
-                            COALESCE(m.updated_at, m.created_at)
+                            COALESCE(m.updated_at, m.created_at), m.group_ids
                      FROM meetings_fts f JOIN meetings m ON m.id = f.meeting_id
                      WHERE meetings_fts MATCH ?1
                      ORDER BY bm25(meetings_fts, 0.0, 10.0, 4.0, 3.0, 1.0) LIMIT 50",
@@ -1175,6 +1495,7 @@ impl Db {
                         has_enhanced: r.get(3)?,
                         attendees: serde_json::from_str(&att).unwrap_or_default(),
                         tags: serde_json::from_str(&tags).unwrap_or_default(),
+                        group_ids: serde_json::from_str(&r.get::<_, String>(10)?).unwrap_or_default(),
                         project_id: r.get(7)?,
                         pinned_at: r.get(8)?,
                         updated_at: r.get(9)?,
@@ -1238,13 +1559,14 @@ impl Db {
             Some(p) => self.project_path(p)?.join(" "),
             None => String::new(),
         };
+        let groups = self.group_names(&m.group_ids)?.join(" ");
         self.conn.execute("DELETE FROM meetings_fts WHERE meeting_id = ?1", [id])?;
         self.conn.execute(
             "INSERT INTO meetings_fts (meeting_id, title, notes, enhanced, transcript) VALUES (?1, ?2, ?3, ?4, ?5)",
-            // progetto, tag e partecipanti stanno con il titolo: così si trovano cercandoli
+            // progetto, tag, partecipanti e gruppi stanno con il titolo: così si trovano cercandoli
             params![
                 id,
-                [m.title.as_str(), &project, &m.tags.join(" "), &m.attendees.join(" ")]
+                [m.title.as_str(), &project, &m.tags.join(" "), &m.attendees.join(" "), &groups]
                     .join(" · ")
                     .trim_end_matches([' ', '·']),
                 m.notes_md,
@@ -2000,6 +2322,77 @@ mod tests {
         assert_eq!(db.list_projects().unwrap(), vec![project.clone()]);
         assert_eq!(left[0].project_id, Some(project.id));
         assert_eq!(db.list_people().unwrap().len(), before_people);
+        assert!(db.list_groups().unwrap().is_empty());
+    }
+
+    #[test]
+    fn demo_groups_hold_their_notes_and_leave_with_them() {
+        let db = Db::open_in_memory().unwrap();
+        let mine = db.save_group("", "Clienti", "", "", None, GroupKind::Audience, &[]).unwrap();
+        let data = crate::demo::load(crate::i18n::Lang::It).unwrap();
+        db.insert_demo(&data).unwrap();
+        let groups = db.list_groups().unwrap();
+        let mobile = groups.iter().find(|g| g.name == "Team Mobile").unwrap();
+        assert!(mobile.meetings >= 5);
+        assert_eq!(mobile.kind, GroupKind::Team);
+        let company = groups.iter().find(|g| g.name == "Tutta l'azienda").unwrap();
+        assert_eq!(mobile.parent_id.as_deref(), Some(company.id.as_str()));
+        // il gruppo «Clienti» dell'utente blocca quello di esempio: Nord finisce in primo livello
+        let nord = groups.iter().find(|g| g.name == "Nord").unwrap();
+        assert_eq!(nord.parent_id, None);
+        assert_eq!(groups.iter().filter(|g| g.name == "Clienti").count(), 1);
+        // il nome del gruppo si trova cercando
+        assert!(!db.list_meetings(Some("Mobile")).unwrap().is_empty());
+
+        db.remove_demo(&data).unwrap();
+        assert_eq!(db.list_groups().unwrap().into_iter().map(|g| g.id).collect::<Vec<_>>(), vec![mine.id]);
+        assert!(db.list_people().unwrap().is_empty());
+    }
+
+    #[test]
+    fn groups_nest_hold_members_and_follow_people() {
+        let db = Db::open_in_memory().unwrap();
+        let company = db.save_group("", "Azienda", "", "", None, GroupKind::Audience, &[]).unwrap();
+        let team = db
+            .save_group("", "Mobile", "teal", "App", Some(&company.id), GroupKind::Team, &["Anna".into(), "Luca".into()])
+            .unwrap();
+        assert_eq!(team.members, vec!["Anna", "Luca"]);
+        // i membri entrano in rubrica
+        assert_eq!(db.list_people().unwrap().len(), 2);
+        // nomi unici, niente giri
+        assert!(db.save_group("", "mobile", "", "", None, GroupKind::Team, &[]).is_err());
+        assert!(db.save_group(&company.id, "Azienda", "", "", Some(&team.id), GroupKind::Audience, &[]).is_err());
+
+        let m = db.create_meeting("Standup", None, &["Anna".into()], None).unwrap();
+        db.set_meeting_groups(&m.id, &[team.id.clone(), "nessuno".into(), team.id.clone()]).unwrap();
+        assert_eq!(db.get_meeting(&m.id).unwrap().unwrap().group_ids, vec![team.id.clone()]);
+        assert_eq!(db.list_groups().unwrap().iter().find(|g| g.id == team.id).unwrap().meetings, 1);
+        // il nome del gruppo è nell'indice, anche dopo averlo cambiato
+        db.save_group(&team.id, "Squadra app", "teal", "App", Some(&company.id), GroupKind::Team, &team.members)
+            .unwrap();
+        assert_eq!(db.list_meetings(Some("Squadra")).unwrap().len(), 1);
+        assert!(db.list_meetings(Some("Mobile")).unwrap().is_empty());
+
+        // membri aggiunti e tolti, senza doppioni
+        let g = db.change_group_members(&team.id, &["Sara".into(), "anna".into()], &["Luca".into()]).unwrap();
+        assert_eq!(g.members, vec!["Anna", "Sara"]);
+
+        // rinominare, unire ed eliminare una persona arriva anche ai gruppi
+        let people = db.list_people().unwrap();
+        let id = |n: &str| people.iter().find(|p| p.name == n).unwrap().id;
+        db.update_person(id("Anna"), "Anna Villa", None).unwrap();
+        db.merge_people(id("Sara"), id("Anna")).unwrap();
+        let members = |db: &Db| db.list_groups().unwrap().into_iter().find(|g| g.id == team.id).unwrap().members;
+        assert_eq!(members(&db), vec!["Anna Villa"]);
+        db.delete_person(id("Anna")).unwrap();
+        assert!(members(&db).is_empty());
+
+        // eliminato un gruppo, quelli dentro salgono e le note lo perdono
+        db.delete_group(&company.id).unwrap();
+        assert_eq!(db.list_groups().unwrap()[0].parent_id, None);
+        db.delete_group(&team.id).unwrap();
+        assert!(db.get_meeting(&m.id).unwrap().unwrap().group_ids.is_empty());
+        assert!(db.list_meetings(Some("Squadra")).unwrap().is_empty());
     }
 
     #[test]

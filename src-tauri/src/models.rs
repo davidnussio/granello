@@ -12,6 +12,9 @@ pub struct Meeting {
     pub ended_at: Option<i64>,
     pub calendar_event_id: Option<String>,
     pub attendees: Vec<String>,
+    /// I gruppi presenti (id), oltre alle persone una per una.
+    #[serde(default)]
+    pub group_ids: Vec<String>,
     pub tags: Vec<String>,
     pub template_id: Option<String>,
     pub notes_md: String,
@@ -69,6 +72,8 @@ pub struct MeetingSummary {
     pub created_at: i64,
     pub has_enhanced: bool,
     pub attendees: Vec<String>,
+    /// I gruppi presenti (id).
+    pub group_ids: Vec<String>,
     pub tags: Vec<String>,
     pub project_id: Option<String>,
     /// Quando è stato fissato; assente se non è fissato.
@@ -135,8 +140,63 @@ pub struct Project {
 /// I colori tra cui scegliere per un progetto (i nomi che il frontend sa disegnare).
 pub const PROJECT_COLORS: &[&str] = &["red", "orange", "yellow", "teal", "blue", "purple", "pink", "gray"];
 
+/// Come entra un gruppo in una nota.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GroupKind {
+    /// Un gruppo piccolo (un team, uno standup): aggiungendolo a una nota ne entrano anche i
+    /// membri, uno per uno, come partecipanti.
+    #[default]
+    Team,
+    /// Un gruppo grande (tutta l'azienda, un reparto): nella nota resta un solo chip e dei
+    /// membri si aggiunge solo chi serve.
+    Audience,
+}
+
+impl GroupKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            GroupKind::Team => "team",
+            GroupKind::Audience => "audience",
+        }
+    }
+
+    pub fn parse(s: &str) -> GroupKind {
+        if s == "audience" {
+            GroupKind::Audience
+        } else {
+            GroupKind::Team
+        }
+    }
+}
+
+/// Un gruppo di persone: un team, un reparto, un cliente, tutta l'azienda. I gruppi stanno
+/// uno dentro l'altro come i progetti (`Dambox › Sviluppo › Mobile`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Group {
+    pub id: String,
+    pub name: String,
+    /// Uno dei colori di `PROJECT_COLORS`; vuoto = il colore predefinito.
+    pub color: String,
+    pub description: String,
+    /// Il gruppo che lo contiene; `None` = di primo livello.
+    pub parent_id: Option<String>,
+    pub kind: GroupKind,
+    /// I nomi dei membri, come in rubrica.
+    pub members: Vec<String>,
+    /// In quante note compare.
+    pub meetings: i64,
+    /// Quando è stata creata l'ultima nota in cui compare.
+    pub last_meeting_at: Option<i64>,
+}
+
 pub const MAX_TAGS: usize = 12;
 pub const MAX_ATTENDEES: usize = 100;
+/// I membri di un gruppo: anche tutta un'azienda di qualche centinaio di persone.
+pub const MAX_GROUP_MEMBERS: usize = 2000;
+/// I gruppi di una nota.
+pub const MAX_MEETING_GROUPS: usize = 12;
 
 /// Pulisce un elenco di nomi: spazi, doppioni (senza distinguere maiuscole), lunghezza.
 pub fn normalize_names(items: Vec<String>, max_len: usize, max_items: usize) -> Vec<String> {

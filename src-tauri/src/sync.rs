@@ -6,7 +6,7 @@
 //! Il database di un SQLite non si sincronizza come file, quindi viaggiano le modifiche:
 //!
 //! - dei trigger annotano in `sync_outbox` quale campo di quale riga è cambiato (meeting,
-//!   segmenti della trascrizione, progetti, persone);
+//!   segmenti della trascrizione, progetti, persone, gruppi);
 //! - ogni tanto le annotazioni diventano operazioni con un orologio logico ibrido, scritte in
 //!   un file nuovo e immutabile in `log/<dispositivo>/` (mai allungato: il servizio di sync
 //!   potrebbe caricarlo a metà);
@@ -48,6 +48,7 @@ const MEETING_FIELDS: &[&str] = &[
     "ended_at",
     "calendar_event_id",
     "attendees",
+    "group_ids",
     "template_id",
     "notes_md",
     "enhanced_md",
@@ -72,6 +73,13 @@ const ENTITIES: &[Entity] = &[
         key: "name",
         fields: &["email", "created_at", "last_used_at"],
         tracked: &["email"],
+    },
+    Entity {
+        name: "group",
+        table: "people_groups",
+        key: "id",
+        fields: &["name", "color", "description", "parent_id", "kind", "members", "created_at"],
+        tracked: &["name", "color", "description", "parent_id", "kind", "members"],
     },
     Entity { name: "meeting", table: "meetings", key: "id", fields: MEETING_FIELDS, tracked: MEETING_FIELDS },
     Entity {
@@ -949,6 +957,31 @@ mod tests {
         a.sync(&dir);
         assert_eq!(a.meeting(&m.id).unwrap().tags, vec!["prezzi"]);
         assert!(a.meeting(&before.id).is_none());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn groups_and_their_notes_reach_the_other_mac() {
+        let dir = folder();
+        let a = Mac::new("aaa", &dir);
+        let g = a.db.save_group("", "Mobile", "teal", "", None, crate::models::GroupKind::Team, &["Anna".into(), "Luca".into()]).unwrap();
+        let m = a.db.create_meeting("Standup", None, &["Anna".into()], None).unwrap();
+        a.db.set_meeting_groups(&m.id, std::slice::from_ref(&g.id)).unwrap();
+        a.sync(&dir);
+        let b = Mac::new("bbb", &dir);
+        b.sync(&dir);
+        let got = b.db.list_groups().unwrap();
+        assert_eq!((got[0].name.as_str(), got[0].members.clone()), ("Mobile", vec!["Anna".to_string(), "Luca".to_string()]));
+        assert_eq!(b.meeting(&m.id).unwrap().group_ids, vec![g.id.clone()]);
+
+        b.db.change_group_members(&g.id, &["Sara".into()], &[]).unwrap();
+        b.sync(&dir);
+        a.sync(&dir);
+        assert_eq!(a.db.list_groups().unwrap()[0].members, vec!["Anna", "Luca", "Sara"]);
+        a.db.delete_group(&g.id).unwrap();
+        a.sync(&dir);
+        b.sync(&dir);
+        assert!(b.db.list_groups().unwrap().is_empty());
         let _ = std::fs::remove_dir_all(dir);
     }
 

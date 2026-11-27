@@ -12,6 +12,7 @@ La Libreria sfoglia le note a colonne: scegli una dimensione, poi un valore, poi
 - **Tutte le note**: ogni nota, dalla più recente, senza filtri.
 - **Fissati**: le note che hai fissato nella barra laterale, vedi sotto.
 - **Progetti**: i progetti che hai creato, ognuno con le note che gli appartengono.
+- **Gruppi**: i gruppi di [persone](/it/guides/people/) aggiunti alle note; un gruppo che ne contiene altri elenca anche le loro note.
 - **Persone**: chi ha partecipato.
 - **Tag**: i tag delle tue note.
 - **Periodo**: questa settimana, poi un gruppo per mese.

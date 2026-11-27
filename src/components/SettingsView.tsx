@@ -28,8 +28,8 @@ interface Props {
   onCalendarChanged: () => void;
   onLangChanged: (setting: string) => void;
   onTimeFormatChanged: (setting: string) => void;
-  /** Apre la Libreria sui meeting di una persona. */
-  onOpenPerson: (name: string) => void;
+  /** Apre la pagina Persone. */
+  onOpenPeople: () => void;
   /** Note arrivate o tolte da un import: la barra laterale va riletta. */
   onMeetingsChanged: () => void;
   onOpenLibrary: () => void;
@@ -53,7 +53,7 @@ export default function SettingsView({
   onCalendarChanged,
   onLangChanged,
   onTimeFormatChanged,
-  onOpenPerson,
+  onOpenPeople,
   onMeetingsChanged,
   onOpenLibrary,
 }: Props) {
@@ -143,7 +143,7 @@ export default function SettingsView({
   };
 
   return (
-    <div className={"page settings" + (section === "people" ? " wide" : "")}>
+    <div className="page settings">
       <h1 className="page-title">
         {sectionLabel(section)}
         <span className={"saved-flag" + (savedAt ? " on" : "")} aria-live="polite">
@@ -335,7 +335,7 @@ export default function SettingsView({
         <PeopleSettings
           contacts={s.contactsSuggestions}
           onContactsChanged={(enabled) => save({ contactsSuggestions: enabled })}
-          onOpenPerson={onOpenPerson}
+          onOpenPeople={onOpenPeople}
           toast={toast}
         />
       )}

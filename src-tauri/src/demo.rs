@@ -5,6 +5,8 @@
 //! ```text
 //! projects: clienti/cliente-nord, app-mobile   (`clienti/…`: un progetto dentro un altro)
 //! archived: sito-2025
+//! group: clienti/nord | Nord | team | Marco Bianchi, Paolo Greco
+//!                       (percorso | nome | team o audience | membri: un gruppo dentro un altro)
 //!
 //! === demo-rinnovo
 //! title: Rinnovo contratto 2027
@@ -12,6 +14,7 @@
 //! minutes: 42
 //! attendees: Marco Bianchi, Elena Rossi
 //! tags: cliente-nord, prezzi
+//! groups: nord           (facoltativo: l'ultima parte del percorso dei gruppi)
 //! pinned: yes            (facoltativo: fissato in cima alla barra laterale)
 //! --- notes
 //! …Markdown; {{date:+7}} diventa la data di oggi più sette giorni…
@@ -47,11 +50,31 @@ pub struct DemoMeeting {
     pub ended_at: i64,
     pub attendees: Vec<String>,
     pub tags: Vec<String>,
+    /// Chiavi dei gruppi presenti (l'ultima parte del percorso).
+    pub groups: Vec<String>,
     pub notes_md: String,
     pub enhanced_md: Option<String>,
     pub segments: Vec<DemoSegment>,
     /// Fissato in cima alla barra laterale.
     pub pinned: bool,
+}
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct DemoGroup {
+    /// L'ultima parte del percorso: `nord` in `clienti/nord`.
+    pub key: String,
+    /// La chiave del gruppo che lo contiene.
+    pub parent: Option<String>,
+    pub name: String,
+    pub kind: crate::models::GroupKind,
+    pub members: Vec<String>,
+}
+
+impl DemoGroup {
+    /// L'id del gruppo nel database: comincia anche lui con `ID_PREFIX`.
+    pub fn id(key: &str) -> String {
+        format!("{ID_PREFIX}group-{key}")
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -61,13 +84,20 @@ pub struct DemoData {
     pub projects: Vec<String>,
     /// Tag da mostrare come progetti archiviati.
     pub archived: Vec<String>,
+    /// I gruppi, ogni genitore prima dei suoi figli.
+    pub groups: Vec<DemoGroup>,
     pub meetings: Vec<DemoMeeting>,
 }
 
 impl DemoData {
     /// Tutte le persone che compaiono nei meeting di esempio.
     pub fn people(&self) -> Vec<String> {
-        let mut names: Vec<String> = self.meetings.iter().flat_map(|m| m.attendees.clone()).collect();
+        let mut names: Vec<String> = self
+            .meetings
+            .iter()
+            .flat_map(|m| m.attendees.clone())
+            .chain(self.groups.iter().flat_map(|g| g.members.clone()))
+            .collect();
         names.sort();
         names.dedup();
         names
@@ -170,6 +200,22 @@ pub fn parse(text: &str, now_ms: i64) -> Result<DemoData> {
                 data.projects = list(v);
             } else if let Some(v) = line.strip_prefix("archived:") {
                 data.archived = list(v);
+            } else if let Some(v) = line.strip_prefix("group:") {
+                let parts: Vec<&str> = v.split('|').map(str::trim).collect();
+                let [path, name, kind, members] = parts[..] else { bail!("gruppo non valido: {v}") };
+                let mut keys: Vec<&str> = path.split('/').collect();
+                let key = keys.pop().unwrap_or_default().to_string();
+                let parent = keys.pop().map(String::from);
+                if parent.as_ref().is_some_and(|p| !data.groups.iter().any(|g| &g.key == p)) {
+                    bail!("il gruppo {key} sta dentro un gruppo non ancora definito");
+                }
+                data.groups.push(DemoGroup {
+                    key,
+                    parent,
+                    name: name.into(),
+                    kind: crate::models::GroupKind::parse(kind),
+                    members: list(members),
+                });
             }
             continue;
         };
@@ -190,6 +236,7 @@ pub fn parse(text: &str, now_ms: i64) -> Result<DemoData> {
             "title" => m.title = value.into(),
             "attendees" => m.attendees = list(value),
             "tags" => m.tags = list(value),
+            "groups" => m.groups = list(value),
             "pinned" => m.pinned = value == "yes",
             "minutes" => minutes = value.parse().unwrap_or(30),
             "when" => {
@@ -213,6 +260,9 @@ pub fn parse(text: &str, now_ms: i64) -> Result<DemoData> {
     for m in &data.meetings {
         if m.title.is_empty() || m.started_at == 0 {
             bail!("al meeting {} manca il titolo o la data", m.id);
+        }
+        if let Some(g) = m.groups.iter().find(|g| !data.groups.iter().any(|d| &d.key == *g)) {
+            bail!("il meeting {} cita il gruppo {g}, che non è definito", m.id);
         }
     }
     Ok(data)
@@ -248,6 +298,24 @@ mod tests {
     }
 
     #[test]
+    fn parses_groups_inside_groups() {
+        let now = Local.with_ymd_and_hms(2026, 11, 20, 12, 0, 0).unwrap().timestamp_millis();
+        let text = "group: clienti | Clienti | audience |\ngroup: clienti/nord | Nord | team | Marco, Paolo\n\n\
+=== demo-a\ntitle: Rinnovo\nwhen: 1 10:00\nattendees: Marco\ngroups: nord\n--- notes\nciao\n";
+        let data = parse(text, now).unwrap();
+        assert_eq!(data.groups.len(), 2);
+        let nord = &data.groups[1];
+        assert_eq!((nord.key.as_str(), nord.parent.as_deref(), nord.name.as_str()), ("nord", Some("clienti"), "Nord"));
+        assert_eq!(nord.kind, crate::models::GroupKind::Team);
+        assert_eq!(data.groups[0].kind, crate::models::GroupKind::Audience);
+        assert_eq!(data.meetings[0].groups, vec!["nord"]);
+        assert_eq!(data.people(), vec!["Marco", "Paolo"]);
+        // un gruppo che non c'è, o un genitore definito dopo il figlio
+        assert!(parse(&text.replace("groups: nord", "groups: lago"), now).is_err());
+        assert!(parse("group: a/b | B | team | x\ngroup: a | A | team |\n", now).is_err());
+    }
+
+    #[test]
     fn shipped_demo_data_is_valid() {
         for lang in [Lang::It, Lang::En] {
             let data = load(lang).unwrap();
@@ -262,6 +330,14 @@ mod tests {
                 assert!(!m.notes_md.contains("{{"), "{} ha una data non sostituita", m.id);
                 assert!(m.segments.windows(2).all(|w| w[0].start_ms < w[1].start_ms), "{} trascrizione non in ordine", m.id);
             }
+            // ogni gruppo con dei membri compare in almeno una nota, con gli stessi membri nelle
+            // due lingue (un gruppo senza membri fa solo da contenitore)
+            for g in data.groups.iter().filter(|g| !g.members.is_empty()) {
+                assert!(data.meetings.iter().any(|m| m.groups.contains(&g.key)), "nessun meeting per {} ({lang:?})", g.key);
+            }
+            let other = load(if lang == Lang::It { Lang::En } else { Lang::It }).unwrap();
+            let shape = |d: &DemoData| d.groups.iter().map(|g| (g.key.clone(), g.members.clone())).collect::<Vec<_>>();
+            assert_eq!(shape(&data), shape(&other), "gruppi diversi tra le lingue");
             // ogni progetto ha almeno un meeting, altrimenti nella Libreria resta vuoto
             for path in data.projects.iter().chain(&data.archived) {
                 let tag = path.rsplit('/').next().unwrap().to_string();

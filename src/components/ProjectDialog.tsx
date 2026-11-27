@@ -5,7 +5,7 @@ import type { Project } from "../types";
 import { projectBranch, projectOptions } from "../tree";
 
 /** I colori tra cui scegliere, con il nome che li descrive a chi non li vede. */
-const COLORS: { id: string; css: string; label: () => string }[] = [
+export const COLORS: { id: string; css: string; label: () => string }[] = [
   { id: "", css: "var(--accent)", label: () => t("Verde") },
   { id: "teal", css: "#2f9e9e", label: () => t("Turchese") },
   { id: "blue", css: "#4a86d9", label: () => t("Blu") },

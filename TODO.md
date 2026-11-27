@@ -16,6 +16,23 @@ Browse meetings by project, person, tag and period (cascading columns). A meetin
 - [ ] **Files**: a Library entry in place of "Recordings" that lists every file of the vault:
   recordings, images and other attachments of the notes, and files imported without a note.
 
+## People and groups
+
+Groups of people (team, department, client, whole company), nested like projects. A team
+brings its members into a note; an audience stays a single chip.
+
+- [x] Groups with team/audience, People page in the sidebar, multi-select into groups, group
+  chips in a note, Groups dimension in the Library, demo groups.
+- [ ] CSV import (`name,email,role,group`) that creates people and groups in one go.
+- [ ] Role and aliases on a person (nicknames for mentions and transcripts).
+- [ ] Calendar: an attendee that is a mailing list (`CUTYPE=GROUP`) becomes the group with
+  that address; an event with many invitees offers to add them as a group.
+- [ ] "From the audience" in the "At the mic" selector when a note has an audience group.
+- [ ] Prompts: the group name and size instead of every member's name.
+- [ ] Possible duplicates (same email, similar names) and people with no notes.
+- [ ] Suggest a group when the same set of people keeps meeting (recurring events).
+- [ ] Action items assigned to a group; "Since last time" per group.
+
 ## Import from other apps
 
 Settings → Import from. One source per page; the first is Obsidian. An import is a **copy,
