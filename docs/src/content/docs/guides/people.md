@@ -5,6 +5,8 @@ description: "The people in your notes and their groups: teams, departments, cli
 
 **People**, in the sidebar, lists everyone who appears as a participant in your notes, and the groups they belong to. Granello suggests them when you add participants to a note, and adds new ones on its own.
 
+![The People page with a team open](../../../assets/shots/en/people.webp)
+
 ## Groups
 
 A group brings people together: a team, a department, a client, the whole company. Groups sit inside other groups, like projects (`Whole company › Mobile team`), and the column on the left shows them as a tree, with **All people** and **No group** above them. Pick a group to see its members.

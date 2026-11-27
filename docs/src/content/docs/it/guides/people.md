@@ -5,6 +5,8 @@ description: "Le persone delle tue note e i loro gruppi: team, reparti, clienti,
 
 **Persone**, nella barra laterale, elenca chi compare come partecipante nelle tue note e i gruppi di cui fa parte. Granello le propone quando aggiungi i partecipanti a una nota, e aggiunge da solo quelle nuove.
 
+![La pagina Persone con un team aperto](../../../../assets/shots/it/people.webp)
+
 ## Gruppi
 
 Un gruppo riunisce delle persone: un team, un reparto, un cliente, tutta l'azienda. I gruppi stanno uno dentro l'altro come i progetti (`Tutta l'azienda › Team Mobile`) e la colonna a sinistra li mostra in albero, sotto **Tutte le persone** e **Senza gruppo**. Scegli un gruppo per vederne i membri.

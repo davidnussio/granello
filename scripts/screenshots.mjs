@@ -22,6 +22,8 @@ const ONLY_COMMANDS = process.argv[2] === "commands";
 const text = {
   it: {
     library: "Libreria",
+    people: "Persone",
+    group: "Team Mobile",
     notes: "Le mie note",
     items: "Elementi",
     recordings: "File",
@@ -32,6 +34,8 @@ const text = {
   },
   en: {
     library: "Library",
+    people: "People",
+    group: "Mobile team",
     notes: "My notes",
     items: "Items",
     recordings: "Files",
@@ -151,6 +155,7 @@ const shots = (lang) => {
     { name: "recording", query: "&rec", steps: [latest] },
     { name: "find", steps: [meeting, l.notes, { js: closePanel }, { js: find(l.find) }] },
     { name: "library", steps: [l.library] },
+    { name: "people", steps: [l.people, l.group] },
     { name: "items", steps: [l.library, l.items] },
     { name: "recordings", steps: [l.library, l.recordings] },
     { name: "templates", steps: [l.settings, l.templates, { js: openTemplate(l.interview) }] },
