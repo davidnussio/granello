@@ -48,7 +48,7 @@ with its check, in the same change.
 | C-PRIV-04 | Only servers on this Mac count as local models. | `commands::only_servers_on_this_mac_are_local` |
 | C-PRIV-05 | Redaction is permanent, and parts to review are counted. | `db::redaction_is_permanent_and_reviews_are_counted` |
 | C-PRIV-06 | A vault's minimum privacy raises every meeting in it. | `db::a_vault_can_raise_the_privacy_of_its_meetings`, `vaults::a_vault_keeps_its_own_meetings_and_minimum_privacy` |
-| C-PRIV-07 | Hardened meetings never reach the sync folder. | `sync::hardened_meetings_stay_on_the_mac` |
+| C-PRIV-07 | Hardened meetings, and the attachments of their notes, never reach the sync folder. | `sync::hardened_meetings_stay_on_the_mac`, `sync::attachments_travel_except_those_of_hardened_notes` |
 | C-PRIV-09 | The Mac's contacts are read only after the user turns them on (off by default), only to suggest participants and fill missing emails, and never copied whole into Granello. | `certify.mjs`, `contacts::contacts_stay_off_until_the_user_turns_them_on` |
 | C-PRIV-08 | Audio reaches Gladia only when the user presses *Refine online*: never automatically when a meeting ends. | `certify.mjs` |
 

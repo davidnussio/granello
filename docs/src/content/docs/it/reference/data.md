@@ -55,13 +55,13 @@ Granello non cifra un vault: la protezione viene da dove lo metti, per esempio u
 
 ### Sync tra i tuoi Mac
 
-Per ora c'è un'anteprima: il sync di un vault tra i tuoi Mac attraverso una cartella, per esempio in iCloud Drive. Si attiva in **Impostazioni → Vault**, con aperto il vault da sincronizzare. La cartella di sync contiene note e trascrizioni in chiaro.
+Per ora c'è un'anteprima: il sync di un vault tra i tuoi Mac attraverso una cartella, per esempio in iCloud Drive. Si attiva in **Impostazioni → Vault**, con aperto il vault da sincronizzare. La cartella di sync contiene note, trascrizioni e allegati in chiaro.
 
 - **Si sincronizza solo il vault aperto**, non tutti. La cartella di sync non è un vault: il vault resta dov'è, e nella cartella ogni Mac scrive le sue modifiche, che gli altri Mac leggono e applicano.
 - **Conflitti**: per ogni campo vince la modifica più recente. Se la stessa nota cambia su due Mac insieme, la versione rimasta indietro viene tenuta da parte.
-- **Viaggiano**: note con il loro testo, note AI, partecipanti e tag, trascrizioni, progetti e persone.
-- **Non viaggiano**: audio, registrazioni e allegati (per ora), impostazioni, template, calendari e API key.
-- **Non viaggiano mai**: le note blindate. Un vault con privacy minima blindata non si sincronizza.
+- **Viaggiano**: note con il loro testo, note AI, partecipanti, gruppi e tag, trascrizioni, le immagini e i file allegati alle note, progetti e persone. Un allegato grande può comparire sull'altro Mac qualche secondo dopo la sua nota.
+- **Non viaggiano**: audio e registrazioni, file importati senza nota (per ora), impostazioni, template, calendari, API key e la rubrica del Mac, che Granello non copia mai.
+- **Non viaggiano mai**: le note blindate e i loro allegati. Un vault con privacy minima blindata non si sincronizza.
 
 Per aggiungere un altro Mac, accendi lì le anteprime per sviluppatori, apri il vault che deve ricevere i dati (per esempio il Principale) e, in **Impostazioni → Vault**, scegli la stessa cartella di sync. Quel vault si unisce al primo: riceve le sue note e manda le proprie. Per tenerli separati, sull'altro Mac usa un vault nuovo e vuoto.
 

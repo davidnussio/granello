@@ -118,8 +118,11 @@ transcripts in clear text.
 - [ ] Last writer wins per field. For the notes and the AI notes, a concurrent edit keeps the
   losing version in the database (`sync_conflicts`): no screen to resolve it yet.
 - [ ] Hardened meetings, and a vault whose minimum privacy is hardened, do not sync.
-- [ ] Not in phase 0: audio and attachments (the meeting arrives without them), chat,
-  encryption, snapshots, watching the folder (it is polled).
+- [x] Attachments of the notes travel as `files/<name>` in the sync folder (a name is never
+  reused, so a file is copied once), copied without holding the database; those of hardened
+  notes stay on the Mac. A file deleted from a note stays in the folder for now.
+- [ ] Not in phase 0: audio, files imported without a note, chat, encryption, snapshots,
+  cleaning unused files out of the folder, watching the folder (it is polled).
 - Known limits: a meeting that becomes hardened after it synced stays on the other devices;
   an open meeting changed on another device is reloaded, and an edit typed in the last
   second before the reload can be lost.

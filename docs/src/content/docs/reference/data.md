@@ -55,13 +55,13 @@ Granello does not encrypt a vault: the protection comes from where you put it, f
 
 ### Sync between your Macs
 
-For now there is one preview: syncing a vault between your Macs through a folder, for example in iCloud Drive. Turn it on in **Settings → Vaults**, with the vault you want to sync open. The sync folder holds notes and transcripts in clear text.
+For now there is one preview: syncing a vault between your Macs through a folder, for example in iCloud Drive. Turn it on in **Settings → Vaults**, with the vault you want to sync open. The sync folder holds notes, transcripts and attachments in clear text.
 
 - **Only the open vault syncs**, not all of them. The sync folder is not a vault: the vault stays where it is, and in the folder each Mac writes its changes, which the other Macs read and apply.
 - **Conflicts**: for each field the latest change wins. If the same note changes on two Macs at once, the version left behind is kept aside.
-- **Synced**: notes with their text, AI notes, attendees and tags, transcripts, projects and people.
-- **Not synced**: audio, recordings and attachments (for now), settings, templates, calendars and API keys.
-- **Never synced**: hardened notes. A vault whose minimum privacy is hardened does not sync.
+- **Synced**: notes with their text, AI notes, attendees, groups and tags, transcripts, the images and files attached to notes, projects and people. A large attachment can take a few seconds more than its note to appear on the other Mac.
+- **Not synced**: audio and recordings, files imported without a note (for now), settings, templates, calendars, API keys and your Mac's contacts, which Granello never copies.
+- **Never synced**: hardened notes and their attachments. A vault whose minimum privacy is hardened does not sync.
 
 To add another Mac, turn on the developer previews there, open the vault that should receive the data (for example Main) and, in **Settings → Vaults**, choose the same sync folder. That vault joins the first one: it receives its notes and sends its own. To keep them apart, use a new, empty vault on the other Mac.
 

@@ -96,6 +96,10 @@ const KEPT: &[&str] = &["notes_md", "enhanced_md"];
 
 /// Il file che dice quale vault si sincronizza in una cartella.
 const MARKER: &str = "granello-sync.json";
+/// Gli allegati delle note nella cartella di sync, con lo stesso nome che hanno nel vault. Un
+/// allegato non cambia mai dopo essere stato salvato (il nome è nuovo a ogni file), quindi
+/// basta copiarlo una volta.
+const FILES: &str = "files";
 /// Ogni quanto il sync gira da solo.
 const EVERY: Duration = Duration::from_secs(10);
 
@@ -677,6 +681,91 @@ fn disable(db: &Db) -> Result<()> {
     Ok(())
 }
 
+// ---------- allegati ----------
+
+/// Gli allegati citati dalle note: nome del file → meeting che lo citano. Con `shared` solo
+/// quelli dei meeting che possono uscire dal Mac: gli allegati di una nota blindata restano qui.
+fn attachment_refs(conn: &Connection, shared: bool) -> Result<HashMap<String, Vec<String>>> {
+    let mut stmt = conn.prepare("SELECT id, notes_md, enhanced_md, privacy FROM meetings")?;
+    let rows = stmt.query_map([], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<String>>(2)?, r.get::<_, String>(3)?))
+    })?;
+    let mut out: HashMap<String, Vec<String>> = HashMap::new();
+    for row in rows {
+        let (id, notes, enhanced, privacy) = row?;
+        if shared && privacy == Privacy::Hardened.as_str() {
+            continue;
+        }
+        let text = format!("{notes}\n{}", enhanced.unwrap_or_default());
+        for path in crate::attachments::referenced(&text) {
+            let name = path.trim_start_matches("attachments/").to_string();
+            // come `attachments::resolve`: niente nomi nascosti né percorsi
+            if name.starts_with('.') || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-') {
+                continue;
+            }
+            let ids = out.entry(name).or_default();
+            if !ids.contains(&id) {
+                ids.push(id.clone());
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Copia un file passando da un nome temporaneo nella stessa cartella: chi legge (o il servizio
+/// di sync) non trova mai un file a metà.
+fn copy_whole(from: &Path, to: &Path, device: &str) -> Result<()> {
+    let parent = to.parent().ok_or_else(|| anyhow::anyhow!("percorso senza cartella"))?;
+    std::fs::create_dir_all(parent)?;
+    let name = to.file_name().and_then(|n| n.to_str()).unwrap_or("file");
+    let tmp = parent.join(format!(".{name}.{device}.tmp"));
+    std::fs::copy(from, &tmp)?;
+    std::fs::rename(&tmp, to)?;
+    Ok(())
+}
+
+/// Gli allegati di questo Mac che la cartella non ha ancora partono; quelli citati da una nota
+/// che qui mancano arrivano. Si fa senza tenere il database: con iCloud leggere un file può
+/// voler dire aspettare che si scarichi. Un file che non si copia non ferma gli altri. Ritorna
+/// i meeting che hanno ricevuto un allegato, da ridisegnare.
+fn sync_files(
+    dir: &Path,
+    vault_dir: &Path,
+    device: &str,
+    outgoing: &HashMap<String, Vec<String>>,
+    wanted: &HashMap<String, Vec<String>>,
+) -> Vec<String> {
+    let local = vault_dir.join("attachments");
+    let remote = dir.join(FILES);
+    for name in outgoing.keys() {
+        let (from, to) = (local.join(name), remote.join(name));
+        let fits = std::fs::metadata(&from).is_ok_and(|m| m.is_file() && m.len() <= crate::attachments::MAX_BYTES);
+        if fits && !to.exists() {
+            if let Err(e) = copy_whole(&from, &to, device) {
+                log::warn!("sync: allegato non inviato: {e}");
+            }
+        }
+    }
+    let mut touched: Vec<String> = Vec::new();
+    for (name, ids) in wanted {
+        let (from, to) = (remote.join(name), local.join(name));
+        if to.exists() || !from.is_file() {
+            continue;
+        }
+        match copy_whole(&from, &to, device) {
+            Ok(()) => {
+                for id in ids {
+                    if !touched.contains(id) {
+                        touched.push(id.clone());
+                    }
+                }
+            }
+            Err(e) => log::warn!("sync: allegato non ricevuto: {e}"),
+        }
+    }
+    touched
+}
+
 /// Un giro completo, con il database in mano: per i test.
 #[cfg(test)]
 fn sync_once(db: &Db, device: &str, dir: &Path) -> Result<Vec<String>> {
@@ -728,10 +817,22 @@ pub(crate) fn turn(state: &AppState) -> Result<Option<Vec<String>>> {
         if !same_vault() {
             return Ok(None);
         }
-        let touched = apply(&db, &device, batches)?;
+        let mut touched = apply(&db, &device, batches)?;
         if !touched.is_empty() {
             // un meeting arrivato sotto la privacy minima del vault si alza subito
             crate::vaults::enforce(&db, &vault_dir, min).map_err(anyhow::Error::msg)?;
+        }
+        let (outgoing, wanted) = (attachment_refs(db.conn(), true)?, attachment_refs(db.conn(), false)?);
+        drop(db);
+        // gli allegati si copiano senza il database in mano
+        for id in sync_files(&dir, &vault_dir, &device, &outgoing, &wanted) {
+            if !touched.contains(&id) {
+                touched.push(id);
+            }
+        }
+        let db = state.db.lock();
+        if !same_vault() {
+            return Ok(None);
         }
         state_set(db.conn(), "last_sync", &now_ms().to_string())?;
         Ok(Some(touched))
@@ -958,6 +1059,49 @@ mod tests {
         assert_eq!(a.meeting(&m.id).unwrap().tags, vec!["prezzi"]);
         assert!(a.meeting(&before.id).is_none());
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn attachments_travel_except_those_of_hardened_notes() {
+        let dir = folder();
+        let (vault_a, vault_b) = (folder(), folder());
+        let a = Mac::new("aaa", &dir);
+        let open = a.db.create_meeting("Lavagna", None, &[], None).unwrap();
+        a.db.update_meeting(&open.id, None, Some("![schema](attachments/abc123.png)"), None, None).unwrap();
+        let secret = a.db.create_meeting("Riservato", None, &[], None).unwrap();
+        a.db.update_meeting(&secret.id, None, Some("![x](attachments/segreto.png)"), None, None).unwrap();
+        a.db.set_privacy(&secret.id, Privacy::Hardened).unwrap();
+        std::fs::create_dir_all(vault_a.join("attachments")).unwrap();
+        std::fs::write(vault_a.join("attachments/abc123.png"), b"png").unwrap();
+        std::fs::write(vault_a.join("attachments/segreto.png"), b"no").unwrap();
+
+        let files = |mac: &Mac, vault: &Path| {
+            let conn = mac.db.conn();
+            sync_files(
+                &dir,
+                vault,
+                mac.id,
+                &attachment_refs(conn, true).unwrap(),
+                &attachment_refs(conn, false).unwrap(),
+            )
+        };
+        a.sync(&dir);
+        assert!(files(&a, &vault_a).is_empty());
+        assert!(dir.join("files/abc123.png").is_file());
+        assert!(!dir.join("files/segreto.png").exists(), "l'allegato di una nota blindata è uscito dal Mac");
+
+        let b = Mac::new("bbb", &dir);
+        b.sync(&dir);
+        // l'allegato arriva, e il meeting che lo cita va ridisegnato
+        assert_eq!(files(&b, &vault_b), vec![open.id.clone()]);
+        assert_eq!(std::fs::read(vault_b.join("attachments/abc123.png")).unwrap(), b"png");
+        // al giro dopo non c'è più niente da copiare, e nessun file temporaneo resta in giro
+        assert!(files(&b, &vault_b).is_empty());
+        let leftovers = std::fs::read_dir(dir.join("files")).unwrap().filter_map(|e| e.ok()).count();
+        assert_eq!(leftovers, 1);
+        for d in [dir, vault_a, vault_b] {
+            let _ = std::fs::remove_dir_all(d);
+        }
     }
 
     #[test]
