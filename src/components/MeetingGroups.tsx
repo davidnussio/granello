@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { api, errorText } from "../api";
 import { t } from "../i18n";
 import type { Group } from "../types";
 import { projectTitle } from "../tree";
@@ -13,6 +14,9 @@ interface Props {
   onChange: (patch: { groupIds?: string[]; attendees?: string[] }) => void;
   /** Apre il gruppo nella pagina Persone. */
   onOpenGroup: (id: string) => void;
+  /** Un gruppo ha cambiato membri: l'elenco dei gruppi va ricaricato. */
+  onGroupsChanged: () => void;
+  toast: (text: string) => void;
 }
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
@@ -20,12 +24,46 @@ const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 const MAX_ATTENDEES = 100;
 
 /**
+ * Le proposte «aggiungi X al team» che l'utente ha scartato (un ospite, un consulente): su questo
+ * Mac non tornano. `gruppo:nome`.
+ */
+const HIDDEN_KEY = "granello.groupHints.hidden";
+
+function readHidden(): ReadonlySet<string> {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveHidden(hidden: ReadonlySet<string>) {
+  try {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hidden].slice(-500)));
+  } catch {
+    // senza memoria la proposta torna la prossima volta: niente di grave
+  }
+}
+
+const hintKey = (groupId: string, name: string) => `${groupId}:${name.toLowerCase()}`;
+
+/**
  * I gruppi presenti a una nota, accanto ai partecipanti. Un team porta con sé i membri come
  * partecipanti; un pubblico (tutta l'azienda) resta un chip solo. Un clic sul chip mostra i
  * membri e lascia scegliere chi c'era.
  */
-export default function MeetingGroups({ groupIds, attendees, groups, onChange, onOpenGroup }: Props) {
+export default function MeetingGroups({
+  groupIds,
+  attendees,
+  groups,
+  onChange,
+  onOpenGroup,
+  onGroupsChanged,
+  toast,
+}: Props) {
   const [adding, setAdding] = useState(false);
+  const [hidden, setHidden] = useState(readHidden);
   const [text, setText] = useState("");
   const [selected, setSelected] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -54,6 +92,41 @@ export default function MeetingGroups({ groupIds, attendees, groups, onChange, o
       ),
     [groups, groupIds, attendees],
   );
+
+  /**
+   * Un partecipante che non è ancora in nessun gruppo (un collega nuovo): si propone di
+   * aggiungerlo al primo team della nota. Chi è già in un altro gruppo no: alla riunione con un
+   * cliente i colleghi non diventano membri del cliente. Uno alla volta, e chi è stato scartato
+   * non torna.
+   */
+  const grouped = (name: string) => groups.some((g) => g.members.some((m) => same(m, name)));
+  const newcomer = (() => {
+    const team = present.find((g) => g.kind === "team");
+    if (!team) return null;
+    const name = attendees.find((a) => !grouped(a) && !hidden.has(hintKey(team.id, a)));
+    return name ? { name, team } : null;
+  })();
+
+  const dismiss = (groupId: string, name: string) => {
+    const next = new Set(hidden);
+    next.add(hintKey(groupId, name));
+    saveHidden(next);
+    setHidden(next);
+  };
+
+  /** Mette una persona nel gruppo e, se non c'è già, tra i partecipanti della nota. */
+  const addToGroup = async (g: Group, raw: string) => {
+    const name = raw.trim().replace(/\s+/g, " ").slice(0, 80);
+    if (!name) return;
+    try {
+      await api.changeGroupMembers(g.id, [name], []);
+      onGroupsChanged();
+      if (!has(name)) onChange({ attendees: [...attendees, name].slice(0, MAX_ATTENDEES) });
+      toast(t("{person} ora è in «{name}»", { person: name, name: g.name }));
+    } catch (e) {
+      toast(errorText(e));
+    }
+  };
 
   const add = (g: Group) => {
     setText("");
@@ -98,8 +171,37 @@ export default function MeetingGroups({ groupIds, attendees, groups, onChange, o
             })
           }
           onOpenGroup={() => onOpenGroup(g.id)}
+          outsiders={attendees.filter((a) => !g.members.some((m) => same(m, a)))}
+          onAddMember={(name) => void addToGroup(g, name)}
         />
       ))}
+      {newcomer && !adding && (
+        <span className="chip import group-hint">
+          <button
+            type="button"
+            className="group-hint-main"
+            title={t("{person} non è in «{name}»: un clic e ne fa parte", {
+              person: newcomer.name,
+              name: newcomer.team.name,
+            })}
+            onClick={() => void addToGroup(newcomer.team, newcomer.name)}
+          >
+            {t("+ {person} in «{name}»?", { person: newcomer.name, name: newcomer.team.name })}
+          </button>
+          <button
+            type="button"
+            className="chip-x"
+            aria-label={t("Non proporre più")}
+            title={t("Non proporre più: {person} non fa parte di «{name}»", {
+              person: newcomer.name,
+              name: newcomer.team.name,
+            })}
+            onClick={() => dismiss(newcomer.team.id, newcomer.name)}
+          >
+            ×
+          </button>
+        </span>
+      )}
       {suggested && !adding && (
         <button
           type="button"
@@ -200,6 +302,8 @@ function GroupChip({
   onToggleMember,
   onAll,
   onOpenGroup,
+  outsiders,
+  onAddMember,
 }: {
   group: Group;
   groups: Group[];
@@ -213,9 +317,49 @@ function GroupChip({
   onToggleMember: (name: string) => void;
   onAll: (on: boolean) => void;
   onOpenGroup: () => void;
+  /** I partecipanti della nota che non sono nel gruppo: si aggiungono con un clic. */
+  outsiders: string[];
+  /** Aggiunge una persona al gruppo (e alla nota). */
+  onAddMember: (name: string) => void;
 }) {
   const box = useRef<HTMLSpanElement>(null);
   const [filter, setFilter] = useState("");
+  const [newName, setNewName] = useState("");
+  const [proposals, setProposals] = useState<string[]>([]);
+
+  // proposte dalla rubrica (e dal calendario) mentre si scrive il nome da aggiungere
+  useEffect(() => {
+    const typed = newName.trim();
+    if (!typed) {
+      setProposals([]);
+      return;
+    }
+    let live = true;
+    const timer = setTimeout(() => {
+      api
+        .suggestPeople(typed)
+        .then((list) => {
+          if (!live) return;
+          setProposals(
+            list
+              .map((p) => p.name)
+              .filter((n) => !group.members.some((m) => same(m, n)))
+              .slice(0, 5),
+          );
+        })
+        .catch(() => {});
+    }, 120);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [newName, group.members]);
+
+  const addMember = (name: string) => {
+    onAddMember(name);
+    setNewName("");
+    setProposals([]);
+  };
 
   // un clic fuori chiude l'elenco dei membri
   useEffect(() => {
@@ -304,6 +448,49 @@ function GroupChip({
             {count === 0 && <p className="muted small">{t("Il gruppo non ha ancora membri.")}</p>}
             {count > 0 && members.length === 0 && <p className="muted small">{t("Nessun risultato")}</p>}
           </div>
+          {/* chi c'era ma non è nel gruppo: un clic e ne fa parte */}
+          {outsiders.length > 0 && (
+            <div className="group-pop-outsiders">
+              <span className="muted small">{t("Nella nota, non nel gruppo:")}</span>
+              {outsiders.slice(0, 6).map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  className="people-chip add"
+                  title={t("Aggiungi {person} a «{name}»", { person: name, name: group.name })}
+                  onClick={() => onAddMember(name)}
+                >
+                  + {name}
+                </button>
+              ))}
+            </div>
+          )}
+          <form
+            className="group-pop-add"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newName.trim()) addMember(proposals.find((p) => same(p, newName.trim())) ?? newName);
+            }}
+          >
+            <input
+              value={newName}
+              maxLength={80}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={t("Aggiungi a «{name}»…", { name: group.name })}
+              aria-label={t("Aggiungi a «{name}»…", { name: group.name })}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            {proposals.length > 0 && (
+              <div className="group-pop-proposals">
+                {proposals.map((n) => (
+                  <button key={n} type="button" className="people-chip add" onClick={() => addMember(n)}>
+                    + {n}
+                  </button>
+                ))}
+              </div>
+            )}
+          </form>
           <div className="group-pop-foot">
             {count > 0 && group.kind === "team" && (
               <button type="button" className="btn small ghost" onClick={() => onAll(present < count)}>

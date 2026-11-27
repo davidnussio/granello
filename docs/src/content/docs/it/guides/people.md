@@ -20,7 +20,9 @@ Per riempire un gruppo aprilo e scrivi nel campo di ricerca: sotto, Granello pro
 
 ## I gruppi in una nota
 
-Sotto il titolo di una nota, **+ Gruppo** aggiunge un gruppo. Un clic sul chip del gruppo mostra i membri e lascia spuntare chi c'era; × toglie il gruppo ma lascia i partecipanti. Quando tutti i membri di un team sono già tra i partecipanti, Granello propone il team accanto ai chip. Le note del gruppo sono nella [Libreria](/it/guides/library/), sotto **Gruppi**.
+Sotto il titolo di una nota, **+ Gruppo** aggiunge un gruppo. Un clic sul chip del gruppo mostra i membri e lascia spuntare chi c'era; × toglie il gruppo ma lascia i partecipanti. Quando tutti i membri di un team sono già tra i partecipanti, Granello propone il team accanto ai chip.
+
+C'era qualcuno che non è nel gruppo? Il riquadro del chip elenca i partecipanti della nota che non ne fanno parte (**+ Nome** li aggiunge) e ha un campo per aggiungere chiunque altro, con le proposte dalla rubrica. Quando un partecipante non è in nessun gruppo, come un collega nuovo, Granello propone di aggiungerlo al team della nota (**+ Nome in «Team»?**); la × accanto smette di proporre quella persona per quel gruppo. Le note del gruppo sono nella [Libreria](/it/guides/library/), sotto **Gruppi**.
 
 ## L'elenco
 

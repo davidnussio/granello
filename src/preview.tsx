@@ -651,7 +651,16 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   get_chat: () => [],
   kept_audio: () => false,
   calendar_match: () => null,
-  suggest_people: () => [],
+  // le proposte dei partecipanti cercano nella rubrica, come quelle vere (senza calendario né Mac)
+  suggest_people: (a) => {
+    const q = String(a.query ?? "")
+      .trim()
+      .toLowerCase();
+    return people()
+      .filter((p) => !q || p.name.toLowerCase().includes(q))
+      .slice(0, 8)
+      .map((p) => ({ name: p.name, email: p.email, source: "people" }));
+  },
   upcoming_events: () => {
     // la scelta del vault aperto vale anche qui
     const shown = !vaults.find((v) => v.active)?.hiddenCalendars.includes("lavoro");

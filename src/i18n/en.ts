@@ -1008,6 +1008,15 @@ const en: Record<string, string> = {
   "Collega una nota che non c'è ancora": "Link a note that doesn't exist yet",
   "Link a una nota": "Link to a note",
   "[[ + titolo": "[[ + title",
+  "{person} ora è in «{name}»": "{person} is now in “{name}”",
+  "{person} non è in «{name}»: un clic e ne fa parte": "{person} isn't in “{name}”: one click adds them",
+  "+ {person} in «{name}»?": "+ {person} in “{name}”?",
+  "Non proporre più": "Don't suggest again",
+  "Non proporre più: {person} non fa parte di «{name}»":
+    "Don't suggest again: {person} isn't part of “{name}”",
+  "Nella nota, non nel gruppo:": "In the note, not in the group:",
+  "Aggiungi {person} a «{name}»": "Add {person} to “{name}”",
+  "Aggiungi a «{name}»…": "Add to “{name}”…",
   "1 persona spostata in «{name}»": "1 person moved to “{name}”",
   "{n} persone spostate in «{name}»": "{n} people moved to “{name}”",
   "«{name}» non è più in rubrica: le note non cambiano.":

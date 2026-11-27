@@ -1035,6 +1035,8 @@ export default function MeetingView({
               groups={groups}
               onChange={(patch) => void saveMeta(patch)}
               onOpenGroup={onOpenGroup}
+              onGroupsChanged={onGroupsChanged}
+              toast={toast}
             />
             <ChipInput
               values={meeting.attendees}

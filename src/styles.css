@@ -5615,3 +5615,52 @@ button.people-chip.add.fresh {
   font-weight: 550;
   font-size: 13px;
 }
+
+/* nella nota: aggiungere al gruppo chi c'era ma non ne fa parte */
+.group-pop-outsiders,
+.group-pop-proposals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.group-pop-outsiders {
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.group-pop-add {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.group-pop-add input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+}
+.group-pop-add input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.chip.group-hint {
+  display: inline-flex;
+  align-items: center;
+  max-width: 360px;
+}
+.group-hint-main {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

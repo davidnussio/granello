@@ -20,7 +20,9 @@ To fill a group, open it and type in the search field: below it Granello offers 
 
 ## Groups in a note
 
-Below a note's title, **+ Group** adds a group. Click the group's chip to see its members and tick who was there; × removes the group but keeps the attendees. When all the members of a team are already attendees, Granello suggests the team next to the chips. The group's notes are listed in the [Library](/guides/library/), under **Groups**.
+Below a note's title, **+ Group** adds a group. Click the group's chip to see its members and tick who was there; × removes the group but keeps the attendees. When all the members of a team are already attendees, Granello suggests the team next to the chips.
+
+Someone was there who isn't in the group? The chip's panel lists the note's attendees who are not members (**+ Name** adds them), and has a field to add anyone else, with suggestions from your people. When an attendee is in no group at all, like a new colleague, Granello suggests adding them to the note's team (**+ Name in “Team”?**); the × next to it stops suggesting that person for that group. The group's notes are listed in the [Library](/guides/library/), under **Groups**.
 
 ## The list
 
