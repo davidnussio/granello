@@ -5286,7 +5286,7 @@ button.lib-row.people-group-row {
 }
 .people-roster .roster-row {
   grid-template-columns:
-    22px minmax(120px, 1.2fr) minmax(110px, 1fr) minmax(130px, 1.4fr)
+    22px minmax(120px, 1.2fr) minmax(110px, 1fr) minmax(90px, 0.9fr) minmax(130px, 1.4fr)
     44px 64px 72px;
   gap: 10px;
   height: 36px;
@@ -5477,6 +5477,29 @@ button.people-chip.add.fresh {
   cursor: help;
 }
 
+/* il ruolo: una colonna nella pagina larga, accanto al nome in quella stretta */
+.people-role-inline {
+  display: none;
+  font-weight: 400;
+  font-size: 12px;
+}
+.people-aka {
+  color: var(--muted);
+  font-weight: 400;
+}
+@container people (max-width: 820px) {
+  .people-roster .roster-row {
+    grid-template-columns:
+      22px minmax(120px, 1.2fr) minmax(110px, 1fr) minmax(130px, 1.4fr)
+      44px 64px 72px;
+  }
+  .people-roster .col-role {
+    display: none;
+  }
+  .people-role-inline {
+    display: inline;
+  }
+}
 /* finestra più stretta: prima sparisce l'email, poi numero di note e ultima nota */
 @container people (max-width: 600px) {
   .people-roster .roster-row {
@@ -5663,4 +5686,35 @@ button.people-chip.add.fresh {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* doppioni da controllare */
+.people-dupes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.people-dupes > p {
+  margin: 0 0 4px;
+}
+.people-dupe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.people-dupe-names {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.people-dupe-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.people-chips.wrap {
+  flex-wrap: wrap;
 }

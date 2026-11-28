@@ -1,10 +1,17 @@
 projects: clients/cliente-nord, app-mobile, clients/cliente-lago
 archived: sito-2025
-group: azienda | Whole company | audience | Elena Rossi, Giulia Moretti, Luca Ferri, Anna Villa, Sara Conti, Chiara Fontana, Stefano Bruno
+group: azienda | Whole company | audience | Elena Rossi, Giulia Moretti, Luca Ferri, Anna Villa, Sara Conti, Chiara Fontana, Stefano Bruno | tutti@example.ch
 group: azienda/mobile | Mobile team | team | Giulia Moretti, Luca Ferri, Anna Villa, Sara Conti
 group: clienti | Clients | audience |
 group: clienti/nord | Nord | team | Marco Bianchi, Paolo Greco
 group: clienti/lago | Lago Logistica | team | Francesca Galli, Roberto Marino
+person: Elena Rossi | Sales director | E. Rossi
+person: Giulia Moretti | Product manager | Giuli
+person: Luca Ferri | Mobile developer | 
+person: Anna Villa | Customer support | 
+person: Sara Conti | Product designer | 
+person: Marco Bianchi | Head of purchasing at Nord | M. Bianchi
+person: Francesca Galli | Operations director at Lago Logistica | 
 
 === demo-rinnovo
 title: Nord contract renewal 2027

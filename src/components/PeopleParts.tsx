@@ -91,6 +91,8 @@ export function VcardImport({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [intoGroup, setIntoGroup] = useState(!!group);
+  /** Il file aveva una colonna dei gruppi: i gruppi che mancano si creano. */
+  const withGroups = found.some((p) => p.groups?.length);
   const q = filter.trim().toLowerCase();
   const listed = found.filter(
     (p) => !q || p.name.toLowerCase().includes(q) || (p.email ?? "").toLowerCase().includes(q),
@@ -131,12 +133,17 @@ export function VcardImport({
         if (e.key === "Escape") onClose();
       }}
     >
-      <div className="modal vcard-dialog" role="dialog" aria-modal="true" aria-label={t("Importa da vCard")}>
-        <h3>{t("Importa da vCard")}</h3>
+      <div className="modal vcard-dialog" role="dialog" aria-modal="true" aria-label={t("Importa persone")}>
+        <h3>{t("Importa persone")}</h3>
         <p className="muted small">
           {t(
-            "Scegli chi aggiungere alla rubrica di Granello: le proporrà tra i partecipanti. Chi c'è già riceve l'email, se non ne aveva una.",
+            "Scegli chi aggiungere alla rubrica di Granello: le proporrà tra i partecipanti. Chi c'è già riceve email e ruolo, se non li aveva.",
           )}
+          {withGroups &&
+            " " +
+              t(
+                "I gruppi della colonna Gruppo che non ci sono ancora vengono creati (`Azienda/Vendite` sta dentro `Azienda`).",
+              )}
         </p>
         <div className="roster-tools">
           <input
@@ -171,8 +178,14 @@ export function VcardImport({
           {listed.map((p) => (
             <label key={p.name} className="vcard-item">
               <input type="checkbox" checked={picked.has(p.name)} onChange={() => toggle(p.name)} />
-              <span className="roster-name">{p.name}</span>
-              <span className="muted small ellipsis">{p.email ?? ""}</span>
+              <span className="roster-name">
+                {p.name}
+                {p.role && <span className="muted small"> · {p.role}</span>}
+              </span>
+              <span className="muted small ellipsis">
+                {p.email ?? ""}
+                {p.groups?.length ? ` · ${p.groups.join(", ")}` : ""}
+              </span>
               {p.known && <span className="chip small-chip">{t("già in rubrica")}</span>}
             </label>
           ))}

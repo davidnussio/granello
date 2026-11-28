@@ -209,10 +209,30 @@ fn parse_duration(s: &str) -> Option<Duration> {
     Some(total)
 }
 
-/// Partecipanti di un evento come (nome da mostrare, email se presente).
+/// Un invitato che non è una persona: una mailing list (`CUTYPE=GROUP`), una sala o un oggetto.
+fn not_a_person(a: &Prop) -> bool {
+    a.params
+        .get("CUTYPE")
+        .is_some_and(|t| ["GROUP", "RESOURCE", "ROOM"].iter().any(|k| t.eq_ignore_ascii_case(k)))
+}
+
+/// Gli indirizzi di tutti gli invitati, minuscoli, comprese le mailing list.
+fn invitee_emails(e: &RawEvent) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for a in e.all("ATTENDEE") {
+        let email = a.value.trim().trim_start_matches("mailto:").trim_start_matches("MAILTO:").to_lowercase();
+        if email.contains('@') && !out.contains(&email) {
+            out.push(email);
+        }
+    }
+    out
+}
+
+/// Partecipanti di un evento come (nome da mostrare, email se presente). Le mailing list e le
+/// sale non sono persone: restano fuori.
 fn attendee_pairs(e: &RawEvent) -> Vec<(String, Option<String>)> {
     let mut out: Vec<(String, Option<String>)> = Vec::new();
-    for a in e.all("ATTENDEE") {
+    for a in e.all("ATTENDEE").iter().filter(|a| !not_a_person(a)) {
         let email = a.value.trim().trim_start_matches("mailto:").trim_start_matches("MAILTO:");
         let name = a
             .params
@@ -225,10 +245,6 @@ fn attendee_pairs(e: &RawEvent) -> Vec<(String, Option<String>)> {
         }
     }
     out
-}
-
-fn attendees(e: &RawEvent) -> Vec<String> {
-    attendee_pairs(e).into_iter().map(|(name, _)| name).collect()
 }
 
 /// Tutte le persone che compaiono come partecipanti nel calendario (senza doppioni),
@@ -279,7 +295,9 @@ pub fn events_between(ics: &str, from: DateTime<Utc>, to: DateTime<Utc>) -> Vec<
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| tr("(senza titolo)", "(untitled)").into());
         let location = e.first("LOCATION").map(|l| unescape(&l.value)).filter(|l| !l.is_empty());
-        let people = attendees(e);
+        let pairs = attendee_pairs(e);
+        let people: Vec<String> = pairs.iter().map(|(n, _)| n.clone()).collect();
+        let emails = invitee_emails(e);
 
         let starts: Vec<DateTime<Utc>> = match e.first("RRULE") {
             Some(rule) if e.first("RECURRENCE-ID").is_none() => {
@@ -310,6 +328,8 @@ pub fn events_between(ics: &str, from: DateTime<Utc>, to: DateTime<Utc>) -> Vec<
                 start: s.timestamp_millis(),
                 end: end.timestamp_millis(),
                 attendees: people.clone(),
+                emails: emails.clone(),
+                people: pairs.clone(),
                 location: location.clone(),
                 meeting_id: None,
                 calendar_id: String::new(),
@@ -364,6 +384,22 @@ BEGIN:VEVENT\r\nUID:single\r\nSUMMARY:Call cliente\r\nDTSTART:20261118T130000Z\r
 BEGIN:VEVENT\r\nUID:cancel\r\nSUMMARY:Annullato\r\nSTATUS:CANCELLED\r\nDTSTART:20261118T150000Z\r\nEND:VEVENT\r\n\
 BEGIN:VEVENT\r\nUID:allday\r\nSUMMARY:Ferie\r\nDTSTART;VALUE=DATE:20261118\r\nEND:VEVENT\r\n\
 END:VCALENDAR\r\n";
+
+    #[test]
+    fn mailing_lists_and_rooms_are_not_people() {
+        let ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:allhands\r\nSUMMARY:All-hands\r\n\
+DTSTART:20261118T080000Z\r\nDTEND:20261118T090000Z\r\n\
+ATTENDEE;CN=Elena Rossi:mailto:elena@example.ch\r\n\
+ATTENDEE;CUTYPE=GROUP;CN=Tutti:mailto:Tutti@Example.ch\r\n\
+ATTENDEE;CUTYPE=ROOM;CN=Sala grande:mailto:sala@example.ch\r\n\
+END:VEVENT\r\nEND:VCALENDAR\r\n";
+        let from = Utc.with_ymd_and_hms(2026, 11, 18, 0, 0, 0).unwrap();
+        let ev = events_between(ics, from, from + Duration::days(1));
+        assert_eq!(ev[0].attendees, vec!["Elena Rossi"]);
+        assert_eq!(ev[0].emails, vec!["elena@example.ch", "tutti@example.ch", "sala@example.ch"]);
+        assert_eq!(ev[0].people, vec![("Elena Rossi".to_string(), Some("elena@example.ch".to_string()))]);
+        assert_eq!(all_attendees(ics).len(), 1);
+    }
 
     #[test]
     fn expands_recurring_with_exdate_and_override() {

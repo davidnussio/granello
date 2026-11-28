@@ -145,6 +145,7 @@ pub fn run() {
             commands::set_meetings_pinned,
             commands::update_person,
             commands::merge_people,
+            commands::possible_duplicates,
             commands::contacts_access,
             commands::request_contacts_access,
             commands::pick_vcard,

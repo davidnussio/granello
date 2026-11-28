@@ -15,7 +15,15 @@ fn now_ms() -> i64 {
 /// Migrazioni in ordine: l'indice + 1 è la `user_version` del database.
 /// Mai modificare una migrazione già rilasciata: se ne aggiunge una nuova in coda.
 pub(crate) const MIGRATIONS: &[&str] =
-    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13, SCHEMA_V14];
+    &[SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V9, SCHEMA_V10, SCHEMA_V11, SCHEMA_V12, SCHEMA_V13, SCHEMA_V14, SCHEMA_V15];
+
+/// Ruolo e altri nomi di una persona (soprannomi, come la scrive il calendario, i nomi uniti a
+/// lei), e gli indirizzi email di un gruppo (la mailing list che il calendario invita).
+const SCHEMA_V15: &str = r#"
+ALTER TABLE people ADD COLUMN role TEXT NOT NULL DEFAULT '';
+ALTER TABLE people ADD COLUMN aliases TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE people_groups ADD COLUMN emails TEXT NOT NULL DEFAULT '[]';
+"#;
 
 /// Gruppi di persone (team, reparti, clienti, tutta l'azienda), uno dentro l'altro come i
 /// progetti. I membri sono nomi della rubrica, come i partecipanti dei meeting: il sync
@@ -399,6 +407,7 @@ impl Db {
             calendar_event_id: row.get("calendar_event_id")?,
             attendees: serde_json::from_str(&attendees).unwrap_or_default(),
             group_ids: serde_json::from_str(&row.get::<_, String>("group_ids")?).unwrap_or_default(),
+            groups_brief: Vec::new(),
             tags: serde_json::from_str(&tags).unwrap_or_default(),
             template_id: row.get("template_id")?,
             notes_md: row.get("notes_md")?,
@@ -685,6 +694,21 @@ impl Db {
                 params![id, g.name, parent, g.kind.as_str(), serde_json::to_string(&g.members)?, now_ms()],
             )?;
             self.add_known_people(&g.members)?;
+            self.conn.execute(
+                "UPDATE people_groups SET emails = ?1 WHERE id = ?2 AND emails = '[]'",
+                params![serde_json::to_string(&g.emails)?, id],
+            )?;
+        }
+        // ruolo e altri nomi solo a chi non li ha già: una persona dell'utente resta com'è
+        for p in &data.people {
+            self.conn.execute(
+                "UPDATE people SET role = ?1 WHERE name = ?2 AND role = ''",
+                params![p.role, p.name],
+            )?;
+            self.conn.execute(
+                "UPDATE people SET aliases = ?1 WHERE name = ?2 AND aliases = '[]'",
+                params![serde_json::to_string(&p.aliases)?, p.name],
+            )?;
         }
         for m in data.meetings.iter().filter(|m| !m.groups.is_empty()) {
             let mut ids = Vec::new();
@@ -946,7 +970,8 @@ impl Db {
     /// I gruppi in ordine alfabetico, con il numero di note in cui compaiono.
     pub fn list_groups(&self) -> Result<Vec<Group>> {
         let mut stmt = self.conn.prepare(
-            "SELECT g.id, g.name, g.color, g.description, g.parent_id, g.kind, g.members, COUNT(m.id), MAX(m.created_at)
+            "SELECT g.id, g.name, g.color, g.description, g.parent_id, g.kind, g.members, COUNT(m.id), MAX(m.created_at),
+                    g.emails
              FROM people_groups g
              LEFT JOIN meetings m ON EXISTS (SELECT 1 FROM json_each(m.group_ids) j WHERE j.value = g.id)
              GROUP BY g.id ORDER BY g.name",
@@ -960,6 +985,7 @@ impl Db {
                 parent_id: r.get(4)?,
                 kind: GroupKind::parse(&r.get::<_, String>(5)?),
                 members: serde_json::from_str(&r.get::<_, String>(6)?).unwrap_or_default(),
+                emails: serde_json::from_str(&r.get::<_, String>(9)?).unwrap_or_default(),
                 meetings: r.get(7)?,
                 last_meeting_at: r.get(8)?,
             })
@@ -1002,6 +1028,7 @@ impl Db {
         parent: Option<&str>,
         kind: GroupKind,
         members: &[String],
+        emails: &[String],
     ) -> Result<Group> {
         let taken: Option<String> = self
             .conn
@@ -1039,12 +1066,22 @@ impl Db {
         let id = if id.is_empty() { uuid::Uuid::new_v4().to_string() } else { id.to_string() };
         let tx = self.conn.unchecked_transaction()?;
         self.conn.execute(
-            "INSERT INTO people_groups (id, name, color, description, parent_id, kind, members, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+            "INSERT INTO people_groups (id, name, color, description, parent_id, kind, members, created_at, emails)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
              ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color,
              description = excluded.description, parent_id = excluded.parent_id, kind = excluded.kind,
-             members = excluded.members",
-            params![id, name, color, description, parent, kind.as_str(), serde_json::to_string(members)?, now_ms()],
+             members = excluded.members, emails = excluded.emails",
+            params![
+                id,
+                name,
+                color,
+                description,
+                parent,
+                kind.as_str(),
+                serde_json::to_string(members)?,
+                now_ms(),
+                serde_json::to_string(emails)?
+            ],
         )?;
         self.add_known_people(members)?;
         // il nome del gruppo è nell'indice di ricerca delle sue note
@@ -1210,7 +1247,7 @@ impl Db {
     /// Rubrica completa, con il numero di meeting di ogni persona e la data dell'ultimo.
     pub fn list_people(&self) -> Result<Vec<Person>> {
         let mut stmt = self.conn.prepare(
-            "SELECT p.id, p.name, p.email, COUNT(m.id), MAX(m.created_at)
+            "SELECT p.id, p.name, p.email, COUNT(m.id), MAX(m.created_at), p.role, p.aliases
              FROM people p
              LEFT JOIN meetings m ON EXISTS (
                  SELECT 1 FROM json_each(m.attendees) j WHERE j.value = p.name COLLATE NOCASE
@@ -1222,6 +1259,8 @@ impl Db {
                 id: r.get(0)?,
                 name: r.get(1)?,
                 email: r.get(2)?,
+                role: r.get(5)?,
+                aliases: serde_json::from_str(&r.get::<_, String>(6)?).unwrap_or_default(),
                 meetings: r.get(3)?,
                 last_meeting_at: r.get(4)?,
             })
@@ -1229,16 +1268,26 @@ impl Db {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Persone il cui nome (o email) contiene `query`, le usate più di recente per prime.
+    /// Persone il cui nome, email o uno degli altri nomi contiene `query`, le usate più di recente
+    /// per prime.
     pub fn search_people(&self, query: &str, limit: usize) -> Result<Vec<Person>> {
         let like = format!("%{}%", query.trim().replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_"));
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, email, 0 FROM people
+            "SELECT id, name, email, role, aliases FROM people p
              WHERE name LIKE ?1 ESCAPE '\\' OR email LIKE ?1 ESCAPE '\\'
+                OR EXISTS (SELECT 1 FROM json_each(p.aliases) j WHERE j.value LIKE ?1 ESCAPE '\\')
              ORDER BY last_used_at DESC, name LIMIT ?2",
         )?;
         let rows = stmt.query_map(params![like, limit as i64], |r| {
-            Ok(Person { id: r.get(0)?, name: r.get(1)?, email: r.get(2)?, meetings: r.get(3)?, last_meeting_at: None })
+            Ok(Person {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                email: r.get(2)?,
+                role: r.get(3)?,
+                aliases: serde_json::from_str(&r.get::<_, String>(4)?).unwrap_or_default(),
+                meetings: 0,
+                last_meeting_at: None,
+            })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
@@ -1270,7 +1319,21 @@ impl Db {
 
     /// Cambia nome ed email di una persona. Il nome nuovo arriva ovunque compaia quello vecchio:
     /// partecipanti dei meeting, menzioni `@[Nome]` e citazioni nelle note.
+    #[cfg(test)]
     pub fn update_person(&self, id: i64, name: &str, email: Option<&str>) -> Result<()> {
+        self.update_person_details(id, name, email, None, None)
+    }
+
+    /// Come `update_person`, e in più ruolo e altri nomi (`None` = restano come sono). Il nome
+    /// vecchio diventa uno degli altri nomi: il calendario o un'altra nota possono ancora usarlo.
+    pub fn update_person_details(
+        &self,
+        id: i64,
+        name: &str,
+        email: Option<&str>,
+        role: Option<&str>,
+        aliases: Option<&[String]>,
+    ) -> Result<()> {
         let name = name.trim();
         if name.is_empty() {
             return Err(crate::tra!(
@@ -1280,15 +1343,29 @@ impl Db {
         }
         let email = email.map(str::trim).filter(|e| !e.is_empty());
         let tx = self.conn.unchecked_transaction()?;
-        let (old, created, used): (String, i64, i64) = self
+        let (old, created, used, old_role, old_aliases): (String, i64, i64, String, String) = self
             .conn
-            .query_row("SELECT name, created_at, last_used_at FROM people WHERE id = ?1", [id], |r| {
-                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
-            })
+            .query_row(
+                "SELECT name, created_at, last_used_at, role, aliases FROM people WHERE id = ?1",
+                [id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+            )
             .optional()?
             .ok_or_else(|| crate::tra!("Persona non trovata: ricarica l'elenco.", "Person not found: reload the list."))?;
+        let role = role.map(|r| r.split_whitespace().collect::<Vec<_>>().join(" ")).unwrap_or(old_role);
+        let mut others: Vec<String> = match aliases {
+            Some(list) => list.to_vec(),
+            None => serde_json::from_str(&old_aliases).unwrap_or_default(),
+        };
+        if old != name {
+            others.push(old.clone());
+        }
+        let others = clean_aliases(others, name);
         if old == name {
-            self.conn.execute("UPDATE people SET email = ?1 WHERE id = ?2", params![email, id])?;
+            self.conn.execute(
+                "UPDATE people SET email = ?1, role = ?2, aliases = ?3 WHERE id = ?4",
+                params![email, role, serde_json::to_string(&others)?, id],
+            )?;
         } else {
             let taken: bool = self.conn.query_row(
                 "SELECT EXISTS(SELECT 1 FROM people WHERE name = ?1 COLLATE NOCASE AND id != ?2)",
@@ -1304,8 +1381,9 @@ impl Db {
             // il sync riconosce una persona dal nome: cambiarlo è togliere la vecchia e aggiungere la nuova
             self.conn.execute("DELETE FROM people WHERE id = ?1", [id])?;
             self.conn.execute(
-                "INSERT INTO people (id, name, email, created_at, last_used_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![id, name, email, created, used],
+                "INSERT INTO people (id, name, email, created_at, last_used_at, role, aliases)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![id, name, email, created, used, role, serde_json::to_string(&others)?],
             )?;
             self.rename_in_meetings(&old, name)?;
             self.rename_in_groups(&old, Some(name))?;
@@ -1334,12 +1412,25 @@ impl Db {
         };
         let (from_name, from_email, from_created, from_used) = get(from)?;
         let (into_name, ..) = get(into)?;
+        // il nome tolto (e i suoi altri nomi) diventa un altro nome di chi resta: «E. Rossi» nel
+        // calendario è ancora Elena
+        let names = |id: i64| -> Result<(String, Vec<String>)> {
+            let (role, aliases): (String, String) =
+                self.conn.query_row("SELECT role, aliases FROM people WHERE id = ?1", [id], |r| Ok((r.get(0)?, r.get(1)?)))?;
+            Ok((role, serde_json::from_str(&aliases).unwrap_or_default()))
+        };
+        let (from_role, from_aliases) = names(from)?;
+        let (_, into_aliases) = names(into)?;
+        let aliases = clean_aliases(
+            into_aliases.into_iter().chain(from_aliases).chain([from_name.clone()]).collect(),
+            &into_name,
+        );
         self.conn.execute("DELETE FROM people WHERE id = ?1", [from])?;
         self.conn.execute(
             "UPDATE people SET email = COALESCE(NULLIF(email, ''), ?1), created_at = MIN(created_at, ?2),
-                    last_used_at = MAX(last_used_at, ?3)
+                    last_used_at = MAX(last_used_at, ?3), role = COALESCE(NULLIF(role, ''), ?5), aliases = ?6
              WHERE id = ?4",
-            params![from_email, from_created, from_used, into],
+            params![from_email, from_created, from_used, into, from_role, serde_json::to_string(&aliases)?],
         )?;
         self.rename_in_meetings(&from_name, &into_name)?;
         self.rename_in_groups(&from_name, Some(&into_name))?;
@@ -1395,6 +1486,161 @@ impl Db {
         }
         tx.commit()?;
         Ok(())
+    }
+
+    /// Il nome in rubrica per chi è scritto in un altro modo: uno dei suoi altri nomi, o la sua
+    /// email. Chi non si riconosce resta com'è.
+    pub fn canonical_people(&self, people: &[(String, Option<String>)]) -> Result<Vec<(String, Option<String>)>> {
+        let known = self.list_people()?;
+        let mut out: Vec<(String, Option<String>)> = Vec::new();
+        for (name, email) in people {
+            let found = known.iter().find(|p| p.name.eq_ignore_ascii_case(name.trim())).or_else(|| {
+                known
+                    .iter()
+                    .find(|p| p.aliases.iter().any(|a| a.eq_ignore_ascii_case(name.trim())))
+                    .or_else(|| {
+                        let email = email.as_deref()?;
+                        known.iter().find(|p| p.email.as_deref().is_some_and(|e| e.eq_ignore_ascii_case(email)))
+                    })
+            });
+            let pair = match found {
+                Some(p) => (p.name.clone(), email.clone().or_else(|| p.email.clone())),
+                None => (name.clone(), email.clone()),
+            };
+            if !out.iter().any(|(n, _)| n.eq_ignore_ascii_case(&pair.0)) {
+                out.push(pair);
+            }
+        }
+        Ok(out)
+    }
+
+    /// Coppie di persone che sembrano la stessa: stessa email, stesso nome scritto diversamente
+    /// («Rossi, Elena» e «Elena Rossi»), oppure l'iniziale del nome («E. Rossi»). Il primo della
+    /// coppia è quello con più note: di solito è quello da tenere.
+    pub fn possible_duplicates(&self) -> Result<Vec<Duplicate>> {
+        let people = self.list_people()?;
+        let mut out: Vec<Duplicate> = Vec::new();
+        for (i, a) in people.iter().enumerate() {
+            for b in &people[i + 1..] {
+                let reason = if a.email.as_deref().zip(b.email.as_deref()).is_some_and(|(x, y)| x.eq_ignore_ascii_case(y)) {
+                    "email"
+                } else if name_key(&a.name) == name_key(&b.name) {
+                    "name"
+                } else if initial_of(&a.name, &b.name) || initial_of(&b.name, &a.name) {
+                    "initial"
+                } else {
+                    continue;
+                };
+                let (keep, drop) = if b.meetings > a.meetings { (b, a) } else { (a, b) };
+                out.push(Duplicate { keep: keep.id, drop: drop.id, reason: reason.into() });
+            }
+        }
+        Ok(out)
+    }
+
+    /// Aggiunge le persone di un file (CSV o vCard): chi c'è già riceve email e ruolo se non li
+    /// aveva; i gruppi indicati si creano se mancano (`Azienda/Sviluppo` dentro `Azienda`), e le
+    /// persone ci entrano. Un gruppo nuovo con più di `TEAM_SIZE` membri è un pubblico.
+    pub fn import_people(&self, rows: &[ImportedPerson]) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        let now = now_ms();
+        let mut members: Vec<(String, Vec<String>)> = Vec::new();
+        for row in rows {
+            let name: String = row.name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
+            if name.is_empty() {
+                continue;
+            }
+            let email = row.email.as_deref().map(str::trim).filter(|e| e.contains('@'));
+            let role: String = row.role.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
+            self.conn.execute(
+                "INSERT INTO people (name, email, role, created_at, last_used_at) VALUES (?1, ?2, ?3, ?4, ?4)
+                 ON CONFLICT(name) DO UPDATE SET email = COALESCE(NULLIF(people.email, ''), excluded.email),
+                 role = CASE WHEN people.role = '' THEN excluded.role ELSE people.role END",
+                params![name, email, role, now],
+            )?;
+            let name: String = self.conn.query_row("SELECT name FROM people WHERE name = ?1", [&name], |r| r.get(0))?;
+            for path in &row.groups {
+                let path: Vec<String> = path
+                    .split(['/', '›', '>'])
+                    .map(|p| p.split_whitespace().collect::<Vec<_>>().join(" "))
+                    .filter(|p| !p.is_empty())
+                    .collect();
+                if path.is_empty() {
+                    continue;
+                }
+                let leaf = path.join("/");
+                match members.iter_mut().find(|(p, _)| p.eq_ignore_ascii_case(&leaf)) {
+                    Some((_, list)) => list.push(name.clone()),
+                    None => members.push((leaf, vec![name.clone()])),
+                }
+            }
+        }
+        for (path, names) in members {
+            let mut parent: Option<String> = None;
+            let parts: Vec<&str> = path.split('/').collect();
+            for (depth, part) in parts.iter().enumerate() {
+                let existing: Option<(String, String)> = self
+                    .conn
+                    .query_row("SELECT id, members FROM people_groups WHERE name = ?1", [part], |r| Ok((r.get(0)?, r.get(1)?)))
+                    .optional()?;
+                let last = depth == parts.len() - 1;
+                let id = match existing {
+                    Some((id, _)) => id,
+                    None => {
+                        let id = uuid::Uuid::new_v4().to_string();
+                        let size = if last { names.len() } else { 0 };
+                        let kind = if size > crate::models::TEAM_SIZE { GroupKind::Audience } else { GroupKind::Team };
+                        self.conn.execute(
+                            "INSERT INTO people_groups (id, name, parent_id, kind, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+                            params![id, part, parent, kind.as_str(), now],
+                        )?;
+                        id
+                    }
+                };
+                if last {
+                    let current: String =
+                        self.conn.query_row("SELECT members FROM people_groups WHERE id = ?1", [&id], |r| r.get(0))?;
+                    let mut list: Vec<String> = serde_json::from_str(&current).unwrap_or_default();
+                    for n in &names {
+                        if !list.iter().any(|m| m.eq_ignore_ascii_case(n)) && list.len() < MAX_GROUP_MEMBERS {
+                            list.push(n.clone());
+                        }
+                    }
+                    self.conn.execute(
+                        "UPDATE people_groups SET members = ?1 WHERE id = ?2",
+                        params![serde_json::to_string(&list)?, id],
+                    )?;
+                }
+                parent = Some(id);
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Il meeting con la descrizione dei suoi gruppi, pronto per un prompt.
+    pub fn with_groups(&self, mut meeting: Meeting) -> Result<Meeting> {
+        meeting.groups_brief = self.groups_brief(&meeting.group_ids)?;
+        Ok(meeting)
+    }
+
+    /// I gruppi di un meeting come li legge un modello: nome, tipo e quante persone, mai i nomi
+    /// dei membri («Tutta l'azienda (pubblico, 124 persone)»).
+    pub fn groups_brief(&self, ids: &[String]) -> Result<Vec<String>> {
+        let groups = self.list_groups()?;
+        Ok(ids
+            .iter()
+            .filter_map(|id| groups.iter().find(|g| &g.id == id))
+            .map(|g| {
+                let kind = match g.kind {
+                    GroupKind::Team => tr("team", "team"),
+                    GroupKind::Audience => tr("pubblico", "audience"),
+                };
+                let n = g.members.len();
+                let people = if n == 1 { tr("1 persona", "1 person").to_string() } else { crate::trf!("{n} persone", "{n} people") };
+                format!("{} ({kind}, {people})", g.name)
+            })
+            .collect())
     }
 
     pub fn mark_started(&self, id: &str) -> Result<()> {
@@ -2202,6 +2448,62 @@ fn rename_in_notes(md: &str, old: &str, new: &str) -> String {
     out.join("\n")
 }
 
+/// `short` è l'iniziale del nome di `long`, con lo stesso cognome: «E. Rossi» e «Elena Rossi».
+fn initial_of(short: &str, long: &str) -> bool {
+    let (s, l) = (name_key(short), name_key(long));
+    let sw: Vec<&str> = s.split(' ').collect();
+    let lw: Vec<&str> = l.split(' ').collect();
+    if sw.len() != 2 || lw.len() != 2 {
+        return false;
+    }
+    // le parole sono in ordine alfabetico: l'iniziale è quella di una lettera sola
+    let (initial, surname) = match (sw[0].chars().count(), sw[1].chars().count()) {
+        (1, n) if n > 1 => (sw[0], sw[1]),
+        (n, 1) if n > 1 => (sw[1], sw[0]),
+        _ => return false,
+    };
+    lw.contains(&surname) && lw.iter().any(|w| *w != surname && w.starts_with(initial))
+}
+
+/// Altri nomi di una persona: puliti, senza doppioni e senza il nome stesso.
+fn clean_aliases(list: Vec<String>, name: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for raw in list {
+        let alias: String = raw.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
+        if alias.is_empty() || alias.eq_ignore_ascii_case(name) || out.iter().any(|o| o.eq_ignore_ascii_case(&alias)) {
+            continue;
+        }
+        out.push(alias);
+        if out.len() == 20 {
+            break;
+        }
+    }
+    out
+}
+
+/// Un nome per confrontarlo con un altro: minuscolo, senza accenti né punteggiatura, con le parole
+/// in ordine («Rossi, Elena» e «elena rossi» sono uguali).
+fn name_key(name: &str) -> String {
+    let plain: String = name
+        .to_lowercase()
+        .chars()
+        .map(|c| match c {
+            'à' | 'á' | 'â' | 'ä' | 'ã' | 'å' => 'a',
+            'è' | 'é' | 'ê' | 'ë' => 'e',
+            'ì' | 'í' | 'î' | 'ï' => 'i',
+            'ò' | 'ó' | 'ô' | 'ö' | 'õ' => 'o',
+            'ù' | 'ú' | 'û' | 'ü' => 'u',
+            'ç' => 'c',
+            'ñ' => 'n',
+            c if c.is_alphanumeric() => c,
+            _ => ' ',
+        })
+        .collect();
+    let mut words: Vec<&str> = plain.split_whitespace().collect();
+    words.sort_unstable();
+    words.join(" ")
+}
+
 fn rename_quote(line: &str, old: &str, new: &str) -> Option<String> {
     let trimmed = line.trim_end();
     let head = trimmed.strip_suffix(old)?;
@@ -2328,7 +2630,7 @@ mod tests {
     #[test]
     fn demo_groups_hold_their_notes_and_leave_with_them() {
         let db = Db::open_in_memory().unwrap();
-        let mine = db.save_group("", "Clienti", "", "", None, GroupKind::Audience, &[]).unwrap();
+        let mine = db.save_group("", "Clienti", "", "", None, GroupKind::Audience, &[], &[]).unwrap();
         let data = crate::demo::load(crate::i18n::Lang::It).unwrap();
         db.insert_demo(&data).unwrap();
         let groups = db.list_groups().unwrap();
@@ -2350,25 +2652,131 @@ mod tests {
     }
 
     #[test]
+    fn other_names_come_from_merges_and_renames_and_are_recognised() {
+        let db = Db::open_in_memory().unwrap();
+        db.create_meeting("Kickoff", None, &["Elena Rossi".into(), "E. Rossi".into(), "Marco".into()], None).unwrap();
+        let people = db.list_people().unwrap();
+        let id = |n: &str| people.iter().find(|p| p.name == n).unwrap().id;
+        db.merge_people(id("E. Rossi"), id("Elena Rossi")).unwrap();
+        db.update_person_details(id("Marco"), "Marco Bianchi", Some("marco@example.ch"), Some("  Direttore   acquisti "), None)
+            .unwrap();
+        let people = db.list_people().unwrap();
+        let get = |n: &str| people.iter().find(|p| p.name == n).unwrap().clone();
+        assert_eq!(get("Elena Rossi").aliases, vec!["E. Rossi"]);
+        let marco = get("Marco Bianchi");
+        assert_eq!((marco.role.as_str(), marco.aliases.clone()), ("Direttore acquisti", vec!["Marco".to_string()]));
+        // gli altri nomi si cercano, e un nome scritto così (o la sua email) è la persona in rubrica
+        assert_eq!(db.search_people("e. ros", 5).unwrap()[0].name, "Elena Rossi");
+        let found = db
+            .canonical_people(&[
+                ("e. rossi".into(), None),
+                ("M. Bianchi".into(), Some("MARCO@example.ch".into())),
+                ("Nuova Persona".into(), None),
+            ])
+            .unwrap();
+        let names: Vec<&str> = found.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, vec!["Elena Rossi", "Marco Bianchi", "Nuova Persona"]);
+        // gli altri nomi si scelgono anche a mano, senza doppioni né il nome stesso
+        db.update_person_details(marco.id, "Marco Bianchi", None, None, Some(&["Marco".into(), "marco bianchi".into(), " MB ".into()]))
+            .unwrap();
+        assert_eq!(db.list_people().unwrap().iter().find(|p| p.id == marco.id).unwrap().aliases, vec!["Marco", "MB"]);
+    }
+
+    #[test]
+    fn possible_duplicates_by_email_spelling_and_initial() {
+        let db = Db::open_in_memory().unwrap();
+        db.create_meeting("A", None, &["Elena Rossi".into(), "Luca Ferri".into()], None).unwrap();
+        db.create_meeting("B", None, &["Elena Rossi".into()], None).unwrap();
+        db.upsert_people(&[
+            ("E. Rossi".into(), None),
+            ("Ferri, Luca".into(), None),
+            ("Anna Villa".into(), Some("anna@example.ch".into())),
+            ("Annina".into(), Some("ANNA@example.ch".into())),
+            ("Elisa Bruno".into(), None),
+        ])
+        .unwrap();
+        let people = db.list_people().unwrap();
+        let name = |id: i64| people.iter().find(|p| p.id == id).unwrap().name.clone();
+        let mut pairs: Vec<(String, String, String)> = db
+            .possible_duplicates()
+            .unwrap()
+            .into_iter()
+            .map(|d| (name(d.keep), name(d.drop), d.reason))
+            .collect();
+        pairs.sort();
+        assert_eq!(
+            pairs,
+            vec![
+                ("Anna Villa".into(), "Annina".into(), "email".into()),
+                ("Elena Rossi".into(), "E. Rossi".into(), "initial".into()),
+                ("Luca Ferri".into(), "Ferri, Luca".into(), "name".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn importing_people_creates_nested_groups_and_keeps_what_was_there() {
+        let db = Db::open_in_memory().unwrap();
+        db.upsert_people(&[("Anna Villa".into(), Some("anna@old.ch".into()))]).unwrap();
+        let row = |name: &str, email: Option<&str>, role: &str, groups: &[&str]| ImportedPerson {
+            name: name.into(),
+            email: email.map(String::from),
+            known: false,
+            role: role.into(),
+            groups: groups.iter().map(|g| g.to_string()).collect(),
+        };
+        let mut rows = vec![
+            row("Anna Villa", Some("anna@new.ch"), "Supporto", &["Azienda/Mobile"]),
+            row("Luca Ferri", None, "Sviluppo", &["Azienda › Mobile", "Azienda"]),
+        ];
+        // un reparto grande nasce come pubblico
+        for i in 0..20 {
+            rows.push(row(&format!("Persona {i}"), None, "", &["Azienda/Vendite"]));
+        }
+        db.import_people(&rows).unwrap();
+        let people = db.list_people().unwrap();
+        let anna = people.iter().find(|p| p.name == "Anna Villa").unwrap();
+        // chi c'era tiene la sua email, e prende il ruolo che non aveva
+        assert_eq!((anna.email.as_deref(), anna.role.as_str()), (Some("anna@old.ch"), "Supporto"));
+        let groups = db.list_groups().unwrap();
+        let g = |n: &str| groups.iter().find(|g| g.name == n).unwrap().clone();
+        let (azienda, mobile, vendite) = (g("Azienda"), g("Mobile"), g("Vendite"));
+        assert_eq!(groups.len(), 3);
+        assert_eq!(mobile.parent_id.as_deref(), Some(azienda.id.as_str()));
+        assert_eq!(mobile.members, vec!["Anna Villa", "Luca Ferri"]);
+        assert_eq!(azienda.members, vec!["Luca Ferri"]);
+        assert_eq!((mobile.kind, vendite.kind), (GroupKind::Team, GroupKind::Audience));
+        // un secondo import non raddoppia niente
+        db.import_people(&rows).unwrap();
+        assert_eq!(db.list_groups().unwrap().iter().find(|x| x.name == "Mobile").unwrap().members.len(), 2);
+
+        // ai modelli arrivano nome, tipo e dimensione del gruppo, non i membri
+        let m = db.create_meeting("All-hands", None, &[], None).unwrap();
+        db.set_meeting_groups(&m.id, &[vendite.id.clone(), mobile.id.clone()]).unwrap();
+        let m = db.with_groups(db.get_meeting(&m.id).unwrap().unwrap()).unwrap();
+        assert_eq!(m.groups_brief, vec!["Vendite (pubblico, 20 persone)", "Mobile (team, 2 persone)"]);
+    }
+
+    #[test]
     fn groups_nest_hold_members_and_follow_people() {
         let db = Db::open_in_memory().unwrap();
-        let company = db.save_group("", "Azienda", "", "", None, GroupKind::Audience, &[]).unwrap();
+        let company = db.save_group("", "Azienda", "", "", None, GroupKind::Audience, &[], &[]).unwrap();
         let team = db
-            .save_group("", "Mobile", "teal", "App", Some(&company.id), GroupKind::Team, &["Anna".into(), "Luca".into()])
+            .save_group("", "Mobile", "teal", "App", Some(&company.id), GroupKind::Team, &["Anna".into(), "Luca".into()], &[])
             .unwrap();
         assert_eq!(team.members, vec!["Anna", "Luca"]);
         // i membri entrano in rubrica
         assert_eq!(db.list_people().unwrap().len(), 2);
         // nomi unici, niente giri
-        assert!(db.save_group("", "mobile", "", "", None, GroupKind::Team, &[]).is_err());
-        assert!(db.save_group(&company.id, "Azienda", "", "", Some(&team.id), GroupKind::Audience, &[]).is_err());
+        assert!(db.save_group("", "mobile", "", "", None, GroupKind::Team, &[], &[]).is_err());
+        assert!(db.save_group(&company.id, "Azienda", "", "", Some(&team.id), GroupKind::Audience, &[], &[]).is_err());
 
         let m = db.create_meeting("Standup", None, &["Anna".into()], None).unwrap();
         db.set_meeting_groups(&m.id, &[team.id.clone(), "nessuno".into(), team.id.clone()]).unwrap();
         assert_eq!(db.get_meeting(&m.id).unwrap().unwrap().group_ids, vec![team.id.clone()]);
         assert_eq!(db.list_groups().unwrap().iter().find(|g| g.id == team.id).unwrap().meetings, 1);
         // il nome del gruppo è nell'indice, anche dopo averlo cambiato
-        db.save_group(&team.id, "Squadra app", "teal", "App", Some(&company.id), GroupKind::Team, &team.members)
+        db.save_group(&team.id, "Squadra app", "teal", "App", Some(&company.id), GroupKind::Team, &team.members, &[])
             .unwrap();
         assert_eq!(db.list_meetings(Some("Squadra")).unwrap().len(), 1);
         assert!(db.list_meetings(Some("Mobile")).unwrap().is_empty());

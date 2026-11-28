@@ -16,7 +16,7 @@ Un gruppo riunisce delle persone: un team, un reparto, un cliente, tutta l'azien
 - **Team**: aggiungendolo a una nota entrano anche i suoi membri come partecipanti, uno per uno. Togli la spunta a chi non c'era. Va bene per uno standup, un gruppo di progetto, un comitato.
 - **Pubblico**: nella nota resta un solo chip e non entra nessuno. Spunta solo chi ha parlato o va citato. Va bene per tutta l'azienda o un reparto, dove l'elenco di tutti seppellirebbe la nota.
 
-Un gruppo nuovo con più di 15 persone parte come pubblico; si cambia in **Modifica…**.
+Un gruppo nuovo con più di 15 persone parte come pubblico; si cambia in **Modifica…**, dove puoi anche aggiungere la **mailing list** del gruppo (`tutti@azienda.ch`): un invito del calendario a quell'indirizzo è un invito al gruppo.
 
 Per riempire un gruppo aprilo e scrivi nel campo di ricerca: sotto, Granello propone le persone che corrispondono e, se il nome è nuovo, lo aggiunge come persona nuova (Invio aggiunge l'unica proposta). Per aggiungerne tante insieme incolla un elenco nello stesso campo: una persona per riga, con l'email se ce l'hai (`Nome <email>`, oppure nome ed email in due colonne di un foglio di calcolo). Granello riconosce chi è già nell'elenco dall'email o dal nome, e chiede prima di aggiungere. Eliminare un gruppo chiede conferma e lascia le note e le persone come sono.
 
@@ -26,9 +26,15 @@ Sotto il titolo di una nota, **+ Gruppo** aggiunge un gruppo. Un clic sul chip d
 
 C'era qualcuno che non è nel gruppo? Il riquadro del chip elenca i partecipanti della nota che non ne fanno parte (**+ Nome** li aggiunge) e ha un campo per aggiungere chiunque altro, con le proposte dalla rubrica. Quando un partecipante non è in nessun gruppo, come un collega nuovo, Granello propone di aggiungerlo al team della nota (**+ Nome in «Team»?**); la × accanto smette di proporre quella persona per quel gruppo. Le note del gruppo sono nella [Libreria](/it/guides/library/), sotto **Gruppi**.
 
+Dal calendario: quando l'evento ha invitato la mailing list di un gruppo, la nota propone quel gruppo (**+ Tutta l'azienda da «All-hands»**); mailing list e sale riunioni non diventano mai partecipanti. Un evento con più di 15 invitati propone il gruppo che li comprende quasi tutti, oppure **Gruppo con gli N invitati…** per crearne uno, invece di aggiungerli uno per uno.
+
+Mentre registri una riunione con un gruppo pubblico, il menu **Al microfono** propone anche **Pubblico (Tutta l'azienda)**, per le domande dalla sala; lo propone anche **Chi sta parlando…**.
+
+Le note AI e la chat ricevono il nome del gruppo, il tipo e quante persone ha (*Tutta l'azienda (pubblico, 124 persone)*), mai l'elenco dei membri.
+
 ## L'elenco
 
-Ogni riga è alta uguale: nome, email, gruppi, numero di note e data dell'ultima. Un clic sull'intestazione di una colonna ordina per quella, un altro inverte l'ordine. Un clic sul numero di note le apre nella [Libreria](/it/guides/library/). Con un gruppo aperto, la colonna dei gruppi mostra solo gli *altri* gruppi della persona.
+Ogni riga è alta uguale: nome, email, ruolo, gruppi, numero di note e data dell'ultima. In una finestra stretta il ruolo sta accanto al nome. Un `≈` accanto a un nome vuol dire che la persona ha altri nomi (nel tooltip). Un clic sull'intestazione di una colonna ordina per quella, un altro inverte l'ordine. Un clic sul numero di note le apre nella [Libreria](/it/guides/library/). Con un gruppo aperto, la colonna dei gruppi mostra solo gli *altri* gruppi della persona.
 
 Il chip di un gruppo ha una × che compare passandoci sopra: toglie la persona da quel gruppo senza aprirlo. Se una persona è in più gruppi di quanti ne stanno, la riga mostra i primi e `+N`, con gli altri nel tooltip.
 
@@ -44,17 +50,21 @@ Con delle persone scelte, la barra di ricerca diventa la loro barra dei comandi:
 
 ## Correggere un nome
 
-Doppio clic su un nome o su un'email (oppure ✎, o Invio sulla riga scelta) per correggerlo lì. Invio salva e passa allo stesso campo della riga sotto, Maiusc + Invio a quella sopra, Esc annulla: completare quaranta email sono quaranta righe da scrivere, non quaranta finestre. Il nome nuovo arriva in tutte le note: tra i partecipanti, nelle @menzioni delle note e delle note AI, in chi parla nelle citazioni della trascrizione, e nei gruppi. Un nome che è già di qualcun altro non si prende: unisci le due persone.
+Doppio clic su un nome, un'email o un ruolo (oppure Invio sulla riga scelta) per correggerlo lì. Invio salva e passa allo stesso campo della riga sotto, Maiusc + Invio a quella sopra, Esc annulla: completare quaranta email sono quaranta righe da scrivere, non quaranta finestre. Il nome nuovo arriva in tutte le note: tra i partecipanti, nelle @menzioni delle note e delle note AI, in chi parla nelle citazioni della trascrizione, e nei gruppi. Un nome che è già di qualcun altro non si prende: unisci le due persone.
+
+✎ apre tutti i dati di una persona: nome, email, ruolo e **altri nomi** (un soprannome, un'iniziale, come la scrive il calendario). Scritta così tra i partecipanti, o arrivata così dal calendario o con la sua email, Granello la riconosce: «E. Rossi» diventa Elena Rossi. Rinominando una persona, il nome vecchio resta tra gli altri nomi.
 
 ## Unire due persone
 
-La stessa persona finisce spesso scritta in due modi ("Marco" e "Marco Bianchi"). Passa su quella da togliere, premi ⇢ e scegli chi è davvero. Le sue note passano all'altra, senza doppioni, e l'email passa anche lei se l'altra non ne aveva una.
+La stessa persona finisce spesso scritta in due modi ("Marco" e "Marco Bianchi"). Passa su quella da togliere, premi ⇢ e scegli chi è davvero. Le sue note passano all'altra, senza doppioni; email e ruolo passano anche loro se l'altra non li aveva, e il nome tolto diventa uno dei suoi altri nomi.
+
+In **Da sistemare**, a sinistra, **Possibili doppioni** elenca le coppie che sembrano la stessa persona: stessa email, stesso nome scritto diversamente («Rossi, Elena») o con l'iniziale («E. Rossi»). **Unisci in…** tiene la persona con più note, **Al contrario** tiene l'altra, **Sono due persone** smette di proporre la coppia. **Senza note** elenca chi non è in nessuna nota, per togliere chi non serve.
 
 Rimuovere una persona (×, poi conferma) la toglie dall'elenco e dai suoi gruppi: le note restano come sono.
 
-## Importare da un file vCard
+## Importare da un file
 
-**Importa vCard…** legge un file `.vcf` esportato da Contatti, Google Contatti o Outlook. Granello mostra chi contiene e scegli tu chi aggiungere: chi è già nell'elenco parte senza spunta e riceve l'email, se non ne aveva una. Con un gruppo aperto, chi aggiungi può entrare anche nel gruppo. Non viene aggiunto niente finché non premi **Aggiungi**.
+**Importa vCard o CSV…** legge un file `.vcf` esportato da Contatti, Google Contatti o Outlook, oppure un elenco CSV (virgola, punto e virgola o tabulazione). In un CSV la prima riga, in italiano o in inglese, dice le colonne: nome (o nome e cognome), email, ruolo e gruppo. Un gruppo scritto `Azienda/Vendite` sta dentro `Azienda`; più gruppi nella stessa cella si separano con `|`. I gruppi che non ci sono ancora vengono creati, e le persone ci entrano. Granello mostra chi contiene e scegli tu chi aggiungere: chi è già nell'elenco parte senza spunta e riceve email e ruolo, se non li aveva. Con un gruppo aperto, chi aggiungi può entrare anche nel gruppo. Non viene aggiunto niente finché non premi **Aggiungi**.
 
 ## La rubrica del Mac
 

@@ -23,13 +23,13 @@ brings its members into a note; an audience stays a single chip.
 
 - [x] Groups with team/audience, People page in the sidebar, multi-select into groups, group
   chips in a note, Groups dimension in the Library, demo groups.
-- [ ] CSV import (`name,email,role,group`) that creates people and groups in one go.
-- [ ] Role and aliases on a person (nicknames for mentions and transcripts).
-- [ ] Calendar: an attendee that is a mailing list (`CUTYPE=GROUP`) becomes the group with
+- [x] CSV import (`name,email,role,group`) that creates people and groups in one go.
+- [x] Role and other names on a person: from merges and renames too; recognised among attendees, in the calendar and in suggestions.
+- [x] Calendar: an attendee that is a mailing list (`CUTYPE=GROUP`) becomes the group with
   that address; an event with many invitees offers to add them as a group.
-- [ ] "From the audience" in the "At the mic" selector when a note has an audience group.
-- [ ] Prompts: the group name and size instead of every member's name.
-- [ ] Possible duplicates (same email, similar names) and people with no notes.
+- [x] "From the audience" in the "At the mic" selector when a note has an audience group.
+- [x] Prompts: the group name and size instead of every member's name.
+- [x] Possible duplicates (same email, similar names) and people with no notes.
 - [ ] Suggest a group when the same set of people keeps meeting (recurring events).
 - [ ] Action items assigned to a group; "Since last time" per group.
 

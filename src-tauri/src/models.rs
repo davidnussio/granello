@@ -15,6 +15,10 @@ pub struct Meeting {
     /// I gruppi presenti (id), oltre alle persone una per una.
     #[serde(default)]
     pub group_ids: Vec<String>,
+    /// I gruppi come li legge un modello («Tutta l'azienda (pubblico, 124 persone)»): li riempie
+    /// `Db::with_groups` solo prima di un prompt. Non viaggiano e non vanno all'interfaccia.
+    #[serde(skip)]
+    pub groups_brief: Vec<String>,
     pub tags: Vec<String>,
     pub template_id: Option<String>,
     pub notes_md: String,
@@ -90,6 +94,12 @@ pub struct Person {
     pub id: i64,
     pub name: String,
     pub email: Option<String>,
+    /// Il ruolo («Product owner», «Avvocato di Nord»); vuoto se non si sa.
+    #[serde(default)]
+    pub role: String,
+    /// Altri modi in cui compare: soprannomi, come la scrive il calendario, i nomi uniti a lei.
+    #[serde(default)]
+    pub aliases: Vec<String>,
     /// In quanti meeting compare.
     pub meetings: i64,
     /// Quando è stato creato l'ultimo meeting a cui ha partecipato.
@@ -103,6 +113,12 @@ pub struct ImportedPerson {
     pub name: String,
     pub email: Option<String>,
     pub known: bool,
+    /// Da un file CSV: il ruolo, se c'è la colonna.
+    #[serde(default)]
+    pub role: String,
+    /// Da un file CSV: i gruppi in cui entra, anche uno dentro l'altro (`Azienda/Sviluppo`).
+    #[serde(default)]
+    pub groups: Vec<String>,
 }
 
 /// Proposta per il completamento automatico dei partecipanti.
@@ -111,6 +127,9 @@ pub struct ImportedPerson {
 pub struct PersonSuggestion {
     pub name: String,
     pub email: Option<String>,
+    /// Il nome scritto che ha portato a questa persona, se è uno dei suoi altri nomi.
+    #[serde(default)]
+    pub alias: Option<String>,
     /// "people" = già in rubrica, "calendar" = letta dagli eventi del calendario,
     /// "contacts" = dalla rubrica del Mac
     pub source: String,
@@ -185,11 +204,30 @@ pub struct Group {
     pub kind: GroupKind,
     /// I nomi dei membri, come in rubrica.
     pub members: Vec<String>,
+    /// Gli indirizzi email del gruppo (la mailing list): un invito del calendario a uno di questi
+    /// è un invito al gruppo.
+    #[serde(default)]
+    pub emails: Vec<String>,
     /// In quante note compare.
     pub meetings: i64,
     /// Quando è stata creata l'ultima nota in cui compare.
     pub last_meeting_at: Option<i64>,
 }
+
+/// Due persone che sembrano la stessa, da unire.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Duplicate {
+    /// Quella da tenere (con più note).
+    pub keep: i64,
+    pub drop: i64,
+    /// "email", "name" (lo stesso nome scritto diversamente) o "initial" («E. Rossi»).
+    pub reason: String,
+}
+
+/// Fino a quanti membri un gruppo nuovo è un team (oltre, un pubblico). Lo stesso numero sta
+/// nell'interfaccia.
+pub const TEAM_SIZE: usize = 15;
 
 pub const MAX_TAGS: usize = 12;
 pub const MAX_ATTENDEES: usize = 100;
@@ -721,6 +759,13 @@ pub struct CalendarEvent {
     pub start: i64,
     pub end: i64,
     pub attendees: Vec<String>,
+    /// Gli indirizzi di tutti gli invitati, minuscoli, comprese le mailing list: un gruppo con
+    /// uno di questi indirizzi è invitato.
+    #[serde(default)]
+    pub emails: Vec<String>,
+    /// Le persone invitate con la loro email, per riconoscerle in rubrica. Non va all'interfaccia.
+    #[serde(skip)]
+    pub people: Vec<(String, Option<String>)>,
     pub location: Option<String>,
     pub meeting_id: Option<String>,
     /// Il calendario da cui arriva l'evento.

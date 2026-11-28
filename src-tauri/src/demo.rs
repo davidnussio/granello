@@ -6,7 +6,8 @@
 //! projects: clienti/cliente-nord, app-mobile   (`clienti/…`: un progetto dentro un altro)
 //! archived: sito-2025
 //! group: clienti/nord | Nord | team | Marco Bianchi, Paolo Greco
-//!                       (percorso | nome | team o audience | membri: un gruppo dentro un altro)
+//!                       (percorso | nome | team o audience | membri | mailing list, facoltativa)
+//! person: Elena Rossi | Direttrice commerciale | E. Rossi   (nome | ruolo | altri nomi)
 //!
 //! === demo-rinnovo
 //! title: Rinnovo contratto 2027
@@ -68,6 +69,16 @@ pub struct DemoGroup {
     pub name: String,
     pub kind: crate::models::GroupKind,
     pub members: Vec<String>,
+    /// La mailing list del gruppo, se ne ha una.
+    pub emails: Vec<String>,
+}
+
+/// Ruolo e altri nomi di una persona di esempio.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct DemoPerson {
+    pub name: String,
+    pub role: String,
+    pub aliases: Vec<String>,
 }
 
 impl DemoGroup {
@@ -86,6 +97,8 @@ pub struct DemoData {
     pub archived: Vec<String>,
     /// I gruppi, ogni genitore prima dei suoi figli.
     pub groups: Vec<DemoGroup>,
+    /// Ruolo e altri nomi di alcune persone.
+    pub people: Vec<DemoPerson>,
     pub meetings: Vec<DemoMeeting>,
 }
 
@@ -202,7 +215,11 @@ pub fn parse(text: &str, now_ms: i64) -> Result<DemoData> {
                 data.archived = list(v);
             } else if let Some(v) = line.strip_prefix("group:") {
                 let parts: Vec<&str> = v.split('|').map(str::trim).collect();
-                let [path, name, kind, members] = parts[..] else { bail!("gruppo non valido: {v}") };
+                let (path, name, kind, members, emails) = match parts[..] {
+                    [p, n, k, m] => (p, n, k, m, ""),
+                    [p, n, k, m, e] => (p, n, k, m, e),
+                    _ => bail!("gruppo non valido: {v}"),
+                };
                 let mut keys: Vec<&str> = path.split('/').collect();
                 let key = keys.pop().unwrap_or_default().to_string();
                 let parent = keys.pop().map(String::from);
@@ -215,7 +232,12 @@ pub fn parse(text: &str, now_ms: i64) -> Result<DemoData> {
                     name: name.into(),
                     kind: crate::models::GroupKind::parse(kind),
                     members: list(members),
+                    emails: list(emails),
                 });
+            } else if let Some(v) = line.strip_prefix("person:") {
+                let parts: Vec<&str> = v.split('|').map(str::trim).collect();
+                let [name, role, aliases] = parts[..] else { bail!("persona non valida: {v}") };
+                data.people.push(DemoPerson { name: name.into(), role: role.into(), aliases: list(aliases) });
             }
             continue;
         };

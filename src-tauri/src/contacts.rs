@@ -32,6 +32,107 @@ impl Access {
     }
 }
 
+// ---------- CSV ----------
+
+/// Una riga di un elenco CSV: nome, email, ruolo e gruppi (anche più d'uno, separati da `|`).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Row {
+    pub name: String,
+    pub email: Option<String>,
+    pub role: String,
+    pub groups: Vec<String>,
+}
+
+/// Le celle di una riga CSV, con le virgolette (`"Rossi, Elena"`, `""` per una virgoletta).
+fn cells(line: &str, sep: char) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut cell = String::new();
+    let mut quoted = false;
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' if quoted && chars.peek() == Some(&'"') => {
+                cell.push('"');
+                chars.next();
+            }
+            '"' => quoted = !quoted,
+            c if c == sep && !quoted => out.push(std::mem::take(&mut cell)),
+            c => cell.push(c),
+        }
+    }
+    out.push(cell);
+    out.into_iter().map(|c| c.trim().to_string()).collect()
+}
+
+/// Un elenco di persone esportato da un foglio di calcolo o da un'anagrafica: CSV con virgola,
+/// punto e virgola o tabulazione. Con un'intestazione (in italiano o in inglese) si riconoscono
+/// le colonne nome, cognome, email, ruolo e gruppo; senza, il nome è la prima colonna e l'email
+/// la cella con la @. Senza doppioni e senza righe senza nome.
+pub fn parse_csv(text: &str) -> Vec<Row> {
+    let lines: Vec<&str> = text.lines().map(|l| l.trim_start_matches('\u{feff}')).filter(|l| !l.trim().is_empty()).collect();
+    let Some(first) = lines.first() else { return Vec::new() };
+    let sep = ['\t', ';', ',']
+        .into_iter()
+        .max_by_key(|c| first.matches(*c).count())
+        .filter(|c| first.contains(*c))
+        .unwrap_or(',');
+    let head: Vec<String> = cells(first, sep).into_iter().map(|c| c.to_lowercase()).collect();
+    let find = |names: &[&str]| head.iter().position(|h| names.iter().any(|n| h == n || h.starts_with(&format!("{n} "))));
+    let first_name = find(&["nome", "first name", "given name", "firstname"]);
+    let last_name = find(&["cognome", "last name", "surname", "family name", "lastname"]);
+    let full = find(&["nome completo", "full name", "name", "persona", "person", "display name"]);
+    let email = find(&["email", "e-mail", "mail", "email address", "indirizzo email"]);
+    let role = find(&["ruolo", "role", "title", "job title", "funzione", "posizione", "position"]);
+    let group = find(&["gruppo", "gruppi", "group", "groups", "team", "reparto", "department", "dipartimento"]);
+    let has_head = full.is_some() || first_name.is_some() || email.is_some();
+    let mut out: Vec<Row> = Vec::new();
+    for line in lines.iter().skip(usize::from(has_head)) {
+        let row = cells(line, sep);
+        let at = |i: Option<usize>| i.and_then(|i| row.get(i)).map(String::as_str).unwrap_or("").to_string();
+        let name = if has_head {
+            match (full, first_name, last_name) {
+                // «Nome» da solo è il nome completo; con «Cognome» accanto è solo il nome
+                (Some(f), _, None) => at(Some(f)),
+                (_, Some(n), Some(c)) => format!("{} {}", at(Some(n)), at(Some(c))),
+                (Some(f), _, Some(_)) if first_name.is_none() => at(Some(f)),
+                (_, Some(n), None) => at(Some(n)),
+                (Some(f), None, Some(c)) => format!("{} {}", at(Some(f)), at(Some(c))),
+                _ => String::new(),
+            }
+        } else {
+            row.iter().find(|c| !c.contains('@')).cloned().unwrap_or_default()
+        };
+        let mail = if has_head && email.is_some() { at(email) } else { row.iter().find(|c| c.contains('@')).cloned().unwrap_or_default() };
+        let mail = Some(mail).filter(|m| m.contains('@') && !m.contains(char::is_whitespace));
+        let name: String = name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
+        // solo l'email: il nome dalla parte prima della @ («marco.bianchi» → «Marco Bianchi»)
+        let name = if name.is_empty() {
+            mail.as_deref()
+                .and_then(|m| m.split('@').next())
+                .map(|local| {
+                    local
+                        .split(['.', '_', '-'])
+                        .filter(|w| !w.is_empty())
+                        .map(|w| {
+                            let mut c = w.chars();
+                            c.next().map(|f| f.to_uppercase().chain(c).collect::<String>()).unwrap_or_default()
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                })
+                .unwrap_or_default()
+        } else {
+            name
+        };
+        if name.is_empty() || out.iter().any(|r| r.name.eq_ignore_ascii_case(&name)) {
+            continue;
+        }
+        let groups = at(group).split(['|', ';']).map(str::trim).filter(|g| !g.is_empty()).map(String::from).collect();
+        out.push(Row { name, email: mail, role: at(role), groups });
+    }
+    out
+}
+
 // ---------- vCard ----------
 
 /// Le persone di un file vCard (.vcf), anche esportato da Contatti, Google o Outlook: nome
@@ -280,6 +381,29 @@ pub fn email_for(name: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_csv_with_and_without_header() {
+        let sheet = "Nome;Cognome;E-mail;Ruolo;Gruppo\nAnna;Villa;anna@example.ch;Supporto;Azienda/Mobile|Azienda\n\
+\"Rossi\";Elena;;Direzione;Azienda\n;;marco.bianchi@example.ch;;\nAnna;Villa;doppia@example.ch;;\n";
+        let rows = parse_csv(sheet);
+        assert_eq!(rows.len(), 3);
+        assert_eq!(rows[0].name, "Anna Villa");
+        assert_eq!(rows[0].email.as_deref(), Some("anna@example.ch"));
+        assert_eq!(rows[0].role, "Supporto");
+        assert_eq!(rows[0].groups, vec!["Azienda/Mobile", "Azienda"]);
+        assert_eq!((rows[1].name.as_str(), rows[1].email.as_deref()), ("Rossi Elena", None));
+        assert_eq!(rows[2].name, "Marco Bianchi");
+
+        let plain = "Luca Ferri,luca@example.ch\n\"Galli, Francesca\",francesca@example.ch\n";
+        let rows = parse_csv(plain);
+        assert_eq!(rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>(), vec!["Luca Ferri", "Galli, Francesca"]);
+        assert_eq!(rows[1].email.as_deref(), Some("francesca@example.ch"));
+
+        let english = "Full name,Email,Team\nSara Conti,sara@example.ch,Mobile\n";
+        assert_eq!(parse_csv(english)[0].groups, vec!["Mobile"]);
+        assert!(parse_csv("").is_empty());
+    }
 
     #[test]
     fn reads_names_and_emails_from_vcards() {

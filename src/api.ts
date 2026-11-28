@@ -8,6 +8,7 @@ import type {
   CalendarOverview,
   ChatMessage,
   ContactsAccess,
+  Duplicate,
   Group,
   GroupKind,
   ImportedPerson,
@@ -168,20 +169,27 @@ export const api = {
     parentId: string | null;
     kind: GroupKind;
     members: string[];
+    emails?: string[];
   }) => invoke<Group>("save_group", group),
   changeGroupMembers: (id: string, add: string[], remove: string[]) =>
     invoke<Group>("change_group_members", { id, add, remove }),
   deleteGroup: (id: string) => invoke<Group[]>("delete_group", { id }),
   deletePerson: (id: number) => invoke<void>("delete_person", { id }),
   /** Cambia nome ed email; il nome nuovo arriva in tutti i meeting. Restituisce la rubrica. */
-  updatePerson: (id: number, name: string, email: string | null) =>
-    invoke<Person[]>("update_person", { id, name, email }),
+  /** Nome ed email; ruolo e altri nomi solo se indicati (assenti = restano come sono). */
+  updatePerson: (
+    id: number,
+    name: string,
+    email: string | null,
+    more: { role?: string; aliases?: string[] } = {},
+  ) => invoke<Person[]>("update_person", { id, name, email, role: more.role, aliases: more.aliases }),
+  possibleDuplicates: () => invoke<Duplicate[]>("possible_duplicates"),
   /** `from` sparisce e i suoi meeting passano a `into`. Restituisce la rubrica. */
   mergePeople: (from: number, into: number) => invoke<Person[]>("merge_people", { from, into }),
   contactsAccess: () => invoke<ContactsAccess>("contacts_access"),
   /** Chiede a macOS il permesso di leggere la rubrica e aspetta la risposta. */
   requestContactsAccess: () => invoke<ContactsAccess>("request_contacts_access"),
-  /** Fa scegliere un file vCard e ne legge le persone; null se la scelta viene annullata. */
+  /** Fa scegliere un file vCard o CSV e ne legge le persone; null se la scelta viene annullata. */
   pickVcard: () => invoke<ImportedPerson[] | null>("pick_vcard"),
   addPeople: (people: ImportedPerson[]) => invoke<Person[]>("add_people", { people }),
   /** Completa con la rubrica del Mac le email mancanti; restituisce quante ne ha aggiunte. */

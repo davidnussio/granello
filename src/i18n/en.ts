@@ -923,8 +923,6 @@ const en: Record<string, string> = {
   "Aggiunta 1 email dalla rubrica": "Added 1 email from your contacts",
   "Aggiunte {n} email dalla rubrica": "Added {n} emails from your contacts",
   "Cerca per nome o email": "Search by name or email",
-  "Aggiungi persone da un file .vcf": "Add people from a .vcf file",
-  "Importa vCard…": "Import vCard…",
   Email: "Email",
   "Apri le note di {name} nella Libreria": "Open {name}'s notes in the Library",
   "Modifica {name}": "Edit {name}",
@@ -945,9 +943,6 @@ const en: Record<string, string> = {
     "1 note moves to {into}; {from} leaves your people.",
   "{n} note passano a {into}; {from} sparisce dalla rubrica.":
     "{n} notes move to {into}; {from} leaves your people.",
-  "Importa da vCard": "Import from vCard",
-  "Scegli chi aggiungere alla rubrica di Granello: le proporrà tra i partecipanti. Chi c'è già riceve l'email, se non ne aveva una.":
-    "Choose who to add to Granello's people: it will suggest them as participants. Anyone already there gets the email, if they had none.",
   "Seleziona tutti": "Select all",
   Nessuno: "None",
   "già in rubrica": "already in people",
@@ -1008,6 +1003,56 @@ const en: Record<string, string> = {
   "Collega una nota che non c'è ancora": "Link a note that doesn't exist yet",
   "Link a una nota": "Link to a note",
   "[[ + titolo": "[[ + title",
+  "Mailing list": "Mailing list",
+  "tutti@example.ch, mobile@example.ch": "all@example.com, mobile@example.com",
+  "Un invito del calendario a uno di questi indirizzi è un invito al gruppo.":
+    "A calendar invitation to one of these addresses is an invitation to the group.",
+  "anche «{name}»": "also “{name}”",
+  "Pubblico ({name})": "Audience ({name})",
+  "«{title}» ha invitato la mailing list di «{name}»": "“{title}” invited the mailing list of “{name}”",
+  "+ {name} da «{title}»": "+ {name} from “{title}”",
+  "Quasi tutti gli invitati di «{title}» sono in «{name}»":
+    "Almost everyone invited to “{title}” is in “{name}”",
+  "Un gruppo con i {n} invitati di «{title}», invece di {n} partecipanti":
+    "A group with the {n} people invited to “{title}”, instead of {n} attendees",
+  "Gruppo con i {n} invitati…": "Group with the {n} invitees…",
+  "Importa persone": "Import people",
+  "Scegli chi aggiungere alla rubrica di Granello: le proporrà tra i partecipanti. Chi c'è già riceve email e ruolo, se non li aveva.":
+    "Choose who to add to Granello's people: it will suggest them as attendees. People already there get the email and role, if they had none.",
+  "I gruppi della colonna Gruppo che non ci sono ancora vengono creati (`Azienda/Vendite` sta dentro `Azienda`).":
+    "Groups in the Group column that don't exist yet are created (`Company/Sales` goes inside `Company`).",
+  "Aggiungi persone da un file .vcf o da un CSV (nome, email, ruolo, gruppo)":
+    "Add people from a .vcf file or a CSV (name, email, role, group)",
+  "Importa vCard o CSV…": "Import vCard or CSV…",
+  "Da sistemare": "To tidy up",
+  "Persone che sembrano la stessa: stessa email, stesso nome scritto diversamente o con l'iniziale":
+    "People who look like the same person: same email, the same name written differently, or with an initial",
+  "Possibili doppioni": "Possible duplicates",
+  "In rubrica ma in nessuna nota: importate, o rimaste da note cancellate":
+    "In your people but in no note: imported, or left over from deleted notes",
+  "Senza note": "No notes",
+  "Unendo, le note passano alla persona che resta e il nome tolto diventa uno dei suoi altri nomi.":
+    "When you merge, the notes move to the person who stays and the removed name becomes one of their other names.",
+  "stessa email": "same email",
+  "nome con l'iniziale": "name with an initial",
+  "stesso nome, scritto diversamente": "same name, written differently",
+  "{a} e {b} note": "{a} and {b} notes",
+  "Unisci in «{name}»": "Merge into “{name}”",
+  "Tieni «{name}» invece": "Keep “{name}” instead",
+  "Al contrario": "The other way round",
+  "Sono due persone": "Two different people",
+  "Niente da controllare.": "Nothing to check.",
+  Ruolo: "Role",
+  "Anche: {names}": "Also: {names}",
+  "Doppio clic per aggiungere il ruolo": "Double-click to add the role",
+  "Nome, email, ruolo e altri nomi. Nome, email e ruolo si correggono anche con un doppio clic":
+    "Name, email, role and other names. Name, email and role can also be edited with a double-click",
+  "Product owner, avvocato del cliente…": "Product owner, the client's lawyer…",
+  "Altri nomi": "Other names",
+  "+ Altro nome": "+ Other name",
+  "Soprannome, iniziale…": "Nickname, initial…",
+  "Scritta così tra i partecipanti, o arrivata così dal calendario, Granello la riconosce. Unendo due persone, il nome tolto finisce qui.":
+    "Written this way among the attendees, or arriving this way from the calendar, Granello recognises the person. When you merge two people, the removed name ends up here.",
   "{person} ora è in «{name}»": "{person} is now in “{name}”",
   "{person} non è in «{name}»: un clic e ne fa parte": "{person} isn't in “{name}”: one click adds them",
   "+ {person} in «{name}»?": "+ {person} in “{name}”?",
@@ -1053,8 +1098,6 @@ const en: Record<string, string> = {
   "Doppio clic per aggiungere l'email": "Double-click to add the email",
   "Togli {person} da «{name}»": "Remove {person} from “{name}”",
   "Rimuovere?": "Remove?",
-  "Cambia nome o email (anche con doppio clic): il nome nuovo arriva in tutte le note":
-    "Change the name or email (double-click works too): the new name reaches every note",
   "Invio salva e passa alla riga sotto · Maiusc + Invio sopra · Esc annulla":
     "Return saves and moves down · Shift + Return moves up · Esc cancels",
   "Nessuno in questo gruppo: scrivi un nome qui sopra, incolla un elenco, o scegli più persone in «Tutte le persone».":

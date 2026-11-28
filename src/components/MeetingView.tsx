@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { api, errorText, newStreamId, on, SYSTEM_AUDIO } from "../api";
+import { TEAM_SIZE } from "../types";
 import type {
   CalendarEvent,
   Group,
@@ -13,6 +14,7 @@ import type {
 } from "../types";
 import ChipInput, { type ChipSuggestion } from "./ChipInput";
 import MeetingGroups from "./MeetingGroups";
+import GroupDialog from "./GroupDialog";
 import NoteEditor from "../editor/NoteEditor";
 import Markdown from "./Markdown";
 import TranscriptPanel from "./TranscriptPanel";
@@ -118,7 +120,8 @@ function useDebounced<T>(fn: (v: T) => void, ms: number) {
 const suggestPeople = async (query: string): Promise<ChipSuggestion[]> =>
   (await api.suggestPeople(query)).map((p) => ({
     value: p.name,
-    hint: p.email ?? undefined,
+    // trovata da un altro nome: si vede quale, così «E. Rossi» porta a Elena senza sorprese
+    hint: p.alias ? t("anche «{name}»", { name: p.alias }) : (p.email ?? undefined),
     badge:
       p.source === "calendar"
         ? t("dal calendario")
@@ -208,6 +211,8 @@ export default function MeetingView({
   const [confirmOut, setConfirmOut] = useState<"print" | "copy" | null>(null);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [calEvent, setCalEvent] = useState<CalendarEvent | null>(null);
+  /** La finestra che crea un gruppo con gli invitati di un evento grande. */
+  const [crowdGroup, setCrowdGroup] = useState(false);
   const enhanceRef = useRef<() => void>(() => {});
   const hasEnhancedRef = useRef(false);
   const [finishing, setFinishing] = useState(false);
@@ -804,6 +809,49 @@ export default function MeetingView({
   const missingFromEvent = (calEvent?.attendees ?? []).filter(
     (name) => !meeting.attendees.some((a) => a.toLowerCase() === name.toLowerCase()),
   );
+  const noteGroups = (meeting.groupIds ?? []).flatMap((gid) => groups.filter((g) => g.id === gid));
+  /** I gruppi invitati attraverso la loro mailing list, e non ancora nella nota. */
+  const eventGroups = groups.filter(
+    (g) =>
+      !noteGroups.includes(g) &&
+      g.emails.some((address) => (calEvent?.emails ?? []).includes(address.toLowerCase())),
+  );
+  /**
+   * Un evento con tanti invitati: invece di centinaia di partecipanti, il gruppo che li comprende
+   * quasi tutti (se c'è) o un gruppo nuovo fatto con loro.
+   */
+  /** Quanta parte degli invitati sta in un gruppo. */
+  const share = (g: Group) => {
+    const members = new Set(g.members.map((m) => m.toLowerCase()));
+    const invited = calEvent?.attendees ?? [];
+    return invited.filter((a) => members.has(a.toLowerCase())).length / Math.max(1, invited.length);
+  };
+  /** Un gruppo della nota comprende già quasi tutti gli invitati: niente da proporre. */
+  const crowdCovered = noteGroups.some((g) => share(g) >= 0.8);
+  const crowd = missingFromEvent.length > TEAM_SIZE && !crowdCovered;
+  const covering = crowd
+    ? groups
+        .filter((g) => !noteGroups.includes(g) && !eventGroups.includes(g))
+        .map((g) => ({ g, share: share(g) }))
+        .filter((x) => x.share >= 0.8)
+        .toSorted((a, b) => b.share - a.share)[0]?.g
+    : undefined;
+  /** Chi parla dal pubblico (una domanda all'all-hands): uno per gruppo «pubblico» della nota. */
+  const floor = noteGroups
+    .filter((g) => g.kind === "audience")
+    .map((g) => t("Pubblico ({name})", { name: g.name }));
+
+  /** Aggiunge un gruppo alla nota; un team porta con sé i membri che mancano. */
+  const addGroup = (g: Group) => {
+    const missing =
+      g.kind === "team"
+        ? g.members.filter((m) => !meeting.attendees.some((a) => a.toLowerCase() === m.toLowerCase()))
+        : [];
+    void saveMeta({
+      groupIds: [...(meeting.groupIds ?? []), g.id],
+      ...(missing.length ? { attendees: [...meeting.attendees, ...missing].slice(0, 100) } : {}),
+    });
+  };
 
   const markButton = (
     <button
@@ -1046,14 +1094,67 @@ export default function MeetingView({
               placeholder={t("Nome del partecipante")}
               chipClass="person"
             />
-            {missingFromEvent.length > 0 && calEvent && (
+            {calEvent &&
+              eventGroups.map((g) => (
+                <button
+                  key={g.id}
+                  className="chip import"
+                  title={t("«{title}» ha invitato la mailing list di «{name}»", {
+                    title: calEvent.title,
+                    name: g.name,
+                  })}
+                  onClick={() => addGroup(g)}
+                >
+                  {t("+ {name} da «{title}»", { name: g.name, title: calEvent.title })}
+                </button>
+              ))}
+            {calEvent && crowd && covering && (
+              <button
+                className="chip import"
+                title={t("Quasi tutti gli invitati di «{title}» sono in «{name}»", {
+                  title: calEvent.title,
+                  name: covering.name,
+                })}
+                onClick={() => addGroup(covering)}
+              >
+                {t("+ {name} da «{title}»", { name: covering.name, title: calEvent.title })}
+              </button>
+            )}
+            {calEvent && crowd && !covering && (
+              <button
+                className="chip import"
+                title={t("Un gruppo con i {n} invitati di «{title}», invece di {n} partecipanti", {
+                  n: calEvent.attendees.length,
+                  title: calEvent.title,
+                })}
+                onClick={() => setCrowdGroup(true)}
+              >
+                {t("Gruppo con i {n} invitati…", { n: calEvent.attendees.length })}
+              </button>
+            )}
+            {missingFromEvent.length > 0 && calEvent && !crowdCovered && (
               <button
                 className="chip import"
                 title={missingFromEvent.join(", ")}
-                onClick={() => saveMeta({ attendees: [...meeting.attendees, ...missingFromEvent] })}
+                onClick={() =>
+                  saveMeta({ attendees: [...meeting.attendees, ...missingFromEvent].slice(0, 100) })
+                }
               >
                 {t("Importa {n} da «{title}»", { n: missingFromEvent.length, title: calEvent.title })}
               </button>
+            )}
+            {crowdGroup && calEvent && (
+              <GroupDialog
+                groups={groups}
+                members={calEvent.attendees}
+                initialName={calEvent.title}
+                onClose={() => setCrowdGroup(false)}
+                onSaved={(saved) => {
+                  setCrowdGroup(false);
+                  onGroupsChanged();
+                  void saveMeta({ groupIds: [...(meeting.groupIds ?? []), saved.id] });
+                }}
+              />
             )}
           </div>
           <div className="meta-row">
@@ -1176,7 +1277,7 @@ export default function MeetingView({
             {/* chi avvia la registrazione vede subito quanto di questo meeting può uscire dal Mac */}
             <PrivacyIcon privacy={meeting.privacy} />
           </button>
-          {isRecording && meeting.attendees.length > 0 && (
+          {isRecording && (meeting.attendees.length > 0 || floor.length > 0) && (
             <select
               className={"chip select" + (micSpeaker !== "me" ? " on" : "")}
               value={micSpeaker}
@@ -1188,6 +1289,11 @@ export default function MeetingView({
             >
               <option value="me">{t("Al microfono: io")}</option>
               {meeting.attendees.map((name) => (
+                <option key={name} value={name}>
+                  {t("Al microfono: {name}", { name })}
+                </option>
+              ))}
+              {floor.map((name) => (
                 <option key={name} value={name}>
                   {t("Al microfono: {name}", { name })}
                 </option>
@@ -1291,7 +1397,7 @@ export default function MeetingView({
               onReview={review}
               onRename={renameSpeaker}
               privacy={meeting.privacy}
-              people={meeting.attendees}
+              people={[...meeting.attendees, ...floor]}
               onAssign={assignSpeaker}
               kept={keptAudio && !inSession ? { refining, refine, discard: discardAudio } : null}
             />

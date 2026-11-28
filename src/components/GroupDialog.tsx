@@ -14,6 +14,8 @@ interface Props {
   parentId?: string;
   /** Per un gruppo nuovo: le persone che ne fanno già parte (la selezione della pagina Persone). */
   members?: string[];
+  /** Per un gruppo nuovo: il nome proposto (il titolo dell'evento da cui nasce). */
+  initialName?: string;
   onClose: () => void;
   /** Il gruppo salvato e l'elenco aggiornato di tutti i gruppi. */
   onSaved: (group: Group, all: Group[]) => void;
@@ -26,8 +28,16 @@ export const kindHint = (kind: GroupKind) =>
     : t("Nella nota resta un solo chip: dei membri aggiungi solo chi serve.");
 
 /** Finestra per creare un gruppo o cambiarne nome, posizione, tipo, colore e descrizione. */
-export default function GroupDialog({ group, groups, parentId, members, onClose, onSaved }: Props) {
-  const [name, setName] = useState(group?.name ?? "");
+export default function GroupDialog({
+  group,
+  groups,
+  parentId,
+  members,
+  initialName,
+  onClose,
+  onSaved,
+}: Props) {
+  const [name, setName] = useState(group?.name ?? initialName ?? "");
   const [parent, setParent] = useState(group?.parentId ?? parentId ?? "");
   // non dentro sé stesso né dentro uno dei gruppi che contiene
   const mine = group ? projectBranch(group.id, groups) : new Set<string>();
@@ -36,6 +46,8 @@ export default function GroupDialog({ group, groups, parentId, members, onClose,
   const [kind, setKind] = useState<GroupKind>(group?.kind ?? (size > TEAM_SIZE ? "audience" : "team"));
   const [color, setColor] = useState(group?.color ?? "");
   const [description, setDescription] = useState(group?.description ?? "");
+  /** Le mailing list, separate da virgole o spazi. */
+  const [emails, setEmails] = useState((group?.emails ?? []).join(", "));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const nameInput = useRef<HTMLInputElement>(null);
@@ -55,6 +67,7 @@ export default function GroupDialog({ group, groups, parentId, members, onClose,
         parentId: parent || null,
         kind,
         members: group?.members ?? members ?? [],
+        emails: emails.split(/[\s,;]+/).filter((e) => e.includes("@")),
       });
       onSaved(saved, await api.listGroups());
     } catch (e) {
@@ -149,6 +162,18 @@ export default function GroupDialog({ group, groups, parentId, members, onClose,
             ))}
           </div>
         </div>
+        <label className="field">
+          <span>{t("Mailing list")}</span>
+          <input
+            value={emails}
+            maxLength={600}
+            placeholder={t("tutti@example.ch, mobile@example.ch")}
+            onChange={(e) => setEmails(e.target.value)}
+          />
+          <small className="muted">
+            {t("Un invito del calendario a uno di questi indirizzi è un invito al gruppo.")}
+          </small>
+        </label>
         <label className="field">
           <span>{t("Descrizione")}</span>
           <textarea

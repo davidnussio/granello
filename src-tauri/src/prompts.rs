@@ -161,12 +161,23 @@ Se la trascrizione di un momento non dice niente di utile, scrivi `N: -`. Nessun
     )
 }
 
-/// `excerpts`: per ogni momento, il minuto (ms) e la trascrizione lì attorno.
-pub fn moments_user(meeting: &Meeting, excerpts: &[(i64, String)]) -> String {
-    let mut s = format!("# Meeting: {}\n", meeting.title);
+/// Chi c'era: i partecipanti per nome e i gruppi per nome e dimensione. I membri di un gruppo
+/// non si elencano: per tutta l'azienda sarebbero centinaia di nomi, e non servono al modello.
+fn people_lines(meeting: &Meeting) -> String {
+    let mut s = String::new();
     if !meeting.attendees.is_empty() {
         s.push_str(&format!("Partecipanti: {}\n", meeting.attendees.join(", ")));
     }
+    if !meeting.groups_brief.is_empty() {
+        s.push_str(&format!("Gruppi presenti: {}\n", meeting.groups_brief.join(", ")));
+    }
+    s
+}
+
+/// `excerpts`: per ogni momento, il minuto (ms) e la trascrizione lì attorno.
+pub fn moments_user(meeting: &Meeting, excerpts: &[(i64, String)]) -> String {
+    let mut s = format!("# Meeting: {}\n", meeting.title);
+    s.push_str(&people_lines(meeting));
     for (i, (ms, excerpt)) in excerpts.iter().enumerate() {
         s.push_str(&format!("\n## Momento {} (segnato a {})\n{}\n", i + 1, fmt_ts(*ms), excerpt));
     }
@@ -304,9 +315,7 @@ pub fn enhance_user(
         .map(|d| d.with_timezone(&chrono::Local).format("%d.%m.%Y %H:%M").to_string())
         .unwrap_or_default();
     let mut s = format!("# Meeting: {}\nData: {}\n", meeting.title, date);
-    if !meeting.attendees.is_empty() {
-        s.push_str(&format!("Partecipanti: {}\n", meeting.attendees.join(", ")));
-    }
+    s.push_str(&people_lines(meeting));
     if let Some(t) = template {
         s.push_str(&format!("\n## Template \"{}\"\n{}\n", t.name, t.instructions));
     }
@@ -343,9 +352,7 @@ della domanda. Non usare il trattino lungo.\n",
             .map(|d| d.with_timezone(&chrono::Local).format("%d.%m.%Y").to_string())
             .unwrap_or_default();
         s.push_str(&format!("\n\n=== {} ({}) ===\n", m.title, date));
-        if !m.attendees.is_empty() {
-            s.push_str(&format!("Partecipanti: {}\n", m.attendees.join(", ")));
-        }
+        s.push_str(&people_lines(m));
         match m.enhanced_md.as_deref().filter(|e| !e.trim().is_empty()) {
             Some(e) => s.push_str(e),
             None => s.push_str(m.notes_md.trim()),

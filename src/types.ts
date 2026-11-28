@@ -98,6 +98,10 @@ export interface Person {
   id: number;
   name: string;
   email: string | null;
+  /** Il ruolo («Product owner»); vuoto se non si sa. */
+  role: string;
+  /** Altri modi in cui compare: soprannomi, come la scrive il calendario, i nomi uniti a lei. */
+  aliases: string[];
   meetings: number;
   /** Quando è stato creato l'ultimo meeting a cui ha partecipato. */
   lastMeetingAt: number | null;
@@ -120,6 +124,8 @@ export interface Group {
   kind: GroupKind;
   /** I nomi dei membri, come in rubrica. */
   members: string[];
+  /** Gli indirizzi del gruppo (la mailing list): un invito del calendario a uno di questi è un invito al gruppo. */
+  emails: string[];
   /** In quante note compare. */
   meetings: number;
   lastMeetingAt: number | null;
@@ -133,6 +139,10 @@ export interface ImportedPerson {
   name: string;
   email: string | null;
   known: boolean;
+  /** Da un CSV: il ruolo, se c'è la colonna. */
+  role?: string;
+  /** Da un CSV: i gruppi in cui entra (`Azienda/Sviluppo` è un gruppo dentro un altro). */
+  groups?: string[];
 }
 
 /** Quanto si può leggere della rubrica del Mac. */
@@ -147,6 +157,8 @@ export type ContactsAccess =
 export interface PersonSuggestion {
   name: string;
   email: string | null;
+  /** L'altro nome con cui è stata trovata («E. Rossi»), se non è il suo. */
+  alias?: string | null;
   source: "people" | "calendar" | "contacts";
 }
 
@@ -342,9 +354,20 @@ export interface CalendarEvent {
   start: number;
   end: number;
   attendees: string[];
+  /** Gli indirizzi di tutti gli invitati, minuscoli, comprese le mailing list. */
+  emails?: string[];
   location: string | null;
   meetingId: string | null;
   calendarId: string;
+}
+
+/** Due persone che sembrano la stessa. */
+export interface Duplicate {
+  /** Quella da tenere (con più note). */
+  keep: number;
+  drop: number;
+  /** "email", "name" (lo stesso nome scritto diversamente) o "initial" («E. Rossi»). */
+  reason: "email" | "name" | "initial";
 }
 
 export interface WhisperModelInfo {

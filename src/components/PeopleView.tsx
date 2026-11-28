@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, errorText } from "../api";
-import type { Group, ImportedPerson, Person } from "../types";
+import type { Duplicate, Group, ImportedPerson, Person } from "../types";
 import { dayLabel, sameDay, shortWhen } from "../format";
 import { t } from "../i18n";
 import { groupOptions, projectBranch, projectPath, projectTitle, projectTree } from "../tree";
 import GroupDialog, { kindHint } from "./GroupDialog";
 import { MergeRow, VcardImport } from "./PeopleParts";
+import PersonDialog from "./PersonDialog";
 import { ProjectDot } from "./ProjectDialog";
 
 interface Props {
@@ -23,15 +24,36 @@ interface Props {
 }
 
 /** La colonna per cui si ordina, e in che verso. */
-type SortKey = "name" | "email" | "meetings" | "recent";
-/** Cosa mostra l'elenco: tutti, chi non è in nessun gruppo, o i membri di un gruppo (id). */
-type Scope = "all" | "none" | string;
+type SortKey = "name" | "email" | "role" | "meetings" | "recent";
+/**
+ * Cosa mostra l'elenco: tutti, chi non è in nessun gruppo, chi non è in nessuna nota, le coppie
+ * che sembrano la stessa persona, o i membri di un gruppo (id).
+ */
+type Scope = "all" | "none" | "unused" | "dupes" | string;
+/** Le viste che non sono un gruppo. */
+const SPECIAL: readonly string[] = ["all", "none", "unused", "dupes"];
+
+/** Le coppie scartate («non sono la stessa persona»): su questo Mac non tornano. */
+const IGNORED_KEY = "granello.duplicates.ignored";
+
+function readIgnored(): ReadonlySet<string> {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(IGNORED_KEY) ?? "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Una coppia si riconosce dai nomi, che restano gli stessi su ogni Mac. */
+const pairKey = (a: string, b: string) => [a.toLowerCase(), b.toLowerCase()].toSorted().join("\u0000");
 /** La riga in modifica: i valori dei campi e quello che ha il cursore. */
 interface Editing {
   id: number;
   name: string;
   email: string;
-  field: "name" | "email";
+  role: string;
+  field: "name" | "email" | "role";
 }
 
 /** Voci del menu delle persone scelte che non sono un gruppo. */
@@ -132,16 +154,29 @@ export default function PeopleView({
     { mode: "new"; parentId?: string; members?: string[] } | { mode: "edit"; group: Group } | null
   >(null);
   const [busy, setBusy] = useState(false);
+  /** La persona aperta nella finestra con tutti i suoi dati (ruolo, altri nomi). */
+  const [details, setDetails] = useState<Person | null>(null);
+  const [dupes, setDupes] = useState<Duplicate[]>([]);
+  const [ignored, setIgnored] = useState(readIgnored);
   const table = useRef<HTMLDivElement>(null);
   /** La riga in modifica com'è adesso: chi salva uscendo dalla riga non deve leggerne una vecchia. */
   const editRef = useRef(editing);
   editRef.current = editing;
 
   const load = () =>
-    api
-      .listPeople()
-      .then(setPeople)
+    Promise.all([api.listPeople(), api.possibleDuplicates()])
+      .then(([list, pairs]) => {
+        setPeople(list);
+        setDupes(pairs);
+      })
       .catch((e) => toast(errorText(e)));
+
+  /** La rubrica è cambiata (nomi, unioni): le coppie da controllare si ricalcolano. */
+  const refreshDupes = () =>
+    api
+      .possibleDuplicates()
+      .then(setDupes)
+      .catch(() => {});
 
   useEffect(() => {
     void load();
@@ -151,7 +186,7 @@ export default function PeopleView({
   const group = groups.find((g) => g.id === scope) ?? null;
   // un gruppo tolto (da qui o dal sync) non resta scelto
   useEffect(() => {
-    if (scope !== "all" && scope !== "none" && !group) setScope("all");
+    if (!SPECIAL.includes(scope) && !group) setScope("all");
   }, [scope, group]);
   useEffect(() => {
     setPicked(new Set());
@@ -190,13 +225,19 @@ export default function PeopleView({
   const inScope = useMemo(() => {
     if (scope === "all") return all;
     if (scope === "none") return all.filter((p) => !groupsOf.has(p.name.toLowerCase()));
+    if (scope === "unused") return all.filter((p) => p.meetings === 0);
+    if (scope === "dupes") return [];
     const members = new Set((group?.members ?? []).map((m) => m.toLowerCase()));
     return all.filter((p) => members.has(p.name.toLowerCase()));
   }, [all, scope, group, groupsOf]);
 
   const q = query.trim().toLowerCase();
   const matches = (p: Person) =>
-    !q || p.name.toLowerCase().includes(q) || (p.email ?? "").toLowerCase().includes(q);
+    !q ||
+    p.name.toLowerCase().includes(q) ||
+    (p.email ?? "").toLowerCase().includes(q) ||
+    p.role.toLowerCase().includes(q) ||
+    p.aliases.some((a) => a.toLowerCase().includes(q));
 
   const shown = useMemo(() => {
     const dir = sort.desc ? -1 : 1;
@@ -209,7 +250,9 @@ export default function PeopleView({
             ? (a.lastMeetingAt ?? 0) - (b.lastMeetingAt ?? 0)
             : sort.key === "email"
               ? (a.email ?? "￿").localeCompare(b.email ?? "￿")
-              : byName(a, b);
+              : sort.key === "role"
+                ? (a.role || "￿").localeCompare(b.role || "￿")
+                : byName(a, b);
       return d * dir || byName(a, b);
     });
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- `matches` dipende solo da `q`
@@ -217,7 +260,7 @@ export default function PeopleView({
 
   /** Chi si può aggiungere scrivendo nel campo: persone della rubrica fuori dal gruppo, o un nome nuovo. */
   const addable = useMemo(() => {
-    if (!q || scope === "none") return { known: [] as Person[], fresh: "" };
+    if (!q || scope === "none" || scope === "dupes") return { known: [] as Person[], fresh: "" };
     const outside = group ? all.filter((p) => !group.members.some((m) => same(m, p.name))) : [];
     const known = outside.filter(matches).slice(0, 5);
     const typed = query.trim().replace(/\s+/g, " ");
@@ -227,6 +270,24 @@ export default function PeopleView({
   }, [q, query, scope, group, all]);
 
   const chosen = all.filter((p) => picked.has(p.id));
+  const byId = new Map(all.map((p) => [p.id, p]));
+  /** Le coppie da controllare, senza quelle scartate e senza chi non c'è più. */
+  const pairs = dupes.filter((d) => {
+    const [a, b] = [byId.get(d.keep), byId.get(d.drop)];
+    return a && b && !ignored.has(pairKey(a.name, b.name));
+  });
+  const unused = all.filter((p) => p.meetings === 0).length;
+
+  const ignorePair = (a: Person, b: Person) => {
+    const next = new Set(ignored);
+    next.add(pairKey(a.name, b.name));
+    try {
+      localStorage.setItem(IGNORED_KEY, JSON.stringify([...next].slice(-1000)));
+    } catch {
+      // senza memoria la coppia torna la prossima volta: niente di grave
+    }
+    setIgnored(next);
+  };
   const noGroup = all.filter((p) => !groupsOf.has(p.name.toLowerCase())).length;
 
   /** Un gruppo cambiato: si aggiorna nell'elenco di tutti. */
@@ -336,6 +397,7 @@ export default function PeopleView({
         toast(fresh.length === 1 ? t("1 persona aggiunta") : t("{n} persone aggiunte", { n: fresh.length }));
       setQuery("");
       setPasted(null);
+      void refreshDupes();
     } catch (e) {
       toast(errorText(e));
     } finally {
@@ -364,13 +426,18 @@ export default function PeopleView({
     const before = all.find((p) => p.id === row.id);
     const name = row.name.trim();
     const email = row.email.trim();
-    const changed = !!before && (name !== before.name || email !== (before.email ?? ""));
+    const role = row.role.trim();
+    const changed =
+      !!before && (name !== before.name || email !== (before.email ?? "") || role !== before.role);
     if (changed) {
       setBusy(true);
       try {
-        setPeople(await api.updatePerson(row.id, name, email || null));
-        // il nome nuovo arriva anche nei gruppi
-        if (name !== before.name) onGroupsChanged(await api.listGroups());
+        setPeople(await api.updatePerson(row.id, name, email || null, { role }));
+        // il nome nuovo arriva anche nei gruppi, e le coppie da controllare cambiano
+        if (name !== before.name) {
+          onGroupsChanged(await api.listGroups());
+          void refreshDupes();
+        }
       } catch (e) {
         setError({ id: row.id, text: errorText(e) });
         setBusy(false);
@@ -389,14 +456,14 @@ export default function PeopleView({
     setError(null);
     setConfirming(null);
     setCursor(p.id);
-    setEditing({ id: p.id, name: p.name, email: p.email ?? "", field });
+    setEditing({ id: p.id, name: p.name, email: p.email ?? "", role: p.role, field });
   };
 
   /** La riga sopra o sotto quella in modifica, pronta da modificare nello stesso campo. */
   const neighbour = (step: 1 | -1, field: Editing["field"]): Editing | null => {
     if (!editing) return null;
     const p = shown[shown.findIndex((x) => x.id === editing.id) + step];
-    return p ? { id: p.id, name: p.name, email: p.email ?? "", field } : null;
+    return p ? { id: p.id, name: p.name, email: p.email ?? "", role: p.role, field } : null;
   };
 
   const merge = async (from: Person, into: Person) => {
@@ -404,6 +471,7 @@ export default function PeopleView({
     try {
       setPeople(await api.mergePeople(from.id, into.id));
       onGroupsChanged(await api.listGroups());
+      void refreshDupes();
       setMerging(null);
       setPicked(new Set());
       toast(t("{from} unito a {into}", { from: from.name, into: into.name }));
@@ -518,8 +586,12 @@ export default function PeopleView({
         <h1 className="lib-title">{t("Persone")}</h1>
         <span className="muted small people-total">{peopleCount(all.length)}</span>
         <div className="spacer" />
-        <button className="btn small ghost" onClick={pickVcard} title={t("Aggiungi persone da un file .vcf")}>
-          {t("Importa vCard…")}
+        <button
+          className="btn small ghost"
+          onClick={pickVcard}
+          title={t("Aggiungi persone da un file .vcf o da un CSV (nome, email, ruolo, gruppo)")}
+        >
+          {t("Importa vCard o CSV…")}
         </button>
         <button
           className="btn small ghost"
@@ -569,6 +641,35 @@ export default function PeopleView({
           <button className="lib-new" onClick={() => setDialog({ mode: "new" })}>
             {t("+ Nuovo gruppo")}
           </button>
+          {(pairs.length > 0 || unused > 0) && (
+            <>
+              <div className="lib-facet-head people-groups-head">{t("Da sistemare")}</div>
+              {pairs.length > 0 && (
+                <button
+                  className={"lib-row" + (scope === "dupes" ? " on" : "")}
+                  onClick={() => setScope("dupes")}
+                  title={t(
+                    "Persone che sembrano la stessa: stessa email, stesso nome scritto diversamente o con l'iniziale",
+                  )}
+                >
+                  <span className="lib-icon">⇄</span>
+                  <span className="lib-label">{t("Possibili doppioni")}</span>
+                  <span className="lib-count">{pairs.length}</span>
+                </button>
+              )}
+              {unused > 0 && (
+                <button
+                  className={"lib-row" + (scope === "unused" ? " on" : "")}
+                  onClick={() => setScope("unused")}
+                  title={t("In rubrica ma in nessuna nota: importate, o rimaste da note cancellate")}
+                >
+                  <span className="lib-icon">∅</span>
+                  <span className="lib-label">{t("Senza note")}</span>
+                  <span className="lib-count">{unused}</span>
+                </button>
+              )}
+            </>
+          )}
         </nav>
 
         <section className="people-main">
@@ -784,7 +885,56 @@ export default function PeopleView({
             </div>
           )}
 
-          {people === null ? null : all.length === 0 && !q ? (
+          {scope === "dupes" ? (
+            <div className="people-dupes">
+              <p className="muted small">
+                {t(
+                  "Unendo, le note passano alla persona che resta e il nome tolto diventa uno dei suoi altri nomi.",
+                )}
+              </p>
+              {pairs.map((d) => {
+                const [keep, drop] = [byId.get(d.keep)!, byId.get(d.drop)!];
+                const why =
+                  d.reason === "email"
+                    ? t("stessa email")
+                    : d.reason === "initial"
+                      ? t("nome con l'iniziale")
+                      : t("stesso nome, scritto diversamente");
+                return (
+                  <div key={`${d.keep}-${d.drop}`} className="people-dupe">
+                    <div className="people-dupe-names">
+                      <strong>{drop.name}</strong>
+                      <span className="muted"> → </span>
+                      <strong>{keep.name}</strong>
+                      <span className="muted small">
+                        {" · "}
+                        {why}
+                        {" · "}
+                        {t("{a} e {b} note", { a: drop.meetings, b: keep.meetings })}
+                      </span>
+                    </div>
+                    <div className="people-dupe-acts">
+                      <button className="btn small" disabled={busy} onClick={() => void merge(drop, keep)}>
+                        {t("Unisci in «{name}»", { name: keep.name })}
+                      </button>
+                      <button
+                        className="btn small ghost"
+                        disabled={busy}
+                        onClick={() => void merge(keep, drop)}
+                        title={t("Tieni «{name}» invece", { name: drop.name })}
+                      >
+                        {t("Al contrario")}
+                      </button>
+                      <button className="btn small ghost" onClick={() => ignorePair(keep, drop)}>
+                        {t("Sono due persone")}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {pairs.length === 0 && <p className="muted small">{t("Niente da controllare.")}</p>}
+            </div>
+          ) : people === null ? null : all.length === 0 && !q ? (
             <p className="muted small">
               {t(
                 "Ancora nessuna persona: si aggiungono da sole con i partecipanti delle note, scrivendo un nome qui sopra o importandole da un file vCard.",
@@ -815,6 +965,7 @@ export default function PeopleView({
                 </span>
                 {sortHead("name", t("Nome"))}
                 {sortHead("email", t("Email"), "col-email")}
+                {sortHead("role", t("Ruolo"), "col-role")}
                 <span role="columnheader" className="col-groups">
                   {group ? t("Altri gruppi") : t("Gruppi")}
                 </span>
@@ -909,6 +1060,21 @@ export default function PeopleView({
                               onChange={(e) => setEditing({ ...edit, email: e.target.value })}
                             />
                           </span>
+                          <span role="gridcell" className="col-role">
+                            <input
+                              className="roster-input"
+                              value={edit.role}
+                              maxLength={80}
+                              placeholder={t("Ruolo")}
+                              autoFocus={edit.field === "role"}
+                              onFocus={(e) => {
+                                e.currentTarget.select();
+                                setEditing({ ...edit, field: "role" });
+                              }}
+                              aria-label={t("Ruolo")}
+                              onChange={(e) => setEditing({ ...edit, role: e.target.value })}
+                            />
+                          </span>
                         </>
                       ) : (
                         <>
@@ -917,9 +1083,21 @@ export default function PeopleView({
                             tabIndex={-1}
                             className="roster-name"
                             onDoubleClick={() => startEdit(p, "name")}
-                            title={t("Doppio clic per correggere")}
+                            title={
+                              p.aliases.length
+                                ? `${t("Anche: {names}", { names: p.aliases.join(", ") })}\n${t("Doppio clic per correggere")}`
+                                : t("Doppio clic per correggere")
+                            }
                           >
                             {p.name}
+                            {p.aliases.length > 0 && (
+                              <span className="people-aka" aria-hidden="true">
+                                {" "}
+                                ≈
+                              </span>
+                            )}
+                            {/* pagina stretta: senza la colonna, il ruolo sta accanto al nome */}
+                            {p.role && <span className="people-role-inline muted"> · {p.role}</span>}
                           </span>
                           <span
                             role="gridcell"
@@ -929,6 +1107,15 @@ export default function PeopleView({
                             title={p.email ?? t("Doppio clic per aggiungere l'email")}
                           >
                             {p.email ?? ""}
+                          </span>
+                          <span
+                            role="gridcell"
+                            tabIndex={-1}
+                            className="muted ellipsis col-role"
+                            onDoubleClick={() => startEdit(p, "role")}
+                            title={p.role || t("Doppio clic per aggiungere il ruolo")}
+                          >
+                            {p.role}
                           </span>
                         </>
                       )}
@@ -1001,10 +1188,10 @@ export default function PeopleView({
                           <>
                             <button
                               className="lib-act"
-                              onClick={() => startEdit(p)}
+                              onClick={() => setDetails(p)}
                               aria-label={t("Modifica {name}", { name: p.name })}
                               title={t(
-                                "Cambia nome o email (anche con doppio clic): il nome nuovo arriva in tutte le note",
+                                "Nome, email, ruolo e altri nomi. Nome, email e ruolo si correggono anche con un doppio clic",
                               )}
                             >
                               ✎
@@ -1085,7 +1272,26 @@ export default function PeopleView({
             setImporting(null);
             setPeople(list);
             void api.listGroups().then(onGroupsChanged);
+            void refreshDupes();
             toast(n === 1 ? t("1 persona aggiunta") : t("{n} persone aggiunte", { n }));
+          }}
+        />
+      )}
+
+      {details && (
+        <PersonDialog
+          person={details}
+          groups={groups}
+          onClose={() => setDetails(null)}
+          onOpenGroup={(id) => {
+            setDetails(null);
+            setScope(id);
+          }}
+          onSaved={(list) => {
+            setDetails(null);
+            setPeople(list);
+            void api.listGroups().then(onGroupsChanged);
+            void refreshDupes();
           }}
         />
       )}

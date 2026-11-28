@@ -71,15 +71,15 @@ const ENTITIES: &[Entity] = &[
         name: "person",
         table: "people",
         key: "name",
-        fields: &["email", "created_at", "last_used_at"],
-        tracked: &["email"],
+        fields: &["email", "created_at", "last_used_at", "role", "aliases"],
+        tracked: &["email", "role", "aliases"],
     },
     Entity {
         name: "group",
         table: "people_groups",
         key: "id",
-        fields: &["name", "color", "description", "parent_id", "kind", "members", "created_at"],
-        tracked: &["name", "color", "description", "parent_id", "kind", "members"],
+        fields: &["name", "color", "description", "parent_id", "kind", "members", "created_at", "emails"],
+        tracked: &["name", "color", "description", "parent_id", "kind", "members", "emails"],
     },
     Entity { name: "meeting", table: "meetings", key: "id", fields: MEETING_FIELDS, tracked: MEETING_FIELDS },
     Entity {
@@ -1108,7 +1108,7 @@ mod tests {
     fn groups_and_their_notes_reach_the_other_mac() {
         let dir = folder();
         let a = Mac::new("aaa", &dir);
-        let g = a.db.save_group("", "Mobile", "teal", "", None, crate::models::GroupKind::Team, &["Anna".into(), "Luca".into()]).unwrap();
+        let g = a.db.save_group("", "Mobile", "teal", "", None, crate::models::GroupKind::Team, &["Anna".into(), "Luca".into()], &[]).unwrap();
         let m = a.db.create_meeting("Standup", None, &["Anna".into()], None).unwrap();
         a.db.set_meeting_groups(&m.id, std::slice::from_ref(&g.id)).unwrap();
         a.sync(&dir);

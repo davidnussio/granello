@@ -170,9 +170,47 @@ interface PreviewPerson {
   id: number;
   name: string;
   email: string | null;
+  role: string;
+  aliases: string[];
   meetings: number;
   lastMeetingAt: number | null;
 }
+
+/** Come in backend: minuscolo, senza accenti né punteggiatura, parole in ordine. */
+const nameKey = (name: string) =>
+  name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .split(" ")
+    .toSorted()
+    .join(" ");
+
+/** «E. Rossi» e «Elena Rossi». */
+function initialOf(short: string, long: string) {
+  const s = nameKey(short).split(" ");
+  const l = nameKey(long).split(" ");
+  if (s.length !== 2 || l.length !== 2) return false;
+  const [initial, surname] = s[0].length === 1 ? [s[0], s[1]] : s[1].length === 1 ? [s[1], s[0]] : ["", ""];
+  return (
+    !!initial &&
+    surname.length > 1 &&
+    l.includes(surname) &&
+    l.some((w) => w !== surname && w.startsWith(initial))
+  );
+}
+
+/** Altri nomi puliti, senza doppioni e senza il nome stesso. */
+const cleanAliases = (list: string[], name: string) => [
+  ...new Map(
+    list
+      .map((a) => a.trim())
+      .filter((a) => a && a.toLowerCase() !== name.toLowerCase())
+      .map((a) => [a.toLowerCase(), a]),
+  ).values(),
+];
 const people = () => data.people as PreviewPerson[];
 
 interface PreviewGroup {
@@ -183,6 +221,7 @@ interface PreviewGroup {
   parentId: string | null;
   kind: "team" | "audience";
   members: string[];
+  emails: string[];
   meetings: number;
   lastMeetingAt: number | null;
 }
@@ -202,7 +241,10 @@ function addPeopleNamed(names: string[]) {
   for (const name of names) {
     if (people().some((p) => p.name.toLowerCase() === name.toLowerCase())) continue;
     const id = Math.max(0, ...people().map((p) => p.id)) + 1;
-    data.people = [...people(), { id, name, email: null, meetings: 0, lastMeetingAt: null }].toSorted(byName);
+    data.people = [
+      ...people(),
+      { id, name, email: null, role: "", aliases: [], meetings: 0, lastMeetingAt: null },
+    ].toSorted(byName);
   }
 }
 
@@ -263,6 +305,7 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
       parentId: (a.parentId as string | null) || null,
       kind: a.kind === "audience" ? "audience" : "team",
       members: a.members as string[],
+      emails: (a.emails as string[] | undefined) ?? before?.emails ?? [],
       meetings: before?.meetings ?? 0,
       lastMeetingAt: before?.lastMeetingAt ?? null,
     };
@@ -411,6 +454,10 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
       throw new Error(`In rubrica c'è già «${name}»: per tenerne una sola usa Unisci.`);
     renameAttendee(p.name, name);
     renameMember(p.name, name);
+    // il nome vecchio diventa uno degli altri nomi, come in backend
+    const aliases = (a.aliases as string[] | undefined) ?? p.aliases ?? [];
+    p.aliases = cleanAliases(p.name !== name ? [...aliases, p.name] : aliases, name);
+    if (typeof a.role === "string") p.role = a.role.trim();
     p.name = name;
     p.email = (a.email as string | null) || null;
     return people();
@@ -422,6 +469,8 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     renameMember(from.name, into.name);
     into.meetings += from.meetings;
     into.email ??= from.email;
+    into.role ||= from.role;
+    into.aliases = cleanAliases([...(into.aliases ?? []), ...(from.aliases ?? []), from.name], into.name);
     into.lastMeetingAt = Math.max(into.lastMeetingAt ?? 0, from.lastMeetingAt ?? 0) || null;
     data.people = people().filter((x) => x.id !== from.id);
     return people();
@@ -440,20 +489,72 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
       known: people().some((p) => p.name.toLowerCase() === String(name).toLowerCase()),
     })),
   add_people: (a) => {
-    for (const p of a.people as { name: string; email: string | null }[]) {
+    for (const p of a.people as { name: string; email: string | null; role?: string; groups?: string[] }[]) {
       const known = people().find((x) => x.name.toLowerCase() === p.name.toLowerCase());
-      if (known) known.email ??= p.email;
-      else
+      if (known) {
+        known.email ??= p.email;
+        known.role ||= p.role ?? "";
+      } else
         people().push({
           id: Date.now() + people().length,
           name: p.name,
           email: p.email,
+          role: p.role ?? "",
+          aliases: [],
           meetings: 0,
           lastMeetingAt: null,
         });
+      // i gruppi della colonna Gruppo: si crea solo l'ultimo livello, che basta a provare la pagina
+      for (const path of p.groups ?? []) {
+        const leaf = path
+          .split(/[/›>]/)
+          .map((x) => x.trim())
+          .filter(Boolean)
+          .at(-1);
+        if (!leaf) continue;
+        let g = groups().find((x) => x.name.toLowerCase() === leaf.toLowerCase());
+        if (!g) {
+          g = {
+            id: `anteprima-gruppo-${Date.now()}-${leaf}`,
+            name: leaf,
+            color: "",
+            description: "",
+            parentId: null,
+            kind: "team",
+            members: [],
+            emails: [],
+            meetings: 0,
+            lastMeetingAt: null,
+          };
+          data.groups = [...groups(), g].toSorted(byName);
+        }
+        if (!g.members.some((m) => m.toLowerCase() === p.name.toLowerCase()))
+          g.members = [...g.members, p.name];
+      }
     }
     data.people = people().toSorted((x, y) => x.name.localeCompare(y.name));
     return people();
+  },
+  // le coppie che sembrano la stessa persona, con le regole del backend
+  possible_duplicates: () => {
+    const list = people();
+    const out: { keep: number; drop: number; reason: string }[] = [];
+    list.forEach((a, i) =>
+      list.slice(i + 1).forEach((b) => {
+        const reason =
+          a.email && b.email && a.email.toLowerCase() === b.email.toLowerCase()
+            ? "email"
+            : nameKey(a.name) === nameKey(b.name)
+              ? "name"
+              : initialOf(a.name, b.name) || initialOf(b.name, a.name)
+                ? "initial"
+                : null;
+        if (!reason) return;
+        const [keep, drop] = b.meetings > a.meetings ? [b, a] : [a, b];
+        out.push({ keep: keep.id, drop: drop.id, reason });
+      }),
+    );
+    return out;
   },
   fill_emails_from_contacts: () => {
     const missing = people().filter((p) => !p.email);
@@ -650,7 +751,34 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
   list_audio_devices: () => ["MacBook Pro Microphone"],
   get_chat: () => [],
   kept_audio: () => false,
-  calendar_match: () => null,
+  // due eventi inventati per provare le proposte dei gruppi: un invito alla mailing list
+  // dell'azienda e uno con tanti invitati
+  calendar_match: (a) => {
+    const base = {
+      location: null,
+      meetingId: a.meetingId,
+      calendarId: "lavoro",
+      start: Date.now(),
+      end: Date.now() + 3600_000,
+    };
+    if (a.meetingId === "demo-offsite")
+      return {
+        ...base,
+        id: "anteprima-offsite",
+        title: "Offsite",
+        attendees: ["Elena Rossi"],
+        emails: ["elena@example.ch", "tutti@example.ch"],
+      };
+    if (a.meetingId === "demo-budget")
+      return {
+        ...base,
+        id: "anteprima-convention",
+        title: lang === "it" ? "Convention di primavera" : "Spring convention",
+        attendees: Array.from({ length: 20 }, (_, i) => `${lang === "it" ? "Ospite" : "Guest"} ${i + 1}`),
+        emails: [],
+      };
+    return null;
+  },
   // le proposte dei partecipanti cercano nella rubrica, come quelle vere (senza calendario né Mac)
   suggest_people: (a) => {
     const q = String(a.query ?? "")

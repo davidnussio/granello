@@ -321,6 +321,8 @@ pub fn update_meeting_meta(
                 (name, email)
             })
             .collect();
+        // «E. Rossi» scritto a mano o arrivato dal calendario è Elena Rossi, se è uno dei suoi nomi
+        let people = db.canonical_people(&people).map_err(err)?;
         db.set_attendees(&id, &people).map_err(err)?;
     }
     if let Some(groups) = group_ids {
@@ -442,6 +444,7 @@ pub fn save_group(
     parent_id: Option<String>,
     kind: GroupKind,
     members: Vec<String>,
+    emails: Option<Vec<String>>,
 ) -> CmdResult<Group> {
     let name: String = name.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(80).collect();
     if name.is_empty() {
@@ -451,10 +454,16 @@ pub fn save_group(
     let description: String = description.trim().chars().take(600).collect();
     let parent = parent_id.filter(|p| !p.is_empty());
     let members = normalize_names(members, 80, MAX_GROUP_MEMBERS);
+    // le mailing list: indirizzi veri, minuscoli, senza doppioni
+    let emails: Vec<String> = normalize_names(
+        emails.unwrap_or_default().into_iter().map(|e| e.trim().to_lowercase()).filter(|e| e.contains('@')).collect(),
+        120,
+        20,
+    );
     state
         .db
         .lock()
-        .save_group(id.as_deref().unwrap_or(""), &name, color, &description, parent.as_deref(), kind, &members)
+        .save_group(id.as_deref().unwrap_or(""), &name, color, &description, parent.as_deref(), kind, &members, &emails)
         .map_err(err)
 }
 
@@ -526,10 +535,23 @@ pub fn delete_person(state: State<AppState>, id: i64) -> CmdResult<()> {
 
 /// Cambia nome ed email di una persona; il nome nuovo arriva nei meeting e nelle note.
 #[tauri::command]
-pub fn update_person(state: State<AppState>, id: i64, name: String, email: Option<String>) -> CmdResult<Vec<Person>> {
+pub fn update_person(
+    state: State<AppState>,
+    id: i64,
+    name: String,
+    email: Option<String>,
+    role: Option<String>,
+    aliases: Option<Vec<String>>,
+) -> CmdResult<Vec<Person>> {
     let db = state.db.lock();
-    db.update_person(id, &name, email.as_deref()).map_err(err)?;
+    db.update_person_details(id, &name, email.as_deref(), role.as_deref(), aliases.as_deref()).map_err(err)?;
     db.list_people().map_err(err)
+}
+
+/// Le coppie di persone che sembrano la stessa, da unire.
+#[tauri::command]
+pub fn possible_duplicates(state: State<AppState>) -> CmdResult<Vec<Duplicate>> {
+    state.db.lock().possible_duplicates().map_err(err)
 }
 
 /// Unisce `from` in `into`: resta `into`, con i meeting di tutte e due.
@@ -562,8 +584,8 @@ pub async fn pick_vcard(app: AppHandle, state: State<'_, AppState>) -> CmdResult
     let mut dialog = app
         .dialog()
         .file()
-        .set_title(tr("Scegli un file vCard", "Choose a vCard file"))
-        .add_filter(tr("Contatti (vCard)", "Contacts (vCard)"), &["vcf", "vcard"]);
+        .set_title(tr("Scegli un file di contatti", "Choose a contacts file"))
+        .add_filter(tr("Contatti (vCard o CSV)", "Contacts (vCard or CSV)"), &["vcf", "vcard", "csv", "tsv", "txt"]);
     if let Some(window) = app.get_webview_window("main") {
         dialog = dialog.set_parent(&window);
     }
@@ -582,22 +604,32 @@ pub async fn pick_vcard(app: AppHandle, state: State<'_, AppState>) -> CmdResult
         .into());
     }
     let bytes = std::fs::read(&path).map_err(err)?;
-    let found = contacts::parse_vcard(&String::from_utf8_lossy(&bytes));
-    if found.is_empty() {
+    let text = String::from_utf8_lossy(&bytes);
+    // un vCard comincia con BEGIN:VCARD; tutto il resto si legge come un elenco CSV
+    let rows: Vec<contacts::Row> = if text.trim_start().to_ascii_uppercase().starts_with("BEGIN:VCARD") {
+        contacts::parse_vcard(&text)
+            .into_iter()
+            .map(|(name, email)| contacts::Row { name, email, ..Default::default() })
+            .collect()
+    } else {
+        contacts::parse_csv(&text)
+    };
+    if rows.is_empty() {
         return Err(tr(
-            "Nel file non ci sono contatti con un nome: scegli un file .vcf esportato da Contatti, Google o Outlook.",
-            "The file has no contacts with a name: choose a .vcf file exported from Contacts, Google or Outlook.",
+            "Nel file non ci sono contatti con un nome: scegli un file .vcf (da Contatti, Google o Outlook) o un CSV con una colonna per il nome.",
+            "The file has no contacts with a name: choose a .vcf file (from Contacts, Google or Outlook) or a CSV with a column for the name.",
         )
         .into());
     }
     let known = state.db.lock().list_people().map_err(err)?;
     Ok(Some(
-        found
-            .into_iter()
-            .map(|(name, email)| ImportedPerson {
-                known: known.iter().any(|p| p.name.eq_ignore_ascii_case(&name)),
-                name,
-                email,
+        rows.into_iter()
+            .map(|r| ImportedPerson {
+                known: known.iter().any(|p| p.name.eq_ignore_ascii_case(&r.name)),
+                name: r.name,
+                email: r.email,
+                role: r.role,
+                groups: r.groups,
             })
             .collect(),
     ))
@@ -607,13 +639,9 @@ pub async fn pick_vcard(app: AppHandle, state: State<'_, AppState>) -> CmdResult
 /// se non ne aveva una.
 #[tauri::command]
 pub fn add_people(state: State<AppState>, people: Vec<ImportedPerson>) -> CmdResult<Vec<Person>> {
-    let people: Vec<(String, Option<String>)> = people
-        .into_iter()
-        .map(|p| (p.name.trim().chars().take(80).collect::<String>(), p.email.filter(|e| e.contains('@'))))
-        .filter(|(n, _)| !n.is_empty())
-        .collect();
     let db = state.db.lock();
-    db.upsert_people(&people).map_err(err)?;
+    // con ruolo e gruppi, se il file li aveva: i gruppi che mancano si creano
+    db.import_people(&people).map_err(err)?;
     db.list_people().map_err(err)
 }
 
@@ -667,7 +695,13 @@ pub fn suggest_people(state: State<AppState>, query: String) -> CmdResult<Vec<Pe
         .search_people(&q, LIMIT)
         .map_err(err)?
         .into_iter()
-        .map(|p| PersonSuggestion { name: p.name, email: p.email, source: "people".into() })
+        .map(|p| {
+            // trovata da uno degli altri nomi: la proposta dice quale
+            let alias = (!p.name.to_lowercase().contains(&q))
+                .then(|| p.aliases.iter().find(|a| a.to_lowercase().contains(&q)).cloned())
+                .flatten();
+            PersonSuggestion { name: p.name, email: p.email, alias, source: "people".into() }
+        })
         .collect();
     for (name, email) in calendar_people(&state) {
         if out.len() >= LIMIT {
@@ -676,7 +710,7 @@ pub fn suggest_people(state: State<AppState>, query: String) -> CmdResult<Vec<Pe
         let matches = name.to_lowercase().contains(&q)
             || email.as_deref().map(|e| e.to_lowercase().contains(&q)).unwrap_or(false);
         if matches && !out.iter().any(|o| o.name.eq_ignore_ascii_case(&name)) {
-            out.push(PersonSuggestion { name, email, source: "calendar".into() });
+            out.push(PersonSuggestion { name, email, alias: None, source: "calendar".into() });
         }
     }
     // per ultima la rubrica del Mac: solo se attivata, e solo chi non è già proposto
@@ -686,7 +720,7 @@ pub fn suggest_people(state: State<AppState>, query: String) -> CmdResult<Vec<Pe
                 break;
             }
             if !out.iter().any(|o| o.name.eq_ignore_ascii_case(&name)) {
-                out.push(PersonSuggestion { name, email, source: "contacts".into() });
+                out.push(PersonSuggestion { name, email, alias: None, source: "contacts".into() });
             }
         }
     }
@@ -715,7 +749,11 @@ pub async fn calendar_match(state: State<'_, AppState>, meeting_id: String) -> C
                 .filter(|e| !e.attendees.is_empty() && e.start - SLACK_MS <= when && when < e.end)
                 .min_by_key(|e| (e.start - when).abs())
         });
-    Ok(pick.cloned())
+    let Some(mut event) = pick.cloned() else { return Ok(None) };
+    // gli invitati come sono in rubrica: «E. Rossi» (o la sua email) è Elena Rossi
+    let known = state.db.lock().canonical_people(&event.people).map_err(err)?;
+    event.attendees = known.into_iter().map(|(name, _)| name).collect();
+    Ok(Some(event))
 }
 
 #[tauri::command]
@@ -1553,6 +1591,8 @@ pub async fn enhance_notes(
         let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
+        // i gruppi per nome e dimensione, mai i loro membri
+        let meeting = db.with_groups(meeting).map_err(err)?;
         let segments = db.segments(&meeting_id).map_err(err)?;
         if meeting.notes_md.trim().is_empty() && segments.is_empty() {
             return Err(tr("Non c'è niente da arricchire: scrivi qualcosa o avvia la registrazione", "There is nothing to enhance: write something or start recording").into());
@@ -1614,6 +1654,8 @@ pub async fn fill_moments(state: State<'_, AppState>, meeting_id: String, moment
         let db = work.db()?;
         let settings = state.main.lock().get_settings().map_err(err)?;
         let meeting = db.get_meeting(&meeting_id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
+        // i gruppi per nome e dimensione, mai i loro membri
+        let meeting = db.with_groups(meeting).map_err(err)?;
         let segments = db.segments(&meeting_id).map_err(err)?;
         let mut asked: Vec<(i64, String)> = Vec::new();
         for ms in moments {
@@ -1690,6 +1732,8 @@ pub async fn ai_assist(state: State<'_, AppState>, request: AssistRequest) -> Cm
         let context = match meeting_id.as_deref() {
             Some(id) => {
                 let meeting = db.get_meeting(id).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
+                // i gruppi per nome e dimensione, mai i loro membri
+                let meeting = db.with_groups(meeting).map_err(err)?;
                 reason = local_only(&db, &meeting)?;
                 if kind == AssistKind::Sketch {
                     None
@@ -1841,6 +1885,7 @@ pub async fn chat(
                 .map(|m| {
                     let segs = db.segments(&m.id).unwrap_or_default();
                     let tr = prompts::transcript_text(&segs, &settings.user_name);
+                    let m = db.with_groups(m.clone()).unwrap_or(m);
                     let max = if m.enhanced_md.is_some() { 2500 } else { 8000 };
                     (m, truncate_chars(&tr, max))
                 })
@@ -1851,6 +1896,8 @@ pub async fn chat(
             (model, prompts::chat_system_global(&with_tr))
         } else {
             let m = db.get_meeting(&scope).map_err(err)?.ok_or(tr("Nota non trovata", "Note not found"))?;
+            // i gruppi per nome e dimensione, mai i loro membri
+            let m = db.with_groups(m).map_err(err)?;
             let model = resolve_model_for(&state, &settings, &settings.chat_model, local_only(&db, &m)?)?;
             let segs = db.segments(&scope).map_err(err)?;
             (model, prompts::chat_system_meeting(&m, &segs, &settings.user_name))
