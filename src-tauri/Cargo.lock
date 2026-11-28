@@ -1756,7 +1756,7 @@ dependencies = [
 
 [[package]]
 name = "granello"
-version = "0.2.15"
+version = "0.2.16"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
